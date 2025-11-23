@@ -5,51 +5,6 @@
   <title>AMI Dashboard</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .ai-chip {
-      margin-top: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .ai-chip strong {
-      color: var(--accent);
-    }
-    .ai-summary {
-      margin-top: 6px;
-      font-size: 13px;
-      color: var(--text);
-    }
-    .ai-panel {
-      border-left: 1px solid #eee;
-      padding-left: 12px;
-      margin-left: 12px;
-      font-size: 13px;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    .ai-panel h4 {
-      margin: 6px 0 4px;
-      font-size: 13px;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: #eef2ff;
-      color: #4a4a9b;
-    }
-    .badge.failed {
-      background: #fde2e1;
-      color: #b61f1f;
-    }
-    .badge.processing {
-      background: #fff4d6;
-      color: #a26a00;
-    }
-  </style>
 </head>
 <body>
   <div class="app">
@@ -107,8 +62,7 @@
       <!-- Grid of report cards -->
       <div style="margin-top:6px">
         <div class="grid" id="reportsGrid">
-
-          <!-- Skeleton placeholders -->
+          <!-- skeletons while loading -->
           <div class="card">
             <div class="skeleton thumb"></div>
             <div style="height:8px"></div>
@@ -130,66 +84,80 @@
             <div style="height:6px"></div>
             <div class="skeleton" style="width:30%"></div>
           </div>
-
         </div>
       </div>
 
     </main>
   </div>
 
-  <!-- MODAL (hidden) -->
+  <!-- MODAL -->
   <div id="modalRoot" style="display:none"></div>
 
   <script type="module">
-    // Auth guard
+    // ---------- Supabase client (anon) for signed URLs ----------
+    const SUPA_URL  = "https://tbyttsfztuudyqbrkonm.supabase.co";
+    const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieXR0c2Z6dHV1ZHlxYnJrb25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzA1MzgsImV4cCI6MjA3OTAwNjUzOH0.7T0S4_kkoWosdbmjlwtfSYzBcyipcPg1Fm8kIMa43uo";
+
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+    const supabase = createClient(SUPA_URL, SUPA_ANON);
+
+    // ---------- auth guard ----------
     const userEmail = localStorage.getItem("user_email");
     if (!userEmail) {
       window.location.href = "/login.html";
     }
     document.getElementById("userEmail").innerText = userEmail;
 
-    document.getElementById("logout").addEventListener("click", () => {
+    document.getElementById("logout").onclick = () => {
       localStorage.removeItem("user_email");
       window.location.href = "/login.html";
-    });
+    };
 
-    // Store reports globally for view/print handlers
-    window.__REPORTS = [];
+    // ---------- helpers ----------
+    function escapeHtml(s) {
+      return (s + "").replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      }[c]));
+    }
 
-    // Fetch reports from backend
     async function fetchReports() {
       try {
         const res = await fetch(`/api/get-reports?email=${encodeURIComponent(userEmail)}`);
         if (!res.ok) {
-          console.error("Fetch reports failed", await res.text());
+          console.error("get-reports failed:", await res.text());
           return [];
         }
         return await res.json();
-      } catch (err) {
-        console.error("Fetch error:", err);
+      } catch (e) {
+        console.error("get-reports error:", e);
         return [];
       }
     }
 
-    // Escape HTML
-    function escapeHtml(s) {
-      return (s + "").replace(/[&<>"']/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "\"": "&quot;",
-        "'": "&#39;"
-      }[c]));
+    async function makeSignedUrl(path) {
+      const { data, error } = await supabase
+        .storage
+        .from("reports")
+        .createSignedUrl(path, 60 * 30); // 30 minutes
+      if (error || !data?.signedUrl) {
+        console.error("signed URL error:", error);
+        alert("Could not open file from storage.");
+        return null;
+      }
+      return data.signedUrl;
     }
 
-    // Render reports
+    // ---------- render ----------
     function renderReports(reports) {
-      window.__REPORTS = reports;
       const grid = document.getElementById("reportsGrid");
       grid.innerHTML = "";
 
       if (!reports || !reports.length) {
-        grid.innerHTML = '<div class="card"><div class="title">No reports yet</div><div class="date">Upload a report to get started.</div></div>';
+        grid.innerHTML = `
+          <div class="card">
+            <div class="title">No reports yet</div>
+            <div class="date">Upload a report to get started</div>
+          </div>`;
         document.getElementById("totalReports").innerText = "0";
         document.getElementById("pendingCount").innerText = "0";
         document.getElementById("doneCount").innerText = "0";
@@ -199,270 +167,109 @@
       let pending = 0;
       let done = 0;
 
-      reports.forEach((r, idx) => {
-        const status = r.status || "pending"; // from ai_status
-        if (status === "processing") pending++;
+      reports.forEach((r) => {
+        const status = r.ai_status || "pending";
+        if (status === "processing" || status === "pending") pending++;
         if (status === "completed") done++;
-
-        const statusClass =
-          status === "completed"
-            ? "normal"
-            : status === "processing"
-            ? "info"
-            : "mild";
 
         const created = new Date(r.created_at || Date.now()).toLocaleString();
         const filePath = r.file_path || "unknown";
-
-        let aiSummary = "";
-        let badgeHtml = "";
-
-        if (r.ai_result && r.ai_result.status === "ok") {
-          const sum = r.ai_result.summary || "";
-          aiSummary = `<div class="ai-summary">${escapeHtml(sum)}</div>`;
-          badgeHtml = `<span class="badge">AI complete</span>`;
-        } else if (status === "processing") {
-          badgeHtml = `<span class="badge processing">AI processing</span>`;
-        } else if (status === "failed") {
-          badgeHtml = `<span class="badge failed">AI failed</span>`;
-        }
+        const hasAI   = !!r.ai_result && !r.ai_result.error;
 
         const card = document.createElement("div");
         card.className = "card";
+
         card.innerHTML = `
           <div class="meta">
             <div>
               <div class="title">${escapeHtml(r.title || "Untitled Report")}</div>
               <div class="date">${created}</div>
-              <div class="ai-chip">${badgeHtml}</div>
-              ${aiSummary}
             </div>
             <div style="text-align:right">
-              <div class="status ${statusClass}">${escapeHtml(status)}</div>
+              <div class="status ${status}">${escapeHtml(status)}</div>
             </div>
           </div>
+
           <div class="file">${escapeHtml(filePath)}</div>
+
           <div style="display:flex;gap:8px;margin-top:auto;justify-content:flex-end">
-            <button class="btn" onclick="viewReport(${idx})">View</button>
-            <button class="btn ghost" onclick="downloadReport('${encodeURIComponent(filePath)}')">Download</button>
-            <button class="btn ghost" onclick="printReport(${idx})">Print AI report</button>
+            <button class="btn" data-path="${encodeURIComponent(filePath)}" data-id="${r.id}" data-has-ai="${hasAI ? "1" : "0"}">View</button>
+            <button class="btn ghost" data-download="${encodeURIComponent(filePath)}">Download</button>
+            <button class="btn ghost" data-ai="${r.id}" ${hasAI ? "" : "disabled"}>Print AI report</button>
           </div>
         `;
+
         grid.appendChild(card);
       });
 
-      document.getElementById("totalReports").innerText = reports.length;
+      document.getElementById("totalReports").innerText  = reports.length;
       document.getElementById("pendingCount").innerText = pending;
-      document.getElementById("doneCount").innerText = done;
+      document.getElementById("doneCount").innerText    = done;
+
+      // attach button handlers
+      grid.querySelectorAll("button[data-path]").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const path = decodeURIComponent(e.currentTarget.getAttribute("data-path"));
+          const url  = await makeSignedUrl(path);
+          if (!url) return;
+          openModal(url, path);
+        });
+      });
+
+      grid.querySelectorAll("button[data-download]").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const path = decodeURIComponent(e.currentTarget.getAttribute("data-download"));
+          const url  = await makeSignedUrl(path);
+          if (!url) return;
+          window.open(url, "_blank");
+        });
+      });
+
+      grid.querySelectorAll("button[data-ai]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const hasAI = e.currentTarget.getAttribute("data-has-ai") === "1";
+          const id    = e.currentTarget.getAttribute("data-ai");
+          if (!hasAI) {
+            alert("AI analysis not available yet for this report.");
+            return;
+          }
+          // open printable AI report page
+          window.open(`/ai-report.html?id=${encodeURIComponent(id)}`, "_blank");
+        });
+      });
     }
 
-    // View modal: PDF + AI panel
-    window.viewReport = function (idx) {
-      const r = window.__REPORTS[idx];
-      if (!r) return;
-
-      const filePath = r.file_path || "";
-      const ai = r.ai_result || null;
+    // ---------- modal ----------
+    function openModal(fileUrl, label) {
       const modalRoot = document.getElementById("modalRoot");
       modalRoot.style.display = "block";
-
-      let aiHtml = "";
-      if (!ai || ai.status !== "ok") {
-        aiHtml = `<p>AI analysis is still <b>processing</b> or failed. Please try again later.</p>`;
-        if (ai && ai.error) {
-          aiHtml += `<p style="color:#c0392b;font-size:12px;">Error: ${escapeHtml(ai.error)}</p>`;
-        }
-      } else {
-        const flags = ai.flags || [];
-        const recs = ai.recommendations || [];
-        const markers = ai.markers || {};
-
-        const flagList = flags.length
-          ? "<ul>" + flags.map(f => `<li>${escapeHtml(f)}</li>`).join("") + "</ul>"
-          : "<p>No red flags detected.</p>";
-
-        const recList = recs.length
-          ? "<ul>" + recs.map(f => `<li>${escapeHtml(f)}</li>`).join("") + "</ul>"
-          : "<p>No specific recommendations.</p>";
-
-        const rows = Object.entries(markers)
-          .map(([name, obj]) => {
-            const val = obj && obj.value != null ? String(obj.value) : "";
-            const interp = obj && obj.interpretation ? obj.interpretation : "";
-            const sev = obj && obj.severity ? obj.severity : "info";
-            return `<tr>
-              <td>${escapeHtml(name)}</td>
-              <td>${escapeHtml(val)}</td>
-              <td>${escapeHtml(interp)}</td>
-              <td>${escapeHtml(sev)}</td>
-            </tr>`;
-          })
-          .join("");
-
-        aiHtml = `
-          <h4>AI Summary</h4>
-          <p>${escapeHtml(ai.summary || "")}</p>
-          <h4>Red flags</h4>
-          ${flagList}
-          <h4>Recommendations</h4>
-          ${recList}
-          <h4>Markers</h4>
-          <div style="max-height:260px;overflow:auto;border:1px solid #eee;border-radius:6px;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead>
-                <tr style="background:#f7f7f7;">
-                  <th style="padding:4px;border-bottom:1px solid #ddd;text-align:left;">Marker</th>
-                  <th style="padding:4px;border-bottom:1px solid #ddd;text-align:left;">Value</th>
-                  <th style="padding:4px;border-bottom:1px solid #ddd;text-align:left;">Interpretation</th>
-                  <th style="padding:4px;border-bottom:1px solid #ddd;text-align:left;">Severity</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows}
-              </tbody>
-            </table>
-          </div>
-          <p style="margin-top:8px;font-size:11px;color:#777;">
-            Note: AI output is decision support and not a final diagnosis. Always correlate with clinical context.
-          </p>
-        `;
-      }
-
       modalRoot.innerHTML = `
-        <div class="modal-backdrop" onclick="closeModal()">
+        <div class="modal-backdrop" onclick="window.closeModal()">
           <div class="modal" onclick="event.stopPropagation()">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700">${escapeHtml(filePath)}</div>
-              <button onclick="closeModal()" class="btn ghost">Close</button>
+              <div style="font-weight:700">${escapeHtml(label)}</div>
+              <button onclick="window.closeModal()" class="btn ghost">Close</button>
             </div>
             <div style="height:12px"></div>
-            <div style="display:flex;gap:12px;align-items:flex-start;">
-              <div class="preview" style="flex:3;min-height:400px;">
-                <iframe src="https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${encodeURIComponent(
-                  filePath
-                )}"
-                  style="width:100%;height:80vh;border:0;border-radius:8px"></iframe>
-              </div>
-              <div class="ai-panel" style="flex:2;">
-                ${aiHtml}
-                <button class="btn" style="margin-top:8px;" onclick="printReport(${idx})">
-                  Print / Save AI report
-                </button>
-              </div>
+            <div class="preview">
+              <iframe src="${fileUrl}" style="width:100%;height:100%;border:0;border-radius:8px"></iframe>
             </div>
           </div>
         </div>
       `;
+    }
+    window.closeModal = function() {
+      const modalRoot = document.getElementById("modalRoot");
+      modalRoot.style.display = "none";
+      modalRoot.innerHTML = "";
     };
 
-    window.closeModal = function () {
-      const modal = document.getElementById("modalRoot");
-      modal.style.display = "none";
-      modal.innerHTML = "";
-    };
-
-    // Download original PDF from Supabase
-    window.downloadReport = function (pathEnc) {
-      const path = decodeURIComponent(pathEnc);
-      const url = `https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${encodeURIComponent(
-        path
-      )}`;
-      window.open(url, "_blank");
-    };
-
-    // Print AI report (browser print -> Save as PDF)
-    window.printReport = function (idx) {
-      const r = window.__REPORTS[idx];
-      if (!r || !r.ai_result || r.ai_result.status !== "ok") {
-        alert("AI analysis not available yet for this report.");
-        return;
-      }
-      const ai = r.ai_result;
-      const flags = ai.flags || [];
-      const recs = ai.recommendations || [];
-      const markers = ai.markers || {};
-
-      const rows = Object.entries(markers)
-        .map(([name, obj]) => {
-          const val = obj && obj.value != null ? String(obj.value) : "";
-          const interp = obj && obj.interpretation ? obj.interpretation : "";
-          const sev = obj && obj.severity ? obj.severity : "info";
-          return `<tr>
-            <td>${escapeHtml(name)}</td>
-            <td>${escapeHtml(val)}</td>
-            <td>${escapeHtml(interp)}</td>
-            <td>${escapeHtml(sev)}</td>
-          </tr>`;
-        })
-        .join("");
-
-      const flagList = flags.length
-        ? "<ul>" + flags.map(f => `<li>${escapeHtml(f)}</li>`).join("") + "</ul>"
-        : "<p>No red flags detected.</p>";
-
-      const recList = recs.length
-        ? "<ul>" + recs.map(f => `<li>${escapeHtml(f)}</li>`).join("") + "</ul>"
-        : "<p>No specific recommendations.</p>";
-
-      const win = window.open("", "_blank");
-      if (!win) return;
-
-      win.document.write(`
-        <html>
-          <head>
-            <title>AMI AI Report</title>
-            <style>
-              body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 20px; }
-              h1, h2, h3 { margin: 0 0 8px; }
-              .muted { color: #777; font-size: 12px; }
-              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-              th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
-              th { background: #f7f7f7; }
-            </style>
-          </head>
-          <body>
-            <h1>AMI Health — AI Blood Report</h1>
-            <div class="muted">Generated: ${new Date().toLocaleString()}</div>
-            <div class="muted">User: ${escapeHtml(userEmail || "")}</div>
-            <hr/>
-            <h2>${escapeHtml(r.title || "Untitled Report")}</h2>
-            <p><strong>File:</strong> ${escapeHtml(r.file_path || "")}</p>
-            <h3>AI Summary</h3>
-            <p>${escapeHtml(ai.summary || "")}</p>
-            <h3>Red flags</h3>
-            ${flagList}
-            <h3>Recommendations</h3>
-            ${recList}
-            <h3>Markers</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Marker</th>
-                  <th>Value</th>
-                  <th>Interpretation</th>
-                  <th>Severity</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows}
-              </tbody>
-            </table>
-            <p class="muted" style="margin-top:10px;">
-              This AI report is a clinical decision support tool and must be interpreted by a qualified clinician.
-            </p>
-          </body>
-        </html>
-      `);
-      win.document.close();
-      win.focus();
-      win.print();
-    };
-
-    // Init
+    // ---------- init ----------
     (async function init() {
       const reports = await fetchReports();
       renderReports(reports);
     })();
+
   </script>
 </body>
 </html>
