@@ -1,6 +1,8 @@
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
+import fetch from "node-fetch";
+import FormData from "form-data";
 
 // Init Supabase client (service role)
 const supabase = createClient(
@@ -24,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read request body manually
+    // Read body
     let raw = "";
     await new Promise((resolve) => {
       req.on("data", (chunk) => (raw += chunk));
@@ -46,12 +48,12 @@ export default async function handler(req, res) {
 
     const filePath = files[0];
 
-    // 1️⃣ Save record in Supabase
+    // 1️⃣ Save database record
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
         email,
-        title: title || "Untitled Report",
+        title: title || "Untitled",
         file_path: filePath,
         created_at: new Date().toISOString(),
         ai_status: "processing",
@@ -60,27 +62,27 @@ export default async function handler(req, res) {
       .single();
 
     if (insertErr) {
-      console.error("Supabase insert error:", insertErr);
+      console.error(insertErr);
       return res.status(500).json({ error: "Failed to save report" });
     }
 
     const reportId = inserted.id;
 
-    // 2️⃣ Download PDF bytes from Supabase Storage
+    // 2️⃣ Download raw PDF
     const { data: fileData, error: downloadErr } = await supabase.storage
       .from("reports")
       .download(filePath);
 
     if (downloadErr) {
-      console.error("Supabase download error:", downloadErr);
-      return res.status(500).json({ error: "Failed to download file" });
+      console.error(downloadErr);
+      return res.status(500).json({ error: "File download failed" });
     }
 
     const fileBuffer = Buffer.from(await fileData.arrayBuffer());
 
-    // 3️⃣ Send to HuggingFace AMI backend
+    // 3️⃣ Send PDF to HuggingFace
     const formData = new FormData();
-    formData.append("file", new Blob([fileBuffer]), filePath);
+    formData.append("file", fileBuffer, filePath);
     formData.append("name", "Unknown");
     formData.append("age", "0");
     formData.append("sex", "Unknown");
@@ -93,16 +95,14 @@ export default async function handler(req, res) {
       }
     );
 
-    let aiJson = null;
+    let aiJson;
     try {
       aiJson = await aiResponse.json();
     } catch {
       aiJson = { error: "Invalid AI response" };
     }
 
-    console.log("🤖 AI Response:", aiJson);
-
-    // 4️⃣ Save AI result in Supabase
+    // 4️⃣ Update database
     await supabase
       .from("reports")
       .update({
@@ -111,13 +111,15 @@ export default async function handler(req, res) {
       })
       .eq("id", reportId);
 
+    // 5️⃣ Return result
     return res.status(200).json({
       success: true,
       id: reportId,
       ai: aiJson,
     });
+
   } catch (err) {
-    console.error("Server Error:", err);
+    console.error(err);
     return res.status(500).json({ error: "Server-side failure" });
   }
 }
