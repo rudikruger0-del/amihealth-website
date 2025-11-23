@@ -1,56 +1,51 @@
-// api/create-report.js
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
 import fetch from "node-fetch";
 import FormData from "form-data";
 
-// Supabase (service role) – make sure these env vars are set in Vercel
+// Supabase (service role)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: { autoRefreshToken: false, persistSession: false },
     global: {
-      headers: {
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-    },
+      headers: { Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` }
+    }
   }
 );
 
 export default async function handler(req, res) {
-  console.log("🔥 create-report endpoint HIT:", req.method);
+  console.log("🔥 create-report endpoint HIT");
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // Manually read raw JSON body (Vercel)
+    // ========== READ RAW BODY (REQUIRED FOR VERCEL) ==========
     let raw = "";
-    await new Promise((resolve) => {
-      req.on("data", (chunk) => (raw += chunk));
+    await new Promise(resolve => {
+      req.on("data", chunk => (raw += chunk));
       req.on("end", resolve);
     });
 
-    let data;
+    let body;
     try {
-      data = JSON.parse(raw);
+      body = JSON.parse(raw);
     } catch {
       return res.status(400).json({ error: "Invalid JSON" });
     }
 
-    const { email, title, files } = data;
-
-    if (!email || !files || !files.length) {
+    const { email, title, files } = body;
+    if (!email || !files?.length) {
       return res.status(400).json({ error: "Missing fields" });
     }
 
-    const filePath = files[0]; // only first file for now
-    console.log("📄 Received filePath from frontend:", filePath);
+    const filePath = files[0];
 
-    // 1️⃣ Insert basic record into Supabase
+    // ========== 1️⃣ INSERT NEW REPORT ==========
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
@@ -58,96 +53,68 @@ export default async function handler(req, res) {
         title: title || "Untitled Report",
         file_path: filePath,
         created_at: new Date().toISOString(),
-        ai_status: "processing",
-        ai_results: null, // <— IMPORTANT: matches Supabase column name
+        ai_status: "processing"
       })
       .select()
       .single();
 
     if (insertErr) {
-      console.error("Supabase insert error:", insertErr);
-      return res.status(500).json({ error: "Failed to save report" });
+      console.error("❌ Insert error:", insertErr);
+      return res.status(500).json({ error: "DB insert failed" });
     }
 
     const reportId = inserted.id;
-    console.log("✅ Report row created with id:", reportId);
 
-    // 2️⃣ Download raw file bytes from Supabase storage
-    const { data: fileData, error: downloadErr } = await supabase.storage
+    // ========== 2️⃣ DOWNLOAD RAW PDF FROM SUPABASE ==========
+    const { data: fileData, error: fileErr } = await supabase.storage
       .from("reports")
       .download(filePath);
 
-    if (downloadErr) {
-      console.error("Supabase download error:", downloadErr);
-      // Mark as failed
-      await supabase
-        .from("reports")
-        .update({
-          ai_status: "failed",
-          ai_results: { error: "Failed to download file from storage" },
-        })
-        .eq("id", reportId);
-
-      return res.status(500).json({ error: "Failed to download file" });
+    if (fileErr) {
+      console.error("❌ File download error:", fileErr);
+      return res.status(500).json({ error: "File download failed" });
     }
 
-    const fileBuffer = Buffer.from(await fileData.arrayBuffer());
-    console.log("📄 Downloaded file size (bytes):", fileBuffer.length);
+    const buffer = Buffer.from(await fileData.arrayBuffer());
 
-    // 3️⃣ Send PDF/image to Hugging Face AMI backend
+    // ========== 3️⃣ SEND FILE TO AI ENGINE ==========
+    const form = new FormData();
+    form.append("file", buffer, filePath);
+    form.append("name", "Unknown");
+    form.append("age", "0");
+    form.append("sex", "Unknown");
+
     let aiJson;
     try {
-      const formData = new FormData();
-      formData.append("file", fileBuffer, filePath);
-      formData.append("name", email || "Unknown");
-      formData.append("age", "0");
-      formData.append("sex", "Unknown");
+      const aiRes = await fetch("https://amihealth-ami-blood-ai.hf.space/analyze", {
+        method: "POST",
+        body: form
+      });
 
-      const aiResponse = await fetch(
-        "https://amihealth-ami-blood-ai.hf.space/analyze",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const text = await aiResponse.text();
-      try {
-        aiJson = JSON.parse(text);
-      } catch {
-        aiJson = {
-          error: "AI did not return valid JSON",
-          raw: text,
-          status: aiResponse.status,
-        };
-      }
+      aiJson = await aiRes.json();
     } catch (e) {
-      console.error("AI call error:", e);
-      aiJson = { error: "Failed to call AI backend" };
+      console.error("❌ AI request failed:", e);
+      aiJson = { error: "AI engine did not respond" };
     }
 
-    console.log("🤖 AI Response JSON:", aiJson);
-
-    // Decide status
-    const finalStatus = aiJson && !aiJson.error ? "completed" : "failed";
-
-    // 4️⃣ Update record with AI result (NOTE: ai_results)
+    // ========== 4️⃣ UPDATE REPORT WITH AI RESULT ==========
     await supabase
       .from("reports")
       .update({
-        ai_status: finalStatus,
-        ai_results: aiJson,
+        ai_status: aiJson.error ? "failed" : "completed",
+        ai_result: aiJson
       })
       .eq("id", reportId);
 
-    // 5️⃣ Reply to frontend
+    // ========== 5️⃣ RETURN SUCCESS ==========
     return res.status(200).json({
       success: true,
       id: reportId,
-      ai: aiJson,
+      ai: aiJson
     });
+
   } catch (err) {
-    console.error("Server Error in create-report:", err);
-    return res.status(500).json({ error: "Server-side failure" });
+    console.error("🔥 Server Error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 }
