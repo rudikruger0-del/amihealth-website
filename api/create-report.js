@@ -1,8 +1,8 @@
 export const config = {
-  runtime: "nodejs" 
+  runtime: "nodejs"
 };
+
 import { createClient } from "@supabase/supabase-js";
-import fetch from "node-fetch";
 
 // Init Supabase client (service role)
 const supabase = createClient(
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read request body (Next.js raw stream)
+    // Parse raw request body
     let raw = "";
     await new Promise((resolve) => {
       req.on("data", (chunk) => (raw += chunk));
@@ -46,9 +46,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing fields" });
     }
 
-    const filePath = files[0]; // first PDF uploaded
+    const filePath = files[0];
 
-    // 1️⃣ Save basic record in Supabase
+    // 1️⃣ Save record to Supabase
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
@@ -68,21 +68,19 @@ export default async function handler(req, res) {
 
     const reportId = inserted.id;
 
-    // 2️⃣ DOWNLOAD PDF FILE BYTES FROM SUPABASE STORAGE
+    // 2️⃣ Download the PDF from Supabase storage
     const { data: fileData, error: downloadErr } = await supabase.storage
       .from("reports")
       .download(filePath);
 
     if (downloadErr) {
-      console.error("Supabase download error:", downloadErr);
+      console.error("Download error:", downloadErr);
       return res.status(500).json({ error: "Failed to download file" });
     }
 
     const fileBuffer = Buffer.from(await fileData.arrayBuffer());
 
-    console.log("📄 Downloaded PDF bytes:", fileBuffer.length);
-
-    // 3️⃣ SEND TO HUGGINGFACE AMI BLOOD AI BACKEND
+    // 3️⃣ Send PDF to Huggingface AMI AI
     const formData = new FormData();
     formData.append("file", new Blob([fileBuffer]), filePath);
     formData.append("name", "Unknown");
@@ -97,16 +95,14 @@ export default async function handler(req, res) {
       }
     );
 
-    let aiJson = null;
+    let aiJson;
     try {
       aiJson = await aiResponse.json();
-    } catch (e) {
+    } catch {
       aiJson = { error: "Invalid AI response" };
     }
 
-    console.log("🤖 AI Response:", aiJson);
-
-    // 4️⃣ Update Supabase with AI result
+    // 4️⃣ Save AI result
     await supabase
       .from("reports")
       .update({
@@ -115,7 +111,7 @@ export default async function handler(req, res) {
       })
       .eq("id", reportId);
 
-    // 5️⃣ Respond to frontend
+    // 5️⃣ Send response to frontend
     return res.status(200).json({
       success: true,
       id: reportId,
