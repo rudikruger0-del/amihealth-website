@@ -1,6 +1,4 @@
-export const config = {
-  runtime: "nodejs"
-};
+export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -26,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse raw request body
+    // Read request body manually
     let raw = "";
     await new Promise((resolve) => {
       req.on("data", (chunk) => (raw += chunk));
@@ -48,7 +46,7 @@ export default async function handler(req, res) {
 
     const filePath = files[0];
 
-    // 1️⃣ Save record to Supabase
+    // 1️⃣ Save record in Supabase
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
@@ -68,19 +66,19 @@ export default async function handler(req, res) {
 
     const reportId = inserted.id;
 
-    // 2️⃣ Download the PDF from Supabase storage
+    // 2️⃣ Download PDF bytes from Supabase Storage
     const { data: fileData, error: downloadErr } = await supabase.storage
       .from("reports")
       .download(filePath);
 
     if (downloadErr) {
-      console.error("Download error:", downloadErr);
+      console.error("Supabase download error:", downloadErr);
       return res.status(500).json({ error: "Failed to download file" });
     }
 
     const fileBuffer = Buffer.from(await fileData.arrayBuffer());
 
-    // 3️⃣ Send PDF to Huggingface AMI AI
+    // 3️⃣ Send to HuggingFace AMI backend
     const formData = new FormData();
     formData.append("file", new Blob([fileBuffer]), filePath);
     formData.append("name", "Unknown");
@@ -95,14 +93,16 @@ export default async function handler(req, res) {
       }
     );
 
-    let aiJson;
+    let aiJson = null;
     try {
       aiJson = await aiResponse.json();
     } catch {
       aiJson = { error: "Invalid AI response" };
     }
 
-    // 4️⃣ Save AI result
+    console.log("🤖 AI Response:", aiJson);
+
+    // 4️⃣ Save AI result in Supabase
     await supabase
       .from("reports")
       .update({
@@ -111,7 +111,6 @@ export default async function handler(req, res) {
       })
       .eq("id", reportId);
 
-    // 5️⃣ Send response to frontend
     return res.status(200).json({
       success: true,
       id: reportId,
