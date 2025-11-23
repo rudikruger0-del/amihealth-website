@@ -1,199 +1,599 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>AMI Dashboard</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <header class="topbar">
-      <div class="brand">
-        <span class="logo-text">AMI Health</span>
-        <span class="tagline">Smarter Diagnostics — Better Care</span>
-      </div>
-      <nav>
-        <a href="/dashboard.html">Dashboard</a>
-        <a href="/upload.html">Upload Report</a>
-      </nav>
-    </header>
+  <head>
+    <meta charset="utf-8" />
+    <title>AMI Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="/styles.css" />
 
-    <main class="page">
-      <section class="panel">
-        <p id="userEmail"></p>
-        <button id="logoutBtn">Logout</button>
-      </section>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #f5f7fb;
+        color: #111827;
+      }
 
-      <section class="panel">
-        <h1>Your Reports</h1>
-        <p>
-          View, download, or open AI interpretation for each report. PDFs come
-          from a <b>private</b> bucket using signed URLs.
-        </p>
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        background: #0f172a;
+        color: #f9fafb;
+      }
 
-        <table class="table" id="reportsTable">
-          <thead>
-            <tr>
-              <th>Created</th>
-              <th>Title</th>
-              <th>File</th>
-              <th>AI Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="reportsBody"></tbody>
-        </table>
-      </section>
-    </main>
+      .topbar .brand {
+        display: flex;
+        flex-direction: column;
+      }
 
-    <script type="module">
-      const email =
-        localStorage.getItem("ami_email") ||
-        localStorage.getItem("amihealth_email") ||
-        "";
+      .logo-text {
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
 
-      const userEmailEl = document.getElementById("userEmail");
-      const tbody = document.getElementById("reportsBody");
+      .tagline {
+        font-size: 12px;
+        opacity: 0.8;
+      }
 
-      if (email) {
-        userEmailEl.textContent = `Signed in as ${email}`;
-      } else {
-        userEmailEl.textContent = "Not signed in";
-      }
+      .topbar nav a {
+        color: #e5e7eb;
+        margin-left: 16px;
+        text-decoration: none;
+        font-size: 14px;
+      }
 
-      document
-        .getElementById("logoutBtn")
-        .addEventListener("click", () => {
-          localStorage.removeItem("ami_email");
-          localStorage.removeItem("amihealth_email");
-          window.location.href = "/index.html";
-        });
+      .topbar nav a:hover {
+        text-decoration: underline;
+      }
 
-      async function fetchReports() {
-        tbody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
+      .page {
+        max-width: 1080px;
+        margin: 32px auto;
+        padding: 0 16px;
+      }
 
-        if (!email) {
-          tbody.innerHTML =
-            '<tr><td colspan="5">No email, please log in again.</td></tr>';
-          return;
-        }
+      .panel {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        margin-bottom: 20px;
+      }
 
-        try {
-          const resp = await fetch(
-            `/api/get-reports?email=${encodeURIComponent(email)}`
-          );
-          const json = await resp.json();
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
 
-          if (!resp.ok) {
-            console.error(json);
-            tbody.innerHTML =
-              '<tr><td colspan="5">Failed to load reports.</td></tr>';
-            return;
-          }
+      #userEmail {
+        font-size: 14px;
+        color: #374151;
+      }
 
-          const reports = json.reports || [];
-          if (reports.length === 0) {
-            tbody.innerHTML =
-              '<tr><td colspan="5">No reports yet. Upload one from the Upload page.</td></tr>';
-            return;
-          }
+      #logoutBtn,
+      #refreshBtn {
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        cursor: pointer;
+        font-size: 13px;
+      }
 
-          tbody.innerHTML = "";
-          for (const r of reports) {
-            const tr = document.createElement("tr");
+      #logoutBtn:hover,
+      #refreshBtn:hover {
+        background: #eef2ff;
+      }
 
-            const created = new Date(r.created_at).toLocaleString();
-            const title = r.title || "Untitled Report";
-            const fileName = r.file_path || "";
+      h1 {
+        margin-top: 0;
+        font-size: 22px;
+      }
 
-            const status =
-              r.ai_status ||
-              (r.ai_results && !r.ai_results.error
-                ? "completed"
-                : r.ai_results && r.ai_results.error
-                ? "failed"
-                : "pending");
+      .helper-text {
+        font-size: 14px;
+        color: #4b5563;
+        margin-bottom: 10px;
+      }
 
-            tr.innerHTML = `
-              <td>${created}</td>
-              <td>${title}</td>
-              <td>${fileName}</td>
-              <td>${status}</td>
-              <td>
-                <button class="view-btn">View PDF</button>
-                <button class="download-btn">Download</button>
-                <button class="ai-btn"${
-                  status !== "completed" ? " disabled" : ""
-                }>AI Report</button>
-              </td>
-            `;
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
 
-            const viewBtn = tr.querySelector(".view-btn");
-            const downloadBtn = tr.querySelector(".download-btn");
-            const aiBtn = tr.querySelector(".ai-btn");
+      .table thead {
+        background: #eef2ff;
+      }
 
-            viewBtn.addEventListener("click", () =>
-              openSignedUrl(r.file_path, true)
-            );
-            downloadBtn.addEventListener("click", () =>
-              openSignedUrl(r.file_path, false)
-            );
-            aiBtn.addEventListener("click", () =>
-              showAiReport(r.ai_results || null)
-            );
+      .table th,
+      .table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+        vertical-align: middle;
+      }
 
-            tbody.appendChild(tr);
-          }
-        } catch (e) {
-          console.error(e);
-          tbody.innerHTML =
-            '<tr><td colspan="5">Unexpected error loading reports.</td></tr>';
-        }
-      }
+      .table tbody tr:hover {
+        background: #f9fafb;
+      }
 
-      async function openSignedUrl(filePath, inNewTab) {
-        if (!filePath) {
-          alert("No file path for this report.");
-          return;
-        }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 500;
+      }
 
-        try {
-          const resp = await fetch("/api/get-file-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ file_path: filePath }),
-          });
-          const json = await resp.json();
-          if (!resp.ok || !json.url) {
-            console.error(json);
-            alert("Could not open file from storage.");
-            return;
-          }
+      .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
 
-          if (inNewTab) {
-            window.open(json.url, "_blank");
-          } else {
-            window.location.href = json.url;
-          }
-        } catch (e) {
-          console.error(e);
-          alert("Failed to open file.");
-        }
-      }
+      .status-processing {
+        background: #e0f2fe;
+        color: #075985;
+      }
 
-      function showAiReport(aiResults) {
-        if (!aiResults || aiResults.error) {
-          alert("AI analysis not available yet for this report.");
-          return;
-        }
+      .status-completed {
+        background: #dcfce7;
+        color: #166534;
+      }
 
-        const pretty = JSON.stringify(aiResults, null, 2);
-        const win = window.open("", "_blank");
-        win.document.write("<pre>" + pretty + "</pre>");
-        win.document.close();
-      }
+      .status-failed {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
 
-      fetchReports();
-    </script>
-  </body>
+      .actions button {
+        padding: 6px 10px;
+        margin-right: 4px;
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        font-size: 12px;
+        cursor: pointer;
+        background: #f9fafb;
+      }
+
+      .actions button:hover:not(:disabled) {
+        background: #eef2ff;
+      }
+
+      .actions button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .empty-row {
+        text-align: center;
+        color: #6b7280;
+        font-size: 14px;
+        padding: 24px 8px;
+      }
+
+      .alert-banner {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+      }
+
+      .alert-danger {
+        background: #fef2f2;
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo-text">AMI Health</span>
+        <span class="tagline">Smarter Diagnostics — Better Care</span>
+      </div>
+      <nav>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/upload.html">Upload Report</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <section class="panel">
+        <div class="panel-header">
+          <p id="userEmail"></p>
+          <div>
+            <button id="refreshBtn">Refresh</button>
+            <button id="logoutBtn">Logout</button>
+          </div>
+        </div>
+        <div id="dashAuthWarning" class="alert-banner alert-danger" style="display:none;">
+          No email found. If you recently logged in on a different tab or
+          sub-domain, please log in again on this page.
+        </div>
+      </section>
+
+      <section class="panel">
+        <h1>Your Reports</h1>
+        <p class="helper-text">
+          View, download, or open AI interpretation for each report. PDFs are
+          served from a <b>private</b> Supabase bucket using short-lived signed
+          URLs.
+        </p>
+
+        <table class="table" id="reportsTable">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Title</th>
+              <th>File</th>
+              <th>AI Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reportsBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script type="module">
+      const email =
+        localStorage.getItem("ami_email") ||
+        localStorage.getItem("amihealth_email") ||
+        "";
+
+      const userEmailEl = document.getElementById("userEmail");
+      const tbody = document.getElementById("reportsBody");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const refreshBtn = document.getElementById("refreshBtn");
+      const dashAuthWarning = document.getElementById("dashAuthWarning");
+
+      if (email) {
+        userEmailEl.textContent = `Signed in as ${email}`;
+      } else {
+        userEmailEl.textContent = "Not signed in";
+        dashAuthWarning.style.display = "block";
+      }
+
+      logoutBtn.addEventListener("click", () => {
+        localStorage.removeItem("ami_email");
+        localStorage.removeItem("amihealth_email");
+        window.location.href = "/index.html";
+      });
+
+      refreshBtn.addEventListener("click", fetchReports);
+
+      function renderStatusPill(status) {
+        const span = document.createElement("span");
+        span.classList.add("status-pill");
+
+        const normalized = (status || "").toLowerCase();
+
+        if (normalized === "completed") {
+          span.classList.add("status-completed");
+          span.textContent = "Completed";
+        } else if (normalized === "failed") {
+          span.classList.add("status-failed");
+          span.textContent = "Failed";
+        } else if (normalized === "processing") {
+          span.classList.add("status-processing");
+          span.textContent = "Processing";
+        } else {
+          span.classList.add("status-pending");
+          span.textContent = "Pending";
+        }
+
+        return span;
+      }
+
+      async function fetchReports() {
+        tbody.innerHTML =
+          '<tr><td class="empty-row" colspan="5">Loading…</td></tr>';
+
+        if (!email) {
+          tbody.innerHTML =
+            '<tr><td class="empty-row" colspan="5">No email, please log in again.</td></tr>';
+          return;
+        }
+
+        try {
+          const resp = await fetch(
+            `/api/get-reports?email=${encodeURIComponent(email)}`
+          );
+          const json = await resp.json();
+
+          if (!resp.ok) {
+            console.error(json);
+            tbody.innerHTML =
+              '<tr><td class="empty-row" colspan="5">Failed to load reports.</td></tr>';
+            return;
+          }
+
+          const reports = json.reports || [];
+          if (reports.length === 0) {
+            tbody.innerHTML =
+              '<tr><td class="empty-row" colspan="5">No reports yet. Upload one from the Upload page.</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = "";
+          for (const r of reports) {
+            const tr = document.createElement("tr");
+
+            const created = r.created_at
+              ? new Date(r.created_at).toLocaleString()
+              : "-";
+            const title = r.title || "Untitled Report";
+            const fileName = r.file_path || "";
+
+            const status =
+              r.ai_status ||
+              (r.ai_results && !r.ai_results.error
+                ? "completed"
+                : r.ai_results && r.ai_results.error
+                ? "failed"
+                : "processing");
+
+            const statusTd = document.createElement("td");
+            statusTd.appendChild(renderStatusPill(status));
+
+            tr.innerHTML = `
+              <td>${created}</td>
+              <td>${title}</td>
+              <td>${fileName}</td>
+              <td></td>
+              <td class="actions"></td>
+            `;
+
+            const actionsTd = tr.querySelector(".actions");
+
+            const viewBtn = document.createElement("button");
+            viewBtn.textContent = "View PDF";
+
+            const downloadBtn = document.createElement("button");
+            downloadBtn.textContent = "Download";
+
+            const aiBtn = document.createElement("button");
+            aiBtn.textContent = "AI Report";
+            if (status !== "completed") {
+              aiBtn.disabled = true;
+            }
+
+            viewBtn.addEventListener("click", () =>
+              openSignedUrl(r.file_path, true)
+            );
+            downloadBtn.addEventListener("click", () =>
+              openSignedUrl(r.file_path, false)
+            );
+            aiBtn.addEventListener("click", () =>
+              showAiReport(r.ai_results || null)
+            );
+
+            actionsTd.appendChild(viewBtn);
+            actionsTd.appendChild(downloadBtn);
+            actionsTd.appendChild(aiBtn);
+
+            tr.replaceChild(statusTd, tr.children[3]);
+            tbody.appendChild(tr);
+          }
+        } catch (e) {
+          console.error(e);
+          tbody.innerHTML =
+            '<tr><td class="empty-row" colspan="5">Unexpected error loading reports.</td></tr>';
+        }
+      }
+
+      async function openSignedUrl(filePath, inNewTab) {
+        if (!filePath) {
+          alert("No file path for this report.");
+          return;
+        }
+
+        try {
+          const resp = await fetch("/api/get-file-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file_path: filePath }),
+          });
+          const json = await resp.json();
+          if (!resp.ok || !json.url) {
+            console.error(json);
+            alert("Could not open file from storage.");
+            return;
+          }
+
+          if (inNewTab) {
+            window.open(json.url, "_blank", "noopener");
+          } else {
+            window.location.href = json.url;
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Failed to open file.");
+        }
+      }
+
+      function showAiReport(aiResults) {
+        if (!aiResults || aiResults.error) {
+          alert("AI analysis not available yet for this report.");
+          return;
+        }
+
+        const summary = aiResults.summary || "AI interpretation available.";
+
+        const flags = Array.isArray(aiResults.flags) ? aiResults.flags : [];
+        const recs = Array.isArray(aiResults.recommendations)
+          ? aiResults.recommendations
+          : [];
+
+        const markers = aiResults.markers || {};
+
+        const win = window.open("", "_blank");
+        if (!win) {
+          alert(
+            "Popup blocked. Please allow popups for this site to view the AI report."
+          );
+          return;
+        }
+
+        const markerRows = Object.entries(markers)
+          .map(([name, obj]) => {
+            const value =
+              obj && typeof obj === "object" ? obj.value ?? "" : obj ?? "";
+            const interpretation =
+              obj && typeof obj === "object" ? obj.interpretation ?? "" : "";
+            const severity =
+              obj && typeof obj === "object" ? obj.severity ?? "" : "";
+            return `<tr>
+              <td>${name}</td>
+              <td>${value}</td>
+              <td>${interpretation}</td>
+              <td>${severity}</td>
+            </tr>`;
+          })
+          .join("");
+
+        win.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AMI AI Report</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      padding: 24px;
+      color: #111827;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 22px;
+    }
+    h2 {
+      font-size: 18px;
+      margin-top: 24px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 12px;
+      margin-right: 6px;
+      margin-bottom: 4px;
+    }
+    .section {
+      margin-bottom: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th {
+      background: #f3f4f6;
+    }
+    .meta {
+      font-size: 13px;
+      color: #4b5563;
+      margin-bottom: 12px;
+    }
+    .print-note {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .print-btn {
+      margin-top: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      cursor: pointer;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>AMI AI Interpretation</h1>
+  <div class="meta">
+    Generated: ${aiResults.generated_at || ""}<br/>
+    Patient: ${(aiResults.patient && aiResults.patient.name) || ""} 
+    ${(aiResults.patient && aiResults.patient.age)
+      ? "· Age " + aiResults.patient.age
+      : ""} 
+    ${(aiResults.patient && aiResults.patient.sex) || ""}
+  </div>
+
+  <div class="section">
+    <h2>Summary</h2>
+    <p>${summary}</p>
+  </div>
+
+  <div class="section">
+    <h2>Red flags</h2>
+    ${
+      flags.length
+        ? flags.map((f) => `<span class="pill">${f}</span>`).join("")
+        : "<p>No critical flags detected by the AI engine.</p>"
+    }
+  </div>
+
+  <div class="section">
+    <h2>Recommendations</h2>
+    ${
+      recs.length
+        ? "<ul>" +
+          recs.map((r) => `<li>${r}</li>`).join("") +
+          "</ul>"
+        : "<p>No specific recommendations.</p>"
+    }
+  </div>
+
+  <div class="section">
+    <h2>Marker details</h2>
+    ${
+      markerRows
+        ? `<table>
+        <thead>
+          <tr>
+            <th>Marker</th>
+            <th>Value</th>
+            <th>Interpretation</th>
+            <th>Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${markerRows}
+        </tbody>
+      </table>`
+        : "<p>No marker data was returned.</p>"
+    }
+  </div>
+
+  <button class="print-btn" onclick="window.print()">Print or Save as PDF</button>
+  <div class="print-note">
+    Tip: Use your browser's print dialog to save this report as a PDF for the patient's record.
+  </div>
+</body>
+</html>`);
+        win.document.close();
+      }
+
+      fetchReports();
+    </script>
+  </body>
 </html>
