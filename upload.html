@@ -1,117 +1,166 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>AMI — Upload Report</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="/styles.css" />
-</head>
+  <head>
+    <meta charset="utf-8" />
+    <title>AMI — Upload Report</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
 
-<body>
-<header class="topbar">
-  <div class="brand">
-    <span class="logo-text">AMI Health</span>
-    <span class="tagline">Upload Reports</span>
-  </div>
-  <nav>
-    <a href="/dashboard.html">Dashboard</a>
-    <a href="/upload.html">Upload Report</a>
-  </nav>
-</header>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo-text">AMI Health</span>
+        <span class="tagline">Upload reports</span>
+      </div>
+      <nav>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/upload.html" class="active">Upload Report</a>
+      </nav>
+    </header>
 
-<main class="page">
-  <section class="panel">
-    <p id="userEmail"></p>
-    <button id="logoutBtn">Logout</button>
-  </section>
+    <main class="page">
+      <section class="panel">
+        <p id="userEmail"></p>
+        <button id="logoutBtn">Logout</button>
+      </section>
 
-  <section class="panel">
-    <h1>Upload Scan or Lab Report</h1>
-    <p>Select a PDF or image. Files are stored privately and securely.</p>
+      <section class="panel">
+        <h1>Upload Scan or Lab Report</h1>
+        <p>
+          Select a PDF or image (JPG, PNG). Files are stored in a
+          <b>private</b> Supabase bucket (<code>reports</code>) and then
+          queued for AI analysis.
+        </p>
 
-    <input type="file" id="fileInput" accept=".pdf,image/*" />
-    <input type="text" id="titleInput" placeholder="Report title (optional)" />
-    <button id="uploadBtn">Upload & Queue</button>
+        <div class="form-row">
+          <input type="file" id="fileInput" accept=".pdf,image/*" />
+        </div>
+        <div class="form-row">
+          <input
+            type="text"
+            id="titleInput"
+            placeholder="Report title (optional)"
+          />
+        </div>
+        <div class="form-row">
+          <button id="uploadBtn">Upload &amp; Queue</button>
+        </div>
 
-    <div id="statusArea"></div>
-  </section>
-</main>
+        <div id="statusArea" class="status-area"></div>
+      </section>
+    </main>
 
-<script type="module">
-  import { supabase } from "/lib/supabaseClient.js";
+    <script type="module">
+      import { supabase } from "/lib/supabaseClient.js";
 
-  const email = localStorage.getItem("ami_user_email");
+      // ---- unify login storage key ----
+      let email =
+        localStorage.getItem("ami_user_email") ||
+        localStorage.getItem("ami_email") ||
+        localStorage.getItem("amihealth_email") ||
+        "";
 
-  if (!email) {
-    document.getElementById("userEmail").innerHTML =
-      "Not signed in.<br>Please return to login page.";
-    document.getElementById("uploadBtn").disabled = true;
-  } else {
-    document.getElementById("userEmail").textContent = email;
-  }
+      // migrate old keys -> new one
+      if (!localStorage.getItem("ami_user_email") && email) {
+        localStorage.setItem("ami_user_email", email);
+      }
 
-  document.getElementById("logoutBtn").onclick = () => {
-    localStorage.removeItem("ami_user_email");
-    window.location.href = "/index.html";
-  };
+      const userEmailEl = document.getElementById("userEmail");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const fileInput = document.getElementById("fileInput");
+      const titleInput = document.getElementById("titleInput");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const statusArea = document.getElementById("statusArea");
 
-  const statusArea = document.getElementById("statusArea");
+      function log(msg) {
+        const p = document.createElement("p");
+        p.textContent = msg;
+        statusArea.appendChild(p);
+      }
 
-  function log(msg) {
-    const p = document.createElement("p");
-    p.textContent = msg;
-    statusArea.appendChild(p);
-  }
+      function setSignedInState() {
+        if (!email) {
+          userEmailEl.innerHTML =
+            "Not signed in.<br/>Please go back to the home page and log in again.";
+          uploadBtn.disabled = true;
+        } else {
+          userEmailEl.textContent = email;
+          uploadBtn.disabled = false;
+        }
+      }
 
-  document.getElementById("uploadBtn").onclick = async () => {
-    statusArea.innerHTML = "";
+      setSignedInState();
 
-    if (!email) {
-      alert("Not signed in. Please log in again.");
-      return;
-    }
+      logoutBtn.addEventListener("click", () => {
+        localStorage.removeItem("ami_user_email");
+        localStorage.removeItem("ami_email");
+        localStorage.removeItem("amihealth_email");
+        window.location.href = "/index.html";
+      });
 
-    const file = document.getElementById("fileInput").files[0];
-    if (!file) return alert("Choose a file.");
+      uploadBtn.addEventListener("click", async () => {
+        statusArea.innerHTML = "";
 
-    const title = document.getElementById("titleInput").value.trim();
-    const fileName = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+        if (!email) {
+          alert("No email found. Please log in again.");
+          return;
+        }
 
-    log("Uploading…");
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("Please choose a file");
+          return;
+        }
 
-    const { data, error } = await supabase.storage
-      .from("reports")
-      .upload(fileName, file);
+        const title = titleInput.value.trim();
+        const safeName = file.name.replace(/\s+/g, "_");
+        const fileName = `${Date.now()}_${safeName}`;
 
-    if (error) {
-      log("Upload failed.");
-      return;
-    }
+        try {
+          log("Uploading file to Supabase…");
 
-    const path = data.path;
-    log("Upload complete. Queuing AI…");
+          const { data, error } = await supabase.storage
+            .from("reports")
+            .upload(fileName, file);
 
-    const resp = await fetch("/api/create-report", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        title,
-        files: [path],
-        name: "",
-        age: 0,
-        sex: "Unknown"
-      })
-    });
+          if (error) {
+            console.error("Upload error:", error);
+            log("❌ Failed to upload file.");
+            return;
+          }
 
-    const json = await resp.json();
+          const filePath = data.path;
+          log(`✅ Uploaded as: ${filePath}`);
+          log("Queuing AI analysis…");
 
-    if (!resp.ok) {
-      log("Failed to queue AI.");
-    } else {
-      log("AI queued successfully. Report ID: " + json.id);
-    }
-  };
-</script>
-</body>
+          const resp = await fetch("/api/create-report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              title,
+              files: [filePath],
+              name: "", // optional patient info (future)
+              age: 0,
+              sex: "Unknown",
+            }),
+          });
+
+          const json = await resp.json();
+          if (!resp.ok || !json.success) {
+            console.error("create-report error:", json);
+            log("❌ Failed to queue AI analysis.");
+          } else {
+            log(
+              `✅ Success. Report queued. ID: ${json.id} (AI status: ${json.status})`
+            );
+          }
+        } catch (e) {
+          console.error(e);
+          log("❌ Unexpected error during upload.");
+        }
+      });
+    </script>
+  </body>
 </html>
