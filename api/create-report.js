@@ -1,5 +1,5 @@
 export const config = {
-  runtime: "nodejs18.x"
+  runtime: "nodejs" };
 };
 import { createClient } from "@supabase/supabase-js";
 import fetch from "node-fetch";
