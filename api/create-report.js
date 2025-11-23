@@ -12,9 +12,9 @@ const supabase = createClient(
     auth: { autoRefreshToken: false, persistSession: false },
     global: {
       headers: {
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-      }
-    }
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    },
   }
 );
 
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read raw JSON (Vercel)
+    // ---- read raw JSON body (Vercel) ----
     let raw = "";
     await new Promise((resolve) => {
       req.on("data", (chunk) => (raw += chunk));
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     let body;
     try {
       body = JSON.parse(raw || "{}");
-    } catch (err) {
+    } catch {
       return res.status(400).json({ error: "Invalid JSON" });
     }
 
@@ -45,9 +45,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing fields" });
     }
 
-    const filePath = files[0];
+    const filePath = files[0]; // first uploaded file path in bucket "reports"
 
-    // 1) Insert record
+    // ---- 1) create DB row in reports ----
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
@@ -66,18 +66,21 @@ export default async function handler(req, res) {
     }
 
     const reportId = inserted.id;
+    console.log("✅ Created report row:", reportId, "file:", filePath);
 
-    // 2) Signed URL
+    // ---- 2) create signed URL for the PDF ----
     const { data: signed, error: signErr } = await supabase.storage
       .from("reports")
       .createSignedUrl(filePath, 60 * 30);
 
     if (signErr || !signed?.signedUrl) {
+      console.error("❌ Signed URL error:", signErr);
+
       await supabase
         .from("reports")
         .update({
           ai_status: "failed",
-          ai_results: { error: "Could not create signed URL", details: signErr }
+          ai_results: { error: "Could not create signed URL" }
         })
         .eq("id", reportId);
 
@@ -86,23 +89,20 @@ export default async function handler(req, res) {
 
     const fileUrl = signed.signedUrl;
 
-    // 3) Call Hugging Face backend
-    let aiJson;
+    // ---- 3) call Hugging Face Space ----
+    let aiJson = null;
     try {
-      const hfResp = await fetch(
-        "https://amihealth-ami-blood-ai.hf.space/analyze",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            report_id: reportId,
-            file_url: fileUrl,
-            email,
-            title: title || "Untitled Report",
-            file_path: filePath
-          })
-        }
-      );
+      const hfResp = await fetch("https://amihealth-ami-blood-ai.hf.space/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          report_id: reportId,
+          file_url: fileUrl,
+          email,
+          title: title || "Untitled Report",
+          file_path: filePath
+        })
+      });
 
       const text = await hfResp.text();
       try {
@@ -115,12 +115,13 @@ export default async function handler(req, res) {
         aiJson.error = aiJson.error || `HF HTTP ${hfResp.status}`;
       }
     } catch (err) {
+      console.error("❌ Error calling Hugging Face:", err);
       aiJson = { error: "Failed to call Hugging Face", details: String(err) };
     }
 
     const finalStatus = aiJson && !aiJson.error ? "completed" : "failed";
 
-    // 4) Update DB
+    // ---- 4) update DB row with AI result ----
     await supabase
       .from("reports")
       .update({
@@ -135,6 +136,7 @@ export default async function handler(req, res) {
       status: finalStatus,
       ai: aiJson
     });
+
   } catch (err) {
     console.error("💥 Unhandled server error:", err);
     return res.status(500).json({ error: "Server-side failure" });
