@@ -5,6 +5,185 @@
     <title>AMI — Upload Report</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="/styles.css" />
+
+    <!-- Extra polish specific to this page -->
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #f5f7fb;
+        color: #12212f;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        background: #0f172a;
+        color: #f9fafb;
+      }
+
+      .topbar .brand {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .logo-text {
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .tagline {
+        font-size: 12px;
+        opacity: 0.8;
+      }
+
+      .topbar nav a {
+        color: #e5e7eb;
+        margin-left: 16px;
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .topbar nav a:hover {
+        text-decoration: underline;
+      }
+
+      .page {
+        max-width: 960px;
+        margin: 32px auto;
+        padding: 0 16px;
+      }
+
+      .panel {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        margin-bottom: 20px;
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      #userEmail {
+        font-size: 14px;
+        color: #374151;
+      }
+
+      #logoutBtn {
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      #logoutBtn:hover {
+        background: #eef2ff;
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 22px;
+      }
+
+      .helper-text {
+        font-size: 14px;
+        color: #4b5563;
+        margin-bottom: 16px;
+      }
+
+      .upload-card {
+        border: 1px dashed #cbd5f5;
+        border-radius: 12px;
+        padding: 18px 18px 20px;
+        background: #f9fafb;
+      }
+
+      .form-row {
+        margin-top: 12px;
+      }
+
+      input[type="file"] {
+        width: 100%;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        font-size: 14px;
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 1px #4f46e5;
+      }
+
+      #uploadBtn {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: none;
+        background: #2563eb;
+        color: #ffffff;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      #uploadBtn[disabled] {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      #uploadBtn:hover:not([disabled]) {
+        background: #1d4ed8;
+      }
+
+      #statusArea {
+        margin-top: 14px;
+        font-size: 13px;
+        max-height: 180px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      #statusArea p {
+        margin: 4px 0;
+      }
+
+      .status-ok {
+        color: #059669;
+      }
+
+      .status-error {
+        color: #dc2626;
+      }
+
+      .status-muted {
+        color: #6b7280;
+      }
+
+      .alert-banner {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        background: #fef2f2;
+        color: #b91c1c;
+      }
+    </style>
   </head>
   <body>
     <header class="topbar">
@@ -20,32 +199,45 @@
 
     <main class="page">
       <section class="panel">
-        <p id="userEmail"></p>
-        <button id="logoutBtn">Logout</button>
+        <div class="panel-header">
+          <p id="userEmail"></p>
+          <button id="logoutBtn">Logout</button>
+        </div>
+        <div id="authWarning" class="alert-banner" style="display: none">
+          You are not signed in. Please go back to the home page and log in
+          again before uploading reports.
+        </div>
       </section>
 
       <section class="panel">
         <h1>Upload Scan or Lab Report</h1>
-        <p>
-          Select PDF or image files (jpg, png). They will upload to Supabase
-          Storage (<b>bucket: reports</b>) and then be queued for AI analysis.
+        <p class="helper-text">
+          Select PDF or image files (JPG, PNG). They are stored in a private
+          Supabase bucket (<b>reports</b>) and then queued for AI analysis.
         </p>
 
-        <div class="form-row">
-          <input type="file" id="fileInput" accept=".pdf,image/*" multiple />
-        </div>
-        <div class="form-row">
-          <input
-            type="text"
-            id="titleInput"
-            placeholder="Report title (optional)"
-          />
-        </div>
-        <div class="form-row">
-          <button id="uploadBtn">Upload &amp; Queue</button>
-        </div>
+        <div class="upload-card">
+          <div class="form-row">
+            <input
+              type="file"
+              id="fileInput"
+              accept=".pdf,image/*"
+              multiple
+            />
+          </div>
+          <div class="form-row">
+            <input
+              type="text"
+              id="titleInput"
+              placeholder="Report title (optional)"
+            />
+          </div>
+          <div class="form-row">
+            <button id="uploadBtn">Upload &amp; Queue</button>
+          </div>
 
-        <div id="statusArea"></div>
+          <div id="statusArea" class="status-muted"></div>
+        </div>
       </section>
     </main>
 
@@ -58,51 +250,70 @@
         "";
 
       const userEmailEl = document.getElementById("userEmail");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const authWarning = document.getElementById("authWarning");
+
       if (email) {
         userEmailEl.textContent = email;
       } else {
         userEmailEl.textContent = "Not signed in";
+        authWarning.style.display = "block";
       }
 
-      document
-        .getElementById("logoutBtn")
-        .addEventListener("click", () => {
-          localStorage.removeItem("ami_email");
-          localStorage.removeItem("amihealth_email");
-          window.location.href = "/index.html";
-        });
+      logoutBtn.addEventListener("click", () => {
+        localStorage.removeItem("ami_email");
+        localStorage.removeItem("amihealth_email");
+        window.location.href = "/index.html";
+      });
 
       const fileInput = document.getElementById("fileInput");
       const titleInput = document.getElementById("titleInput");
       const uploadBtn = document.getElementById("uploadBtn");
       const statusArea = document.getElementById("statusArea");
 
-      function log(msg) {
+      if (!email) {
+        // prevent silent failure if user never logged in on this origin
+        uploadBtn.disabled = true;
+      }
+
+      function log(msg, type = "muted") {
         const p = document.createElement("p");
         p.textContent = msg;
+        p.className =
+          type === "ok"
+            ? "status-ok"
+            : type === "error"
+            ? "status-error"
+            : "status-muted";
         statusArea.appendChild(p);
+        statusArea.scrollTop = statusArea.scrollHeight;
       }
 
       uploadBtn.addEventListener("click", async () => {
         statusArea.innerHTML = "";
 
         if (!email) {
-          alert("No email found. Please log in again.");
+          alert("No email found on this device. Please log in again.");
           return;
         }
 
         const files = fileInput.files;
         if (!files || files.length === 0) {
-          alert("Please choose at least one file");
+          alert("Please choose at least one file.");
           return;
         }
 
         const title = titleInput.value.trim();
         const uploadedPaths = [];
 
+        uploadBtn.disabled = true;
+        log("Uploading files to secure storage…");
+
         try {
           for (const file of files) {
-            const fileName = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+            const fileName = `${Date.now()}_${file.name
+              .replace(/\s+/g, "_")
+              .replace(/[^\w.\-]/g, "")}`;
 
             const { data, error } = await supabase.storage
               .from("reports")
@@ -110,15 +321,17 @@
 
             if (error) {
               console.error("Upload error:", error);
-              log(`❌ Failed to upload: ${file.name}`);
+              log(`Failed to upload: ${file.name}`, "error");
+              uploadBtn.disabled = false;
               return;
             }
 
             uploadedPaths.push(data.path);
-            log(`• Uploaded: ${data.path}`);
+            log(`Uploaded: ${data.path}`, "ok");
           }
 
-          // call backend to create report + AI
+          log("Notifying AI backend…");
+
           const resp = await fetch("/api/create-report", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -126,8 +339,7 @@
               email,
               title,
               files: uploadedPaths,
-              // optional patient info for AI:
-              name: "", // you can collect from UI later
+              name: "",
               age: 0,
               sex: "Unknown",
             }),
@@ -136,17 +348,18 @@
           const json = await resp.json();
           if (!resp.ok || !json.success) {
             console.error("create-report error:", json);
-            log("❌ Failed to queue AI analysis");
+            log("Failed to queue AI analysis.", "error");
           } else {
             log(
-              `✅ Success. Report queued. ID: ${json.id}\nUploaded: ${uploadedPaths.join(
-                ", "
-              )}`
+              `Success. Report queued. ID: ${json.id}`,
+              "ok"
             );
           }
         } catch (e) {
           console.error(e);
-          log("❌ Unexpected error during upload.");
+          log("Unexpected error during upload.", "error");
+        } finally {
+          uploadBtn.disabled = false;
         }
       });
     </script>
