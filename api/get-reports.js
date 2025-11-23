@@ -1,15 +1,17 @@
+// api/get-reports.js
 export const config = { runtime: "nodejs" };
+
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase client (service role)
+// Supabase (service role)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: { autoRefreshToken: false, persistSession: false },
     global: {
-      headers: { Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` }
-    }
+      headers: { Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+    },
   }
 );
 
@@ -34,23 +36,24 @@ export default async function handler(req, res) {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Supabase error:", error);
+      console.error("Supabase get-reports error:", error);
       return res.status(500).json({ error: "Failed to load reports" });
     }
 
-    // Normalise for frontend
-    const mapped = data.map((item) => ({
+    // Map for frontend
+    const mapped = (data || []).map((item) => ({
       id: item.id,
       title: item.title || "Untitled",
       file_path: item.file_path,
       created_at: item.created_at,
       status: item.ai_status || "pending",
-      ai_result: item.ai_result || null
+      // IMPORTANT: DB column is ai_results, but frontend expects ai_result
+      ai_result: item.ai_results || null,
     }));
 
     return res.status(200).json(mapped);
   } catch (err) {
-    console.error("Server Error:", err);
+    console.error("Server Error in get-reports:", err);
     return res.status(500).json({ error: "Server-side failure" });
   }
 }
