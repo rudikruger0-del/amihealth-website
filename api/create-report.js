@@ -1,8 +1,10 @@
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
-import fetch from "node-fetch";
-import FormData from "form-data";
+
+// Native Node18+ fetch & FormData
+// ✔ available automatically on Vercel
+// No imports needed for fetch, FormData, Blob
 
 // Init Supabase client (service role)
 const supabase = createClient(
@@ -19,14 +21,14 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  console.log("🔥 create-report endpoint HIT:", req.method);
+  console.log("🔥 create-report HIT:", req.method);
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // Read body
+    // Parse raw body (Vercel requirement)
     let raw = "";
     await new Promise((resolve) => {
       req.on("data", (chunk) => (raw += chunk));
@@ -37,7 +39,7 @@ export default async function handler(req, res) {
     try {
       data = JSON.parse(raw);
     } catch {
-      return res.status(400).json({ error: "Invalid JSON" });
+      return res.status(400).json({ error: "Invalid JSON received" });
     }
 
     const { email, title, files } = data;
@@ -48,12 +50,12 @@ export default async function handler(req, res) {
 
     const filePath = files[0];
 
-    // 1️⃣ Save database record
+    // 1️⃣ Insert database record
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
         email,
-        title: title || "Untitled",
+        title: title || "Untitled Report",
         file_path: filePath,
         created_at: new Date().toISOString(),
         ai_status: "processing",
@@ -62,56 +64,58 @@ export default async function handler(req, res) {
       .single();
 
     if (insertErr) {
-      console.error(insertErr);
+      console.error("❌ DB Insert Error:", insertErr);
       return res.status(500).json({ error: "Failed to save report" });
     }
 
     const reportId = inserted.id;
 
-    // 2️⃣ Download raw PDF
+    // 2️⃣ Download file from Supabase Storage
     const { data: fileData, error: downloadErr } = await supabase.storage
       .from("reports")
       .download(filePath);
 
     if (downloadErr) {
-      console.error(downloadErr);
-      return res.status(500).json({ error: "File download failed" });
+      console.error("❌ File download error:", downloadErr);
+      return res.status(500).json({ error: "Failed to download file" });
     }
 
     const fileBuffer = Buffer.from(await fileData.arrayBuffer());
 
-    // 3️⃣ Send PDF to HuggingFace
+    // 3️⃣ Send file to HuggingFace API (your AMI model)
     const formData = new FormData();
-    formData.append("file", fileBuffer, filePath);
+    formData.append("file", new Blob([fileBuffer]), filePath);
     formData.append("name", "Unknown");
     formData.append("age", "0");
     formData.append("sex", "Unknown");
 
     const aiResponse = await fetch(
       "https://amihealth-ami-blood-ai.hf.space/analyze",
-      {
-        method: "POST",
-        body: formData,
-      }
+      { method: "POST", body: formData }
     );
 
     let aiJson;
     try {
       aiJson = await aiResponse.json();
-    } catch {
-      aiJson = { error: "Invalid AI response" };
+    } catch (e) {
+      aiJson = { error: "Invalid AI response format" };
     }
 
-    // 4️⃣ Update database
-    await supabase
+    // 4️⃣ Update database with results
+    const { error: updateErr } = await supabase
       .from("reports")
       .update({
         ai_status: aiJson.error ? "failed" : "completed",
-        ai_result: aiJson,
+        ai_results: aiJson, // <-- CORRECT COLUMN NAME
       })
       .eq("id", reportId);
 
-    // 5️⃣ Return result
+    if (updateErr) {
+      console.error("❌ DB Update Error:", updateErr);
+      return res.status(500).json({ error: "Failed to update AI results" });
+    }
+
+    // 5️⃣ Success!
     return res.status(200).json({
       success: true,
       id: reportId,
@@ -119,7 +123,7 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server-side failure" });
+    console.error("🔥 SERVER ERROR:", err);
+    return res.status(500).json({ error: "Server-side error" });
   }
 }
