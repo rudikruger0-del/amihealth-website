@@ -90,91 +90,95 @@
   </div>
 
 <script type="module">
-  const SUPA_URL = "https://tbyttsfztuudyqbrkonm.supabase.co";
-  const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieXR0c2Z6dHV1ZHlxYnJrb25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzA1MzgsImV4cCI6MjA3OTAwNjUzOH0.7T0S4_kkoWosdbmjlwtfSYzBcyipcPg1Fm8kIMa43uo";
+  const SUPA_URL = "https://tbyttsfztuudyqbrkonm.supabase.co";
+  const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieXR0c2Z6dHV1ZHlxYnJrb25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzA1MzgsImV4cCI6MjA3OTAwNjUzOH0.7T0S4_kkoWosdbmjlwtfSYzBcyipcPg1Fm8kIMa43uo";
 
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-  const supabase = createClient(SUPA_URL, SUPA_ANON);
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+  const supabase = createClient(SUPA_URL, SUPA_ANON);
 
-  // Auth guard
-  const user = localStorage.getItem("user_email");
-  if (!user) window.location.href = "/login.html";
-  document.getElementById("userEmailSmall").innerText = user;
+  // Auth
+  const user = localStorage.getItem("user_email");
+  if (!user) window.location.href = "/login.html";
+  document.getElementById("userEmailSmall").innerText = user;
 
-  document.getElementById("logoutBtn").onclick = () => {
-    localStorage.removeItem("user_email");
-    window.location.href = "/login.html";
-  };
+  document.getElementById("logoutBtn").onclick = () => {
+    localStorage.removeItem("user_email");
+    window.location.href = "/login.html";
+  };
 
-  const fileInput = document.getElementById("fileInput");
-  const uploadBtn = document.getElementById("uploadBtn");
-  const progressArea = document.getElementById("progressArea");
-  const filesList = document.getElementById("filesList");
+  const fileInput = document.getElementById("fileInput");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const progressArea = document.getElementById("progressArea");
+  const filesList = document.getElementById("filesList");
 
-  async function uploadFile(file) {
-    const clean = file.name.replace(/\s+/g, "_");
-    const filename = `${Date.now()}_${clean}`;
+  async function uploadFile(file) {
+    const clean = file.name.replace(/\s+/g, "_");
+    const filename = `${Date.now()}_${clean}`;
+    const { data, error } = await supabase.storage
+      .from("reports")
+      .upload(filename, file);
 
-    const { data, error } = await supabase.storage
-      .from("reports")
-      .upload(filename, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    return data.path;
+  }
 
-    if (error) throw error;
-    return data.path;
-  }
+  uploadBtn.addEventListener("click", async () => {
+    const files = Array.from(fileInput.files || []);
+    if (!files.length) {
+      progressArea.innerText = "Please select at least one file.";
+      return;
+    }
 
-  uploadBtn.addEventListener("click", async () => {
-    const files = Array.from(fileInput.files || []);
-    if (!files.length) {
-      progressArea.innerText = "Please select at least one file.";
-      return;
-    }
+    uploadBtn.disabled = true;
+    progressArea.innerText = "Uploading...";
+    filesList.innerHTML = "";
 
-    uploadBtn.disabled = true;
-    progressArea.innerText = "Uploading...";
-    filesList.innerHTML = "";
+    try {
+      const uploadedPaths = [];
 
-    try {
-      const uploadedPaths = [];
+      // Upload all files
+      for (const file of files) {
+        const li = document.createElement("li");
+        li.innerText = `Uploading ${file.name}...`;
+        filesList.appendChild(li);
 
-      for (const file of files) {
-        const li = document.createElement("li");
-        li.innerText = `Uploading ${file.name}...`;
-        filesList.appendChild(li);
+        const path = await uploadFile(file);
+        uploadedPaths.push(path);
 
-        const path = await uploadFile(file);
-        uploadedPaths.push(path);
+        li.innerText = `Uploaded: ${path}`;
+      }
 
-        li.innerText = `Uploaded: ${path}`;
-      }
+      // SEND TO BACKEND
+      const resp = await fetch("/api/create-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user,
+          title: document.getElementById("title").value || null,
+          files: uploadedPaths
+        })
+      });
 
-      // Send to backend API (correct URL)
-      console.log("📡 Sending POST to /api/create-report");
+      // 📌 FIX: Handle non-JSON responses gracefully
+      let json;
+      try {
+        json = await resp.json();
+      } catch {
+        const text = await resp.text();
+        throw new Error("Server returned non-JSON: " + text);
+      }
 
-const resp = await fetch("/api/create-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: user,
-          title: document.getElementById("title").value || null,
-          files: uploadedPaths
-        })
-      });
+      if (!resp.ok) throw new Error(json.error || "Failed to create report");
 
-      const json = await resp.json();
+      progressArea.innerText = "Success. Report queued. ID: " + json.id;
 
-      if (!resp.ok) throw new Error(json.error || "Failed to create report record");
-
-      progressArea.innerText =
-        "Uploaded & queued. Report ID: " + (json.id || "N/A");
-
-    } catch (err) {
-      console.error(err);
-      progressArea.innerText = "Error: " + (err.message || err);
-    } finally {
-      uploadBtn.disabled = false;
-    }
-  });
+    } catch (err) {
+      console.error(err);
+      progressArea.innerText = "Error: " + err.message;
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  });
 </script>
 
 </body>
