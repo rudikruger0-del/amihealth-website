@@ -1,223 +1,220 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>AMI Dashboard</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="/styles.css" />
+  <meta charset="utf-8" />
+  <title>AMI Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="app">
+  <div class="app">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar" role="navigation" aria-label="Main navigation">
-      <div class="brand">
-        <img src="/logo.png" alt="AMI logo">
-        <div>
-          <h3>AMI Health</h3>
-          <p>Smarter Diagnostics — Better Care</p>
-        </div>
-      </div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar" role="navigation" aria-label="Main navigation">
+      <div class="brand">
+        <img src="/logo.png" alt="AMI logo">
+        <div>
+          <h3>AMI Health</h3>
+          <p>Smarter Diagnostics — Better Care</p>
+        </div>
+      </div>
 
-      <nav class="nav" aria-label="Sidebar">
-        <a href="/dashboard.html" class="active">Dashboard</a>
-        <a href="/upload.html">Upload Report</a>
-        <a href="#" id="btnDocs">AI Results</a>
-        <a href="#" id="btnSettings">Settings</a>
-      </nav>
+      <nav class="nav" aria-label="Sidebar">
+        <a href="/dashboard.html" class="active">Dashboard</a>
+        <a href="/upload.html">Upload Report</a>
+        <a href="#" id="btnDocs">AI Results</a>
+        <a href="#" id="btnSettings">Settings</a>
+      </nav>
 
-      <div style="margin-top:auto">
-        <div style="font-size:12px;opacity:0.9">Signed in as</div>
-        <div id="userEmail" style="font-weight:700;margin-top:6px"></div>
-        <div style="height:10px"></div>
-        <button id="logout" class="btn" style="width:100%">Logout</button>
-      </div>
-    </aside>
+      <div style="margin-top:auto">
+        <div style="font-size:12px;opacity:0.9">Signed in as</div>
+        <div id="userEmail" style="font-weight:700;margin-top:6px"></div>
+        <div style="height:10px"></div>
+        <button id="logout" class="btn" style="width:100%">Logout</button>
+      </div>
+    </aside>
 
-    <!-- MAIN -->
-    <main class="main" role="main">
-      <div class="topbar">
-        <div class="welcome">Your Reports</div>
-        <div class="actions">
-          <button class="btn" onclick="location.href='/upload.html'">➕ Upload New</button>
-        </div>
-      </div>
+    <!-- MAIN -->
+    <main class="main" role="main">
+      <div class="topbar">
+        <div class="welcome">Your Reports</div>
+        <div class="actions">
+          <button class="btn" onclick="location.href='/upload.html'">➕ Upload New</button>
+        </div>
+      </div>
 
-      <!-- Quick stats -->
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div class="card" style="min-width:200px;flex:0 0 220px">
-          <div style="font-size:13px;color:var(--muted)">Total reports</div>
-          <div style="font-size:24px;font-weight:800" id="totalReports">—</div>
-        </div>
-        <div class="card" style="min-width:200px;flex:0 0 220px">
-          <div style="font-size:13px;color:var(--muted)">Pending analysis</div>
-          <div style="font-size:24px;font-weight:800;color:#e67e22" id="pendingCount">—</div>
-        </div>
-        <div class="card" style="min-width:200px;flex:0 0 220px">
-          <div style="font-size:13px;color:var(--muted)">Completed</div>
-          <div style="font-size:24px;font-weight:800;color:#16a085" id="doneCount">—</div>
-        </div>
-      </div>
+      <!-- Quick stats -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="card" style="min-width:200px;flex:0 0 220px">
+          <div style="font-size:13px;color:var(--muted)">Total reports</div>
+          <div style="font-size:24px;font-weight:800" id="totalReports">—</div>
+        </div>
+        <div class="card" style="min-width:200px;flex:0 0 220px">
+          <div style="font-size:13px;color:var(--muted)">Pending analysis</div>
+          <div style="font-size:24px;font-weight:800;color:#e67e22" id="pendingCount">—</div>
+        </div>
+        <div class="card" style="min-width:200px;flex:0 0 220px">
+          <div style="font-size:13px;color:var(--muted)">Completed</div>
+          <div style="font-size:24px;font-weight:800;color:#16a085" id="doneCount">—</div>
+        </div>
+      </div>
 
-      <!-- Grid of report cards -->
-      <div style="margin-top:6px">
-        <div class="grid" id="reportsGrid">
+      <!-- Grid of report cards -->
+      <div style="margin-top:6px">
+        <div class="grid" id="reportsGrid">
 
-          <!-- Skeleton placeholders (shown while loading) -->
-          <div class="card">
-            <div class="skeleton thumb"></div>
-            <div style="height:8px"></div>
-            <div class="skeleton" style="width:70%"></div>
-            <div style="height:6px"></div>
-            <div class="skeleton" style="width:40%"></div>
-          </div>
-          <div class="card">
-            <div class="skeleton thumb"></div>
-            <div style="height:8px"></div>
-            <div class="skeleton" style="width:60%"></div>
-            <div style="height:6px"></div>
-            <div class="skeleton" style="width:50%"></div>
-          </div>
-          <div class="card">
-            <div class="skeleton thumb"></div>
-            <div style="height:8px"></div>
-            <div class="skeleton" style="width:65%"></div>
-            <div style="height:6px"></div>
-            <div class="skeleton" style="width:30%"></div>
-          </div>
+          <!-- Skeleton placeholders -->
+          <div class="card">
+            <div class="skeleton thumb"></div>
+            <div style="height:8px"></div>
+            <div class="skeleton" style="width:70%"></div>
+            <div style="height:6px"></div>
+            <div class="skeleton" style="width:40%"></div>
+          </div>
+          <div class="card">
+            <div class="skeleton thumb"></div>
+            <div style="height:8px"></div>
+            <div class="skeleton" style="width:60%"></div>
+            <div style="height:6px"></div>
+            <div class="skeleton" style="width:50%"></div>
+          </div>
+          <div class="card">
+            <div class="skeleton thumb"></div>
+            <div style="height:8px"></div>
+            <div class="skeleton" style="width:65%"></div>
+            <div style="height:6px"></div>
+            <div class="skeleton" style="width:30%"></div>
+          </div>
 
-        </div>
-      </div>
+        </div>
+      </div>
 
-    </main>
-  </div>
+    </main>
+  </div>
 
-  <!-- MODAL (hidden) -->
-  <div id="modalRoot" style="display:none"></div>
+  <!-- MODAL (hidden) -->
+  <div id="modalRoot" style="display:none"></div>
 
-  <script type="module">
-    // --- CONFIG: If you use lib/supabaseClient.js, you can remove these lines and import the client instead.
-    const SUPA_URL = ""; // optional - not used here
-    // --- logic ---
 
-    // Redirect to login if not signed in
-    const userEmail = localStorage.getItem('user_email');
-    if (!userEmail) {
-      window.location.href = "/login.html";
-    }
-    document.getElementById('userEmail').innerText = userEmail;
+  <!-- ============ NEW LOGIC SCRIPT (FINAL VERSION) ============ -->
+  <script type="module">
 
-    document.getElementById('logout').addEventListener('click', () => {
-      localStorage.removeItem('user_email');
-      window.location.href = '/login.html';
-    });
+    const userEmail = localStorage.getItem("user_email");
+    if (!userEmail) window.location.href = "/login.html";
+    document.getElementById("userEmail").innerText = userEmail;
 
-    // Helper: get reports from backend
-    async function fetchReports() {
-      try {
-        // call your server endpoint that returns user reports (you already had /api/get-reports)
-        const res = await fetch(`/api/get-reports?email=${encodeURIComponent(userEmail)}`);
-        if (!res.ok) {
-          console.error('Fetch reports failed', await res.text());
-          return [];
-        }
-        const json = await res.json();
-        return json;
-      } catch (err) {
-        console.error(err);
-        return [];
-      }
-    }
+    document.getElementById("logout").onclick = () => {
+      localStorage.removeItem("user_email");
+      window.location.href = "/login.html";
+    };
 
-    // Render reports into cards
-    function renderReports(reports) {
-      const grid = document.getElementById('reportsGrid');
-      grid.innerHTML = '';
-      if (!reports || reports.length === 0) {
-        grid.innerHTML = '<div class="card"><div class="title">No reports yet</div><div class="date">Upload a report to get started</div></div>';
-        document.getElementById('totalReports').innerText = '0';
-        document.getElementById('pendingCount').innerText = '0';
-        document.getElementById('doneCount').innerText = '0';
-        return;
-      }
+    // Fetch reports from backend
+    async function fetchReports() {
+      try {
+        const res = await fetch(`/api/get-reports?email=${encodeURIComponent(userEmail)}`);
+        if (!res.ok) return [];
+        return await res.json();
+      } catch (e) {
+        console.error("Failed fetching reports", e);
+        return [];
+      }
+    }
 
-      let pending = 0, done = 0;
-      reports.forEach(r => {
-        const statusClass = (r.status === 'completed') ? 'normal' : (r.status === 'pending' ? 'info' : 'mild');
-        if (r.status === 'pending') pending++;
-        if (r.status === 'completed') done++;
+    // Render report cards
+    function renderReports(list) {
+      const grid = document.getElementById("reportsGrid");
+      grid.innerHTML = "";
 
-        const created = new Date(r.created_at || Date.now()).toLocaleString();
-        const filePath = r.file_path || (r.files && r.files[0]) || 'unknown';
+      if (!list.length) {
+        grid.innerHTML = `<div class="card"><div class="title">No reports yet</div></div>`;
+        document.getElementById("totalReports").innerText = "0";
+        document.getElementById("pendingCount").innerText = "0";
+        document.getElementById("doneCount").innerText = "0";
+        return;
+      }
 
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <div class="meta">
-            <div>
-              <div class="title">${escapeHtml(r.title || 'Untitled Report')}</div>
-              <div class="date">${created}</div>
-            </div>
-            <div style="text-align:right">
-              <div class="status ${statusClass}">${r.status || 'unknown'}</div>
-            </div>
-          </div>
-          <div class="file">${escapeHtml(filePath)}</div>
-          <div style="display:flex;gap:8px;margin-top:auto;justify-content:flex-end">
-            <button class="btn" data-path="${encodeURIComponent(filePath)}" onclick="viewReport(event)">View</button>
-            <button class="btn ghost" onclick="downloadReport('${encodeURIComponent(filePath)}')">Download</button>
-          </div>
-        `;
-        grid.appendChild(card);
-      });
+      let pending = 0;
+      let done = 0;
 
-      document.getElementById('totalReports').innerText = reports.length;
-      document.getElementById('pendingCount').innerText = pending;
-      document.getElementById('doneCount').innerText = done;
-    }
+      list.forEach(r => {
+        const status = r.ai_status || "pending";
+        if (status === "processing") pending++;
+        if (status === "complete") done++;
 
-    // Small helper to escape HTML
-    function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        const file = r.file_path;
+        const created = new Date(r.created_at).toLocaleString();
 
-    // Viewing a report: open modal with preview
-    window.viewReport = function (e){
-      const path = decodeURIComponent(e.currentTarget.getAttribute('data-path') || '');
-      openModal(path);
-    }
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="meta">
+            <div>
+              <div class="title">${escapeHtml(r.title)}</div>
+              <div class="date">${created}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="status ${status}">${status}</div>
+            </div>
+          </div>
 
-    window.downloadReport = function (pathEnc){
-      const p = decodeURIComponent(pathEnc);
-      // If using Supabase public storage URL structure:
-      const url = `https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${p}`;
-      window.open(url, '_blank');
-    }
+          <div class="file">${escapeHtml(file)}</div>
 
-    // Modal builder
-    function openModal(filePath){
-      const modalRoot = document.getElementById('modalRoot');
-      modalRoot.style.display = 'block';
-      modalRoot.innerHTML = `
-        <div class="modal-backdrop" onclick="closeModal()">
-          <div class="modal" onclick="event.stopPropagation()">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700">${escapeHtml(filePath)}</div>
-              <button onclick="closeModal()" class="btn ghost">Close</button>
-            </div>
-            <div style="height:12px"></div>
-            <div class="preview">
-              <iframe src="https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${encodeURIComponent(filePath)}" style="width:100%;height:100%;border:0;border-radius:8px"></iframe>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    window.closeModal = function(){ document.getElementById('modalRoot').style.display='none'; document.getElementById('modalRoot').innerHTML=''; }
+          <div style="display:flex;gap:8px;margin-top:auto;justify-content:flex-end">
+            <button class="btn" onclick="viewReport('${encodeURIComponent(file)}')">View</button>
+            <button class="btn ghost" onclick="downloadReport('${encodeURIComponent(file)}')">Download</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
 
-    // Load + render
-    (async function init(){
-      const reports = await fetchReports(); // if this errors returns []
-      renderReports(reports);
-    })();
-  </script>
+      document.getElementById("totalReports").innerText = list.length;
+      document.getElementById("pendingCount").innerText = pending;
+      document.getElementById("doneCount").innerText = done;
+    }
+
+    // Escape HTML
+    function escapeHtml(s) {
+      return (s+"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+    }
+
+    // View in modal
+    window.viewReport = function(pathEnc) {
+      const path = decodeURIComponent(pathEnc);
+      const modal = document.getElementById("modalRoot");
+      modal.style.display = "block";
+      modal.innerHTML = `
+        <div class="modal-backdrop" onclick="closeModal()">
+          <div class="modal" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700">${escapeHtml(path)}</div>
+              <button onclick="closeModal()" class="btn ghost">Close</button>
+            </div>
+            <div style="height:12px"></div>
+            <iframe src="https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${path}" style="width:100%;height:90vh;border:0;border-radius:8px"></iframe>
+          </div>
+        </div>
+      `;
+    }
+
+    window.closeModal = function() {
+      const modal = document.getElementById("modalRoot");
+      modal.style.display = "none";
+      modal.innerHTML = "";
+    }
+
+    // Download file
+    window.downloadReport = function(pathEnc) {
+      const path = decodeURIComponent(pathEnc);
+      const url = `https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${path}`;
+      window.open(url, "_blank");
+    }
+
+    // Init
+    (async () => {
+      const reports = await fetchReports();
+      renderReports(reports);
+    })();
+
+  </script>
 </body>
 </html>
