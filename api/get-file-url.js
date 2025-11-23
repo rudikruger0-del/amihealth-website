@@ -21,7 +21,22 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { file_path } = req.body;
+  let raw = "";
+  await new Promise((resolve) => {
+    req.on("data", (chunk) => {
+      raw += chunk;
+    });
+    req.on("end", resolve);
+  });
+
+  let body;
+  try {
+    body = JSON.parse(raw || "{}");
+  } catch {
+    return res.status(400).json({ error: "Invalid JSON" });
+  }
+
+  const { file_path } = body;
 
   if (!file_path) {
     return res.status(400).json({ error: "Missing file_path" });
@@ -29,10 +44,13 @@ export default async function handler(req, res) {
 
   const { data, error } = await supabase.storage
     .from("reports")
-    .createSignedUrl(file_path, 60 * 30); // valid 30 minutes
+    .createSignedUrl(file_path, 60 * 30); // 30 minutes
 
-  if (error) {
-    return res.status(500).json({ error: "Failed to generate signed URL", details: error });
+  if (error || !data?.signedUrl) {
+    console.error("❌ get-file-url error:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to generate signed URL", details: error });
   }
 
   return res.status(200).json({ url: data.signedUrl });
