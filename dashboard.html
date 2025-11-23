@@ -5,6 +5,42 @@
     <title>AMI Dashboard</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .ai-box {
+        white-space: pre-wrap;
+        background: #111;
+        color: #0f0;
+        padding: 20px;
+        border-radius: 10px;
+        font-family: monospace;
+        max-height: 80vh;
+        overflow: auto;
+      }
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+      .modal {
+        background: #fff;
+        padding: 25px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 90vh;
+        overflow: auto;
+        border-radius: 12px;
+      }
+      .close-btn {
+        float: right;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: bold;
+      }
+    </style>
   </head>
 
   <body>
@@ -14,7 +50,7 @@
         <span class="tagline">Smarter Diagnostics — Better Care</span>
       </div>
       <nav>
-        <a href="/dashboard.html" class="active">Dashboard</a>
+        <a href="/dashboard.html">Dashboard</a>
         <a href="/upload.html">Upload Report</a>
       </nav>
     </header>
@@ -23,18 +59,15 @@
       <section class="panel">
         <p id="userEmail"></p>
         <button id="logoutBtn">Logout</button>
-        <button id="refreshBtn">Refresh</button>
       </section>
 
       <section class="panel">
         <h1>Your Reports</h1>
         <p>
-          View, download, or open AI interpretation for each report.
-          PDF files are served from a <b>private</b> Supabase bucket using
-          short-lived signed URLs.
+          View, download, or open AI results for each uploaded report.
         </p>
 
-        <table class="table" id="reportsTable">
+        <table class="table">
           <thead>
             <tr>
               <th>Created</th>
@@ -49,49 +82,51 @@
       </section>
     </main>
 
+    <!-- AI RESULT MODAL -->
+    <div class="modal-bg" id="modalBg">
+      <div class="modal">
+        <span class="close-btn" id="closeModal">&times;</span>
+        <h2>AI Report</h2>
+        <div id="aiContent" class="ai-box"></div>
+      </div>
+    </div>
+
     <script type="module">
-      // unify & migrate login keys
-      let email =
-        localStorage.getItem("ami_user_email") ||
+      import { supabase } from "/lib/supabaseClient.js";
+
+      const email =
         localStorage.getItem("ami_email") ||
         localStorage.getItem("amihealth_email") ||
         "";
 
-      if (!localStorage.getItem("ami_user_email") && email) {
-        localStorage.setItem("ami_user_email", email);
-      }
-
       const userEmailEl = document.getElementById("userEmail");
       const tbody = document.getElementById("reportsBody");
 
-      function setSignedInState() {
-        if (!email) {
-          userEmailEl.innerHTML =
-            "Not signed in<br/>No email found. If you recently logged in on a different tab or sub-domain, please log in again on this page.";
-          tbody.innerHTML =
-            '<tr><td colspan="5">No email, please log in again.</td></tr>';
-        } else {
-          userEmailEl.textContent = `Signed in as ${email}`;
-        }
+      // Show email
+      if (email) {
+        userEmailEl.textContent = `Signed in as ${email}`;
+      } else {
+        userEmailEl.textContent = "Not signed in";
       }
 
-      setSignedInState();
+      // Logout
+      document
+        .getElementById("logoutBtn")
+        .addEventListener("click", () => {
+          localStorage.removeItem("ami_email");
+          localStorage.removeItem("amihealth_email");
+          window.location.href = "/index.html";
+        });
 
-      document.getElementById("logoutBtn").onclick = () => {
-        localStorage.removeItem("ami_user_email");
-        localStorage.removeItem("ami_email");
-        localStorage.removeItem("amihealth_email");
-        window.location.href = "/index.html";
-      };
-
-      document.getElementById("refreshBtn").onclick = () => {
-        window.location.reload();
-      };
-
+      // Fetch reports from backend
       async function fetchReports() {
-        if (!email) return;
+        tbody.innerHTML = "<tr><td colspan='5'>Loading…</td></tr>";
 
-        tbody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
+        if (!email) {
+          tbody.innerHTML =
+            "<tr><td colspan='5'>No email — log in again.</td></tr>";
+          return;
+        }
 
         try {
           const resp = await fetch(
@@ -102,14 +137,14 @@
           if (!resp.ok) {
             console.error(json);
             tbody.innerHTML =
-              '<tr><td colspan="5">Failed to load reports.</td></tr>';
+              "<tr><td colspan='5'>Failed to load reports.</td></tr>";
             return;
           }
 
           const reports = json.reports || [];
           if (reports.length === 0) {
             tbody.innerHTML =
-              '<tr><td colspan="5">No reports yet. Upload one from the Upload page.</td></tr>';
+              "<tr><td colspan='5'>No reports yet. Upload one.</td></tr>";
             return;
           }
 
@@ -120,19 +155,26 @@
 
             const created = new Date(r.created_at).toLocaleString();
             const title = r.title || "Untitled Report";
-            const fileName = r.file_path || "";
-            const status = r.ai_status || "processing";
+            const file = r.file_path;
+
+            const status =
+              r.ai_status ||
+              (r.ai_results && !r.ai_results.error
+                ? "completed"
+                : r.ai_results?.error
+                ? "failed"
+                : "processing");
 
             tr.innerHTML = `
               <td>${created}</td>
               <td>${title}</td>
-              <td>${fileName}</td>
+              <td>${file}</td>
               <td>${status}</td>
-              <td class="actions">
+              <td>
                 <button class="view-btn">View PDF</button>
                 <button class="download-btn">Download</button>
-                <button class="ai-btn"${
-                  status !== "completed" ? " disabled" : ""
+                <button class="ai-btn" ${
+                  status !== "completed" ? "disabled" : ""
                 }>AI Report</button>
               </td>
             `;
@@ -141,59 +183,60 @@
             const downloadBtn = tr.querySelector(".download-btn");
             const aiBtn = tr.querySelector(".ai-btn");
 
-            viewBtn.onclick = () => openSignedUrl(r.file_path, true);
-            downloadBtn.onclick = () => openSignedUrl(r.file_path, false);
-            aiBtn.onclick = () => showAiReport(r.ai_results || null);
+            viewBtn.addEventListener("click", () =>
+              openSignedUrl(file, true)
+            );
+            downloadBtn.addEventListener("click", () =>
+              openSignedUrl(file, false)
+            );
+            aiBtn.addEventListener("click", () =>
+              showAiModal(r.ai_results)
+            );
 
             tbody.appendChild(tr);
           }
         } catch (e) {
           console.error(e);
           tbody.innerHTML =
-            '<tr><td colspan="5">Unexpected error loading reports.</td></tr>';
+            "<tr><td colspan='5'>Unexpected error.</td></tr>";
         }
       }
 
-      async function openSignedUrl(filePath, inNewTab) {
-        if (!filePath) {
-          alert("No file path for this report.");
+      // Get signed Supabase URL
+      async function openSignedUrl(file_path, newTab) {
+        const resp = await fetch("/api/get-file-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file_path }),
+        });
+
+        const json = await resp.json();
+        if (!json.url) {
+          alert("Could not get file URL");
           return;
         }
 
-        try {
-          const resp = await fetch("/api/get-file-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ file_path: filePath }),
-          });
-          const json = await resp.json();
-          if (!resp.ok || !json.url) {
-            console.error(json);
-            alert("Could not open file from storage.");
-            return;
-          }
-
-          if (inNewTab) {
-            window.open(json.url, "_blank");
-          } else {
-            window.location.href = json.url;
-          }
-        } catch (e) {
-          console.error(e);
-          alert("Failed to open file.");
-        }
+        if (newTab) window.open(json.url, "_blank");
+        else window.location.href = json.url;
       }
 
-      function showAiReport(aiResults) {
-        if (!aiResults || aiResults.error) {
-          alert("AI analysis not available yet for this report.");
+      // Show AI modal
+      const modalBg = document.getElementById("modalBg");
+      const closeModal = document.getElementById("closeModal");
+      const aiContent = document.getElementById("aiContent");
+
+      closeModal.addEventListener("click", () => {
+        modalBg.style.display = "none";
+      });
+
+      function showAiModal(data) {
+        if (!data || data.error) {
+          alert("AI report not ready yet.");
           return;
         }
 
-        const pretty = JSON.stringify(aiResults, null, 2);
-        const win = window.open("", "_blank");
-        win.document.write("<pre>" + pretty + "</pre>");
-        win.document.close();
+        aiContent.textContent = JSON.stringify(data, null, 2);
+        modalBg.style.display = "flex";
       }
 
       fetchReports();
