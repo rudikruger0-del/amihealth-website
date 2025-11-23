@@ -5,6 +5,79 @@
   <title>AMI Dashboard</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* Simple status pills */
+    .status-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-processing {
+      background: #fff3cd;
+      color: #8a6d3b;
+    }
+    .status-completed {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status-failed {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    /* Modal content for AI */
+    .modal-content-scroll {
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .ai-section-title {
+      font-weight: 700;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .ai-chip {
+      display: inline-block;
+      padding: 3px 7px;
+      margin: 2px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #f1f5f9;
+    }
+
+    .ai-marker-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+    .ai-marker-table th,
+    .ai-marker-table td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 4px 6px;
+      text-align: left;
+    }
+    .ai-marker-table th {
+      background: #f8fafc;
+    }
+
+    /* Print: show only modal */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #modalRoot, #modalRoot * {
+        visibility: visible;
+      }
+      #modalRoot {
+        position: static !important;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="app">
@@ -62,7 +135,8 @@
       <!-- Grid of report cards -->
       <div style="margin-top:6px">
         <div class="grid" id="reportsGrid">
-          <!-- skeletons while loading -->
+
+          <!-- Skeleton placeholders -->
           <div class="card">
             <div class="skeleton thumb"></div>
             <div style="height:8px"></div>
@@ -84,24 +158,18 @@
             <div style="height:6px"></div>
             <div class="skeleton" style="width:30%"></div>
           </div>
+
         </div>
       </div>
 
     </main>
   </div>
 
-  <!-- MODAL -->
+  <!-- MODAL (hidden) -->
   <div id="modalRoot" style="display:none"></div>
 
   <script type="module">
-    // ---------- Supabase client (anon) for signed URLs ----------
-    const SUPA_URL  = "https://tbyttsfztuudyqbrkonm.supabase.co";
-    const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieXR0c2Z6dHV1ZHlxYnJrb25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzA1MzgsImV4cCI6MjA3OTAwNjUzOH0.7T0S4_kkoWosdbmjlwtfSYzBcyipcPg1Fm8kIMa43uo";
-
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-    const supabase = createClient(SUPA_URL, SUPA_ANON);
-
-    // ---------- auth guard ----------
+    // Auth
     const userEmail = localStorage.getItem("user_email");
     if (!userEmail) {
       window.location.href = "/login.html";
@@ -113,51 +181,47 @@
       window.location.href = "/login.html";
     };
 
-    // ---------- helpers ----------
-    function escapeHtml(s) {
-      return (s + "").replace(/[&<>"']/g, (c) => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
-      }[c]));
-    }
+    // Store reports globally so AI modal can access full object
+    let REPORT_CACHE = [];
 
+    // Fetch reports from backend
     async function fetchReports() {
       try {
-        const res = await fetch(`/api/get-reports?email=${encodeURIComponent(userEmail)}`);
+        const res = await fetch(
+          `/api/get-reports?email=${encodeURIComponent(userEmail)}`
+        );
         if (!res.ok) {
-          console.error("get-reports failed:", await res.text());
+          console.error("Fetch reports failed:", await res.text());
           return [];
         }
-        return await res.json();
+        const json = await res.json();
+        return Array.isArray(json) ? json : [];
       } catch (e) {
-        console.error("get-reports error:", e);
+        console.error("Failed fetching reports", e);
         return [];
       }
     }
 
-    async function makeSignedUrl(path) {
-      const { data, error } = await supabase
-        .storage
-        .from("reports")
-        .createSignedUrl(path, 60 * 30); // 30 minutes
-      if (error || !data?.signedUrl) {
-        console.error("signed URL error:", error);
-        alert("Could not open file from storage.");
-        return null;
-      }
-      return data.signedUrl;
+    // Escape helper
+    function escapeHtml(s) {
+      return (s + "").replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[m]));
     }
 
-    // ---------- render ----------
-    function renderReports(reports) {
+    // Render cards
+    function renderReports(list) {
+      REPORT_CACHE = list;
       const grid = document.getElementById("reportsGrid");
       grid.innerHTML = "";
 
-      if (!reports || !reports.length) {
-        grid.innerHTML = `
-          <div class="card">
-            <div class="title">No reports yet</div>
-            <div class="date">Upload a report to get started</div>
-          </div>`;
+      if (!list.length) {
+        grid.innerHTML =
+          '<div class="card"><div class="title">No reports yet</div><div class="date">Upload a report to get started</div></div>';
         document.getElementById("totalReports").innerText = "0";
         document.getElementById("pendingCount").innerText = "0";
         document.getElementById("doneCount").innerText = "0";
@@ -167,18 +231,29 @@
       let pending = 0;
       let done = 0;
 
-      reports.forEach((r) => {
-        const status = r.ai_status || "pending";
-        if (status === "processing" || status === "pending") pending++;
+      list.forEach((r, idx) => {
+        const status = (r.status || "processing").toLowerCase();
+        if (status === "processing") pending++;
         if (status === "completed") done++;
 
         const created = new Date(r.created_at || Date.now()).toLocaleString();
-        const filePath = r.file_path || "unknown";
-        const hasAI   = !!r.ai_result && !r.ai_result.error;
+        const file = r.file_path || "unknown";
+        const ai = r.ai_results || null;
+
+        let statusClass = "status-processing";
+        let statusLabel = "Processing";
+        if (status === "completed") {
+          statusClass = "status-completed";
+          statusLabel = "Completed";
+        } else if (status === "failed") {
+          statusClass = "status-failed";
+          statusLabel = "Failed";
+        }
+
+        const aiButtonDisabled = !ai || status !== "completed";
 
         const card = document.createElement("div");
         card.className = "card";
-
         card.innerHTML = `
           <div class="meta">
             <div>
@@ -186,90 +261,195 @@
               <div class="date">${created}</div>
             </div>
             <div style="text-align:right">
-              <div class="status ${status}">${escapeHtml(status)}</div>
+              <span class="status-pill ${statusClass}">${statusLabel}</span>
             </div>
           </div>
 
-          <div class="file">${escapeHtml(filePath)}</div>
+          <div class="file">${escapeHtml(file)}</div>
 
-          <div style="display:flex;gap:8px;margin-top:auto;justify-content:flex-end">
-            <button class="btn" data-path="${encodeURIComponent(filePath)}" data-id="${r.id}" data-has-ai="${hasAI ? "1" : "0"}">View</button>
-            <button class="btn ghost" data-download="${encodeURIComponent(filePath)}">Download</button>
-            <button class="btn ghost" data-ai="${r.id}" ${hasAI ? "" : "disabled"}>Print AI report</button>
+          <div style="display:flex;gap:8px;margin-top:auto;justify-content:flex-end;flex-wrap:wrap">
+            <button class="btn" onclick="viewReport('${encodeURIComponent(file)}')">View PDF</button>
+            <button class="btn ghost" onclick="downloadReport('${encodeURIComponent(file)}')">Download</button>
+            <button
+              class="btn ghost"
+              data-index="${idx}"
+              ${aiButtonDisabled ? "disabled" : ""}
+              onclick="openAiModal(event)"
+            >
+              ${aiButtonDisabled ? "AI Processing…" : "AI Summary"}
+            </button>
           </div>
         `;
-
         grid.appendChild(card);
       });
 
-      document.getElementById("totalReports").innerText  = reports.length;
+      document.getElementById("totalReports").innerText = list.length;
       document.getElementById("pendingCount").innerText = pending;
-      document.getElementById("doneCount").innerText    = done;
-
-      // attach button handlers
-      grid.querySelectorAll("button[data-path]").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-          const path = decodeURIComponent(e.currentTarget.getAttribute("data-path"));
-          const url  = await makeSignedUrl(path);
-          if (!url) return;
-          openModal(url, path);
-        });
-      });
-
-      grid.querySelectorAll("button[data-download]").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-          const path = decodeURIComponent(e.currentTarget.getAttribute("data-download"));
-          const url  = await makeSignedUrl(path);
-          if (!url) return;
-          window.open(url, "_blank");
-        });
-      });
-
-      grid.querySelectorAll("button[data-ai]").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          const hasAI = e.currentTarget.getAttribute("data-has-ai") === "1";
-          const id    = e.currentTarget.getAttribute("data-ai");
-          if (!hasAI) {
-            alert("AI analysis not available yet for this report.");
-            return;
-          }
-          // open printable AI report page
-          window.open(`/ai-report.html?id=${encodeURIComponent(id)}`, "_blank");
-        });
-      });
+      document.getElementById("doneCount").innerText = done;
     }
 
-    // ---------- modal ----------
-    function openModal(fileUrl, label) {
-      const modalRoot = document.getElementById("modalRoot");
-      modalRoot.style.display = "block";
-      modalRoot.innerHTML = `
-        <div class="modal-backdrop" onclick="window.closeModal()">
+    // PDF modal
+    window.viewReport = function (pathEnc) {
+      const path = decodeURIComponent(pathEnc);
+      const modal = document.getElementById("modalRoot");
+      modal.style.display = "block";
+      modal.innerHTML = `
+        <div class="modal-backdrop" onclick="closeModal()">
           <div class="modal" onclick="event.stopPropagation()">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700">${escapeHtml(label)}</div>
-              <button onclick="window.closeModal()" class="btn ghost">Close</button>
+              <div style="font-weight:700;max-width:70%;word-break:break-all;">
+                ${escapeHtml(path)}
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button onclick="window.print()" class="btn ghost">Print / Save PDF</button>
+                <button onclick="closeModal()" class="btn ghost">Close</button>
+              </div>
             </div>
             <div style="height:12px"></div>
-            <div class="preview">
-              <iframe src="${fileUrl}" style="width:100%;height:100%;border:0;border-radius:8px"></iframe>
+            <div style="width:100%;height:80vh;border-radius:8px;overflow:hidden;">
+              <iframe
+                src="https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${encodeURIComponent(
+                  path
+                )}"
+                style="width:100%;height:100%;border:0;"
+              ></iframe>
             </div>
           </div>
         </div>
       `;
-    }
-    window.closeModal = function() {
-      const modalRoot = document.getElementById("modalRoot");
-      modalRoot.style.display = "none";
-      modalRoot.innerHTML = "";
     };
 
-    // ---------- init ----------
-    (async function init() {
+    window.downloadReport = function (pathEnc) {
+      const path = decodeURIComponent(pathEnc);
+      const url = `https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${encodeURIComponent(
+        path
+      )}`;
+      window.open(url, "_blank");
+    };
+
+    // AI modal
+    window.openAiModal = function (event) {
+      const idx = event.currentTarget.getAttribute("data-index");
+      const r = REPORT_CACHE[Number(idx)];
+      if (!r || !r.ai_results) {
+        alert("AI results not available yet.");
+        return;
+      }
+
+      const ai = r.ai_results;
+      const summary = ai.summary || "No summary available.";
+      const flags = Array.isArray(ai.flags) ? ai.flags : [];
+      const recs = Array.isArray(ai.recommendations) ? ai.recommendations : [];
+      const markers = ai.markers || {};
+
+      let flagsHtml = "";
+      if (flags.length) {
+        flagsHtml =
+          flags.map((f) => `<span class="ai-chip">${escapeHtml(f)}</span>`).join("");
+      } else {
+        flagsHtml = "<div style='font-size:13px;color:var(--muted)'>No critical flags.</div>";
+      }
+
+      let recsHtml = "";
+      if (recs.length) {
+        recsHtml =
+          "<ul style='padding-left:18px;margin:0;'>" +
+          recs.map((r) => `<li>${escapeHtml(r)}</li>`).join("") +
+          "</ul>";
+      } else {
+        recsHtml = "<div style='font-size:13px;color:var(--muted)'>No specific recommendations.</div>";
+      }
+
+      // markers table
+      let markerRows = "";
+      Object.keys(markers).forEach((name) => {
+        const m = markers[name] || {};
+        const val = m.value ?? "";
+        const interp = m.interpretation || "";
+        const sev = (m.severity || "info").toLowerCase();
+        markerRows += `
+          <tr>
+            <td>${escapeHtml(name)}</td>
+            <td>${escapeHtml(String(val))}</td>
+            <td>${escapeHtml(interp)}</td>
+            <td>${escapeHtml(sev)}</td>
+          </tr>
+        `;
+      });
+
+      if (!markerRows) {
+        markerRows = `
+          <tr>
+            <td colspan="4" style="font-size:13px;color:var(--muted);padding:6px;">
+              No markers returned from AI.
+            </td>
+          </tr>
+        `;
+      }
+
+      const modal = document.getElementById("modalRoot");
+      modal.style.display = "block";
+      modal.innerHTML = `
+        <div class="modal-backdrop" onclick="closeModal()">
+          <div class="modal" onclick="event.stopPropagation()">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-weight:700">${escapeHtml(r.title || "AI Report")}</div>
+                <div style="font-size:12px;color:var(--muted);">
+                  ${escapeHtml(ai.generated_at || "")}
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button onclick="window.print()" class="btn ghost">Print / Save PDF</button>
+                <button onclick="closeModal()" class="btn ghost">Close</button>
+              </div>
+            </div>
+
+            <div style="height:12px"></div>
+            <div class="modal-content-scroll">
+              <div class="ai-section-title">AI Summary</div>
+              <div style="font-size:14px;margin-bottom:8px;">
+                ${escapeHtml(summary)}
+              </div>
+
+              <div class="ai-section-title">Red Flags</div>
+              <div>${flagsHtml}</div>
+
+              <div class="ai-section-title">Recommendations</div>
+              <div>${recsHtml}</div>
+
+              <div class="ai-section-title">Marker Details</div>
+              <table class="ai-marker-table">
+                <thead>
+                  <tr>
+                    <th>Marker</th>
+                    <th>Value</th>
+                    <th>Interpretation</th>
+                    <th>Severity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${markerRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    // Close modal
+    window.closeModal = function () {
+      const modal = document.getElementById("modalRoot");
+      modal.style.display = "none";
+      modal.innerHTML = "";
+    };
+
+    // Init
+    (async () => {
       const reports = await fetchReports();
       renderReports(reports);
     })();
-
   </script>
 </body>
 </html>
