@@ -1,7 +1,7 @@
 export const config = { runtime: "nodejs" };
 import { createClient } from "@supabase/supabase-js";
 
-// Create Supabase client (service key only)
+// Supabase client (service role)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read JSON body
+    // Read raw body
     let raw = "";
     await new Promise(resolve => {
       req.on("data", chunk => (raw += chunk));
@@ -41,17 +41,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing fields" });
     }
 
-    const filePath = files[0]; // first file only
+    const filePath = files[0]; // first uploaded file
 
     // 1️⃣ Insert into Supabase
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
         email,
-        title: title || "Untitled",
+        title: title || "Untitled Report",
         file_path: filePath,
         created_at: new Date().toISOString(),
-        ai_status: "processing"
+        ai_status: "waiting"
       })
       .select()
       .single();
@@ -63,37 +63,23 @@ export default async function handler(req, res) {
 
     const reportId = inserted.id;
 
-    // 2️⃣ Send file path to AMI AI endpoint
-    const aiResponse = await fetch(
-      "https://worm-this-tables-touch.trycloudflare.com/analyze",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          report_id: reportId,
-          file_path: filePath
-        })
-      }
-    );
+    // 2️⃣ TEMPORARY — skip AI request until your backend is online
+    const aiJson = {
+      message: "AI analysis pending — engine offline",
+      status: "waiting",
+      engine_ready: false
+    };
 
-    let aiJson = null;
-
-    try {
-      aiJson = await aiResponse.json();
-    } catch {
-      aiJson = { error: "Invalid AI response" };
-    }
-
-    // 3️⃣ Save AI result in Supabase
+    // 3️⃣ Save placeholder AI result
     await supabase
       .from("reports")
       .update({
-        ai_status: aiJson.error ? "failed" : "complete",
+        ai_status: "waiting",
         ai_result: aiJson
       })
       .eq("id", reportId);
 
-    // 4️⃣ Reply to frontend
+    // 4️⃣ Success response to frontend
     return res.status(200).json({
       success: true,
       id: reportId,
