@@ -1,455 +1,199 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>AMI Dashboard</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    /* Simple status pills */
-    .status-pill {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .status-processing {
-      background: #fff3cd;
-      color: #8a6d3b;
-    }
-    .status-completed {
-      background: #d4edda;
-      color: #155724;
-    }
-    .status-failed {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    /* Modal content for AI */
-    .modal-content-scroll {
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    .ai-section-title {
-      font-weight: 700;
-      margin-top: 12px;
-      margin-bottom: 4px;
-      font-size: 14px;
-    }
-
-    .ai-chip {
-      display: inline-block;
-      padding: 3px 7px;
-      margin: 2px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: #f1f5f9;
-    }
-
-    .ai-marker-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 6px;
-      font-size: 12px;
-    }
-    .ai-marker-table th,
-    .ai-marker-table td {
-      border-bottom: 1px solid #e2e8f0;
-      padding: 4px 6px;
-      text-align: left;
-    }
-    .ai-marker-table th {
-      background: #f8fafc;
-    }
-
-    /* Print: show only modal */
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #modalRoot, #modalRoot * {
-        visibility: visible;
-      }
-      #modalRoot {
-        position: static !important;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar" role="navigation" aria-label="Main navigation">
+  <head>
+    <meta charset="utf-8" />
+    <title>AMI Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
       <div class="brand">
-        <img src="/logo.png" alt="AMI logo">
-        <div>
-          <h3>AMI Health</h3>
-          <p>Smarter Diagnostics — Better Care</p>
-        </div>
+        <span class="logo-text">AMI Health</span>
+        <span class="tagline">Smarter Diagnostics — Better Care</span>
       </div>
-
-      <nav class="nav" aria-label="Sidebar">
-        <a href="/dashboard.html" class="active">Dashboard</a>
+      <nav>
+        <a href="/dashboard.html">Dashboard</a>
         <a href="/upload.html">Upload Report</a>
-        <a href="#" id="btnDocs">AI Results</a>
-        <a href="#" id="btnSettings">Settings</a>
       </nav>
+    </header>
 
-      <div style="margin-top:auto">
-        <div style="font-size:12px;opacity:0.9">Signed in as</div>
-        <div id="userEmail" style="font-weight:700;margin-top:6px"></div>
-        <div style="height:10px"></div>
-        <button id="logout" class="btn" style="width:100%">Logout</button>
-      </div>
-    </aside>
+    <main class="page">
+      <section class="panel">
+        <p id="userEmail"></p>
+        <button id="logoutBtn">Logout</button>
+      </section>
 
-    <!-- MAIN -->
-    <main class="main" role="main">
-      <div class="topbar">
-        <div class="welcome">Your Reports</div>
-        <div class="actions">
-          <button class="btn" onclick="location.href='/upload.html'">➕ Upload New</button>
-        </div>
-      </div>
+      <section class="panel">
+        <h1>Your Reports</h1>
+        <p>
+          View, download, or open AI interpretation for each report. PDFs come
+          from a <b>private</b> bucket using signed URLs.
+        </p>
 
-      <!-- Quick stats -->
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div class="card" style="min-width:200px;flex:0 0 220px">
-          <div style="font-size:13px;color:var(--muted)">Total reports</div>
-          <div style="font-size:24px;font-weight:800" id="totalReports">—</div>
-        </div>
-        <div class="card" style="min-width:200px;flex:0 0 220px">
-          <div style="font-size:13px;color:var(--muted)">Pending analysis</div>
-          <div style="font-size:24px;font-weight:800;color:#e67e22" id="pendingCount">—</div>
-        </div>
-        <div class="card" style="min-width:200px;flex:0 0 220px">
-          <div style="font-size:13px;color:var(--muted)">Completed</div>
-          <div style="font-size:24px;font-weight:800;color:#16a085" id="doneCount">—</div>
-        </div>
-      </div>
-
-      <!-- Grid of report cards -->
-      <div style="margin-top:6px">
-        <div class="grid" id="reportsGrid">
-
-          <!-- Skeleton placeholders -->
-          <div class="card">
-            <div class="skeleton thumb"></div>
-            <div style="height:8px"></div>
-            <div class="skeleton" style="width:70%"></div>
-            <div style="height:6px"></div>
-            <div class="skeleton" style="width:40%"></div>
-          </div>
-          <div class="card">
-            <div class="skeleton thumb"></div>
-            <div style="height:8px"></div>
-            <div class="skeleton" style="width:60%"></div>
-            <div style="height:6px"></div>
-            <div class="skeleton" style="width:50%"></div>
-          </div>
-          <div class="card">
-            <div class="skeleton thumb"></div>
-            <div style="height:8px"></div>
-            <div class="skeleton" style="width:65%"></div>
-            <div style="height:6px"></div>
-            <div class="skeleton" style="width:30%"></div>
-          </div>
-
-        </div>
-      </div>
-
+        <table class="table" id="reportsTable">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Title</th>
+              <th>File</th>
+              <th>AI Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reportsBody"></tbody>
+        </table>
+      </section>
     </main>
-  </div>
 
-  <!-- MODAL (hidden) -->
-  <div id="modalRoot" style="display:none"></div>
+    <script type="module">
+      const email =
+        localStorage.getItem("ami_email") ||
+        localStorage.getItem("amihealth_email") ||
+        "";
 
-  <script type="module">
-    // Auth
-    const userEmail = localStorage.getItem("user_email");
-    if (!userEmail) {
-      window.location.href = "/login.html";
-    }
-    document.getElementById("userEmail").innerText = userEmail;
+      const userEmailEl = document.getElementById("userEmail");
+      const tbody = document.getElementById("reportsBody");
 
-    document.getElementById("logout").onclick = () => {
-      localStorage.removeItem("user_email");
-      window.location.href = "/login.html";
-    };
-
-    // Store reports globally so AI modal can access full object
-    let REPORT_CACHE = [];
-
-    // Fetch reports from backend
-    async function fetchReports() {
-      try {
-        const res = await fetch(
-          `/api/get-reports?email=${encodeURIComponent(userEmail)}`
-        );
-        if (!res.ok) {
-          console.error("Fetch reports failed:", await res.text());
-          return [];
-        }
-        const json = await res.json();
-        return Array.isArray(json) ? json : [];
-      } catch (e) {
-        console.error("Failed fetching reports", e);
-        return [];
-      }
-    }
-
-    // Escape helper
-    function escapeHtml(s) {
-      return (s + "").replace(/[&<>"']/g, (m) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      }[m]));
-    }
-
-    // Render cards
-    function renderReports(list) {
-      REPORT_CACHE = list;
-      const grid = document.getElementById("reportsGrid");
-      grid.innerHTML = "";
-
-      if (!list.length) {
-        grid.innerHTML =
-          '<div class="card"><div class="title">No reports yet</div><div class="date">Upload a report to get started</div></div>';
-        document.getElementById("totalReports").innerText = "0";
-        document.getElementById("pendingCount").innerText = "0";
-        document.getElementById("doneCount").innerText = "0";
-        return;
+      if (email) {
+        userEmailEl.textContent = `Signed in as ${email}`;
+      } else {
+        userEmailEl.textContent = "Not signed in";
       }
 
-      let pending = 0;
-      let done = 0;
+      document
+        .getElementById("logoutBtn")
+        .addEventListener("click", () => {
+          localStorage.removeItem("ami_email");
+          localStorage.removeItem("amihealth_email");
+          window.location.href = "/index.html";
+        });
 
-      list.forEach((r, idx) => {
-        const status = (r.status || "processing").toLowerCase();
-        if (status === "processing") pending++;
-        if (status === "completed") done++;
+      async function fetchReports() {
+        tbody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
 
-        const created = new Date(r.created_at || Date.now()).toLocaleString();
-        const file = r.file_path || "unknown";
-        const ai = r.ai_results || null;
-
-        let statusClass = "status-processing";
-        let statusLabel = "Processing";
-        if (status === "completed") {
-          statusClass = "status-completed";
-          statusLabel = "Completed";
-        } else if (status === "failed") {
-          statusClass = "status-failed";
-          statusLabel = "Failed";
+        if (!email) {
+          tbody.innerHTML =
+            '<tr><td colspan="5">No email, please log in again.</td></tr>';
+          return;
         }
 
-        const aiButtonDisabled = !ai || status !== "completed";
+        try {
+          const resp = await fetch(
+            `/api/get-reports?email=${encodeURIComponent(email)}`
+          );
+          const json = await resp.json();
 
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <div class="meta">
-            <div>
-              <div class="title">${escapeHtml(r.title || "Untitled Report")}</div>
-              <div class="date">${created}</div>
-            </div>
-            <div style="text-align:right">
-              <span class="status-pill ${statusClass}">${statusLabel}</span>
-            </div>
-          </div>
+          if (!resp.ok) {
+            console.error(json);
+            tbody.innerHTML =
+              '<tr><td colspan="5">Failed to load reports.</td></tr>';
+            return;
+          }
 
-          <div class="file">${escapeHtml(file)}</div>
+          const reports = json.reports || [];
+          if (reports.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="5">No reports yet. Upload one from the Upload page.</td></tr>';
+            return;
+          }
 
-          <div style="display:flex;gap:8px;margin-top:auto;justify-content:flex-end;flex-wrap:wrap">
-            <button class="btn" onclick="viewReport('${encodeURIComponent(file)}')">View PDF</button>
-            <button class="btn ghost" onclick="downloadReport('${encodeURIComponent(file)}')">Download</button>
-            <button
-              class="btn ghost"
-              data-index="${idx}"
-              ${aiButtonDisabled ? "disabled" : ""}
-              onclick="openAiModal(event)"
-            >
-              ${aiButtonDisabled ? "AI Processing…" : "AI Summary"}
-            </button>
-          </div>
-        `;
-        grid.appendChild(card);
-      });
+          tbody.innerHTML = "";
+          for (const r of reports) {
+            const tr = document.createElement("tr");
 
-      document.getElementById("totalReports").innerText = list.length;
-      document.getElementById("pendingCount").innerText = pending;
-      document.getElementById("doneCount").innerText = done;
-    }
+            const created = new Date(r.created_at).toLocaleString();
+            const title = r.title || "Untitled Report";
+            const fileName = r.file_path || "";
 
-    // PDF modal
-    window.viewReport = function (pathEnc) {
-      const path = decodeURIComponent(pathEnc);
-      const modal = document.getElementById("modalRoot");
-      modal.style.display = "block";
-      modal.innerHTML = `
-        <div class="modal-backdrop" onclick="closeModal()">
-          <div class="modal" onclick="event.stopPropagation()">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700;max-width:70%;word-break:break-all;">
-                ${escapeHtml(path)}
-              </div>
-              <div style="display:flex;gap:8px;">
-                <button onclick="window.print()" class="btn ghost">Print / Save PDF</button>
-                <button onclick="closeModal()" class="btn ghost">Close</button>
-              </div>
-            </div>
-            <div style="height:12px"></div>
-            <div style="width:100%;height:80vh;border-radius:8px;overflow:hidden;">
-              <iframe
-                src="https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${encodeURIComponent(
-                  path
-                )}"
-                style="width:100%;height:100%;border:0;"
-              ></iframe>
-            </div>
-          </div>
-        </div>
-      `;
-    };
+            const status =
+              r.ai_status ||
+              (r.ai_results && !r.ai_results.error
+                ? "completed"
+                : r.ai_results && r.ai_results.error
+                ? "failed"
+                : "pending");
 
-    window.downloadReport = function (pathEnc) {
-      const path = decodeURIComponent(pathEnc);
-      const url = `https://tbyttsfztuudyqbrkonm.supabase.co/storage/v1/object/public/reports/${encodeURIComponent(
-        path
-      )}`;
-      window.open(url, "_blank");
-    };
+            tr.innerHTML = `
+              <td>${created}</td>
+              <td>${title}</td>
+              <td>${fileName}</td>
+              <td>${status}</td>
+              <td>
+                <button class="view-btn">View PDF</button>
+                <button class="download-btn">Download</button>
+                <button class="ai-btn"${
+                  status !== "completed" ? " disabled" : ""
+                }>AI Report</button>
+              </td>
+            `;
 
-    // AI modal
-    window.openAiModal = function (event) {
-      const idx = event.currentTarget.getAttribute("data-index");
-      const r = REPORT_CACHE[Number(idx)];
-      if (!r || !r.ai_results) {
-        alert("AI results not available yet.");
-        return;
+            const viewBtn = tr.querySelector(".view-btn");
+            const downloadBtn = tr.querySelector(".download-btn");
+            const aiBtn = tr.querySelector(".ai-btn");
+
+            viewBtn.addEventListener("click", () =>
+              openSignedUrl(r.file_path, true)
+            );
+            downloadBtn.addEventListener("click", () =>
+              openSignedUrl(r.file_path, false)
+            );
+            aiBtn.addEventListener("click", () =>
+              showAiReport(r.ai_results || null)
+            );
+
+            tbody.appendChild(tr);
+          }
+        } catch (e) {
+          console.error(e);
+          tbody.innerHTML =
+            '<tr><td colspan="5">Unexpected error loading reports.</td></tr>';
+        }
       }
 
-      const ai = r.ai_results;
-      const summary = ai.summary || "No summary available.";
-      const flags = Array.isArray(ai.flags) ? ai.flags : [];
-      const recs = Array.isArray(ai.recommendations) ? ai.recommendations : [];
-      const markers = ai.markers || {};
+      async function openSignedUrl(filePath, inNewTab) {
+        if (!filePath) {
+          alert("No file path for this report.");
+          return;
+        }
 
-      let flagsHtml = "";
-      if (flags.length) {
-        flagsHtml =
-          flags.map((f) => `<span class="ai-chip">${escapeHtml(f)}</span>`).join("");
-      } else {
-        flagsHtml = "<div style='font-size:13px;color:var(--muted)'>No critical flags.</div>";
+        try {
+          const resp = await fetch("/api/get-file-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file_path: filePath }),
+          });
+          const json = await resp.json();
+          if (!resp.ok || !json.url) {
+            console.error(json);
+            alert("Could not open file from storage.");
+            return;
+          }
+
+          if (inNewTab) {
+            window.open(json.url, "_blank");
+          } else {
+            window.location.href = json.url;
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Failed to open file.");
+        }
       }
 
-      let recsHtml = "";
-      if (recs.length) {
-        recsHtml =
-          "<ul style='padding-left:18px;margin:0;'>" +
-          recs.map((r) => `<li>${escapeHtml(r)}</li>`).join("") +
-          "</ul>";
-      } else {
-        recsHtml = "<div style='font-size:13px;color:var(--muted)'>No specific recommendations.</div>";
+      function showAiReport(aiResults) {
+        if (!aiResults || aiResults.error) {
+          alert("AI analysis not available yet for this report.");
+          return;
+        }
+
+        const pretty = JSON.stringify(aiResults, null, 2);
+        const win = window.open("", "_blank");
+        win.document.write("<pre>" + pretty + "</pre>");
+        win.document.close();
       }
 
-      // markers table
-      let markerRows = "";
-      Object.keys(markers).forEach((name) => {
-        const m = markers[name] || {};
-        const val = m.value ?? "";
-        const interp = m.interpretation || "";
-        const sev = (m.severity || "info").toLowerCase();
-        markerRows += `
-          <tr>
-            <td>${escapeHtml(name)}</td>
-            <td>${escapeHtml(String(val))}</td>
-            <td>${escapeHtml(interp)}</td>
-            <td>${escapeHtml(sev)}</td>
-          </tr>
-        `;
-      });
-
-      if (!markerRows) {
-        markerRows = `
-          <tr>
-            <td colspan="4" style="font-size:13px;color:var(--muted);padding:6px;">
-              No markers returned from AI.
-            </td>
-          </tr>
-        `;
-      }
-
-      const modal = document.getElementById("modalRoot");
-      modal.style.display = "block";
-      modal.innerHTML = `
-        <div class="modal-backdrop" onclick="closeModal()">
-          <div class="modal" onclick="event.stopPropagation()">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-weight:700">${escapeHtml(r.title || "AI Report")}</div>
-                <div style="font-size:12px;color:var(--muted);">
-                  ${escapeHtml(ai.generated_at || "")}
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;">
-                <button onclick="window.print()" class="btn ghost">Print / Save PDF</button>
-                <button onclick="closeModal()" class="btn ghost">Close</button>
-              </div>
-            </div>
-
-            <div style="height:12px"></div>
-            <div class="modal-content-scroll">
-              <div class="ai-section-title">AI Summary</div>
-              <div style="font-size:14px;margin-bottom:8px;">
-                ${escapeHtml(summary)}
-              </div>
-
-              <div class="ai-section-title">Red Flags</div>
-              <div>${flagsHtml}</div>
-
-              <div class="ai-section-title">Recommendations</div>
-              <div>${recsHtml}</div>
-
-              <div class="ai-section-title">Marker Details</div>
-              <table class="ai-marker-table">
-                <thead>
-                  <tr>
-                    <th>Marker</th>
-                    <th>Value</th>
-                    <th>Interpretation</th>
-                    <th>Severity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${markerRows}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      `;
-    };
-
-    // Close modal
-    window.closeModal = function () {
-      const modal = document.getElementById("modalRoot");
-      modal.style.display = "none";
-      modal.innerHTML = "";
-    };
-
-    // Init
-    (async () => {
-      const reports = await fetchReports();
-      renderReports(reports);
-    })();
-  </script>
-</body>
+      fetchReports();
+    </script>
+  </body>
 </html>
