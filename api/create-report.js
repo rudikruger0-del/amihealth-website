@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // manual body read (Vercel)
+    // ---- Read raw POST body (Vercel)
     let raw = "";
     await new Promise((resolve) => {
       req.on("data", (chunk) => (raw += chunk));
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
     const filePath = files[0];
 
-    // 1) create DB row
+    // 1️⃣ Insert DB Row
     const { data: inserted, error: insertErr } = await supabase
       .from("reports")
       .insert({
@@ -54,6 +54,9 @@ export default async function handler(req, res) {
         file_path: filePath,
         created_at: new Date().toISOString(),
         ai_status: "processing",
+        name: name || null,
+        age: age || null,
+        sex: sex || null,
       })
       .select()
       .single();
@@ -66,13 +69,14 @@ export default async function handler(req, res) {
     const reportId = inserted.id;
     console.log("✅ Created report row:", reportId, "file:", filePath);
 
-    // 2) signed URL for HF
+    // 2️⃣ Create signed URL for private bucket
     const { data: signed, error: signErr } = await supabase.storage
       .from("reports")
-      .createSignedUrl(filePath, 60 * 30);
+      .createSignedUrl(filePath, 1800); // 30 minutes
 
     if (signErr || !signed?.signedUrl) {
       console.error("❌ Signed URL error:", signErr);
+
       await supabase
         .from("reports")
         .update({
@@ -88,49 +92,51 @@ export default async function handler(req, res) {
     }
 
     const fileUrl = signed.signedUrl;
-    console.log("🔗 Signed file URL for AI:", fileUrl);
+    console.log("🔗 Signed URL:", fileUrl);
 
-    // 3) call Hugging Face Space JSON API
+    // 3️⃣ Send to Hugging Face /run/predict
     let aiJson = null;
+
     try {
+      const hfHeaders = {
+        "Content-Type": "application/json",
+      };
+
+      // add HF token if your space is private
+      if (process.env.HF_API_TOKEN) {
+        hfHeaders.Authorization = `Bearer ${process.env.HF_API_TOKEN}`;
+      }
+
       const hfResp = await fetch(
-        "https://amihealth-ami-blood-ai.hf.space/analyze",
+        "https://amihealth-ami-blood-ai.hf.space/run/predict",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            report_id: reportId,
-            file_url: fileUrl,
-            email,
-            title: title || "Untitled Report",
-            file_path: filePath,
-            name: name || "Unknown",
-            age: age || 0,
-            sex: sex || "Unknown",
-          }),
+          headers: hfHeaders,
+          body: JSON.stringify({ pdf_url: fileUrl }),
         }
       );
 
       const text = await hfResp.text();
+
       try {
         aiJson = JSON.parse(text);
       } catch {
-        aiJson = { error: "AI response not valid JSON", raw: text };
+        aiJson = { error: "HF returned non-JSON", raw: text };
       }
 
       if (!hfResp.ok) {
         aiJson.error = aiJson.error || `HF HTTP ${hfResp.status}`;
       }
     } catch (err) {
-      console.error("❌ Error calling Hugging Face:", err);
-      aiJson = { error: "Failed to call Hugging Face", details: String(err) };
+      console.error("❌ HF call failed:", err);
+      aiJson = { error: "HuggingFace request failed", details: String(err) };
     }
 
-    console.log("🤖 AI JSON:", aiJson);
+    console.log("🤖 AI Result:", aiJson);
 
     const finalStatus = aiJson && !aiJson.error ? "completed" : "failed";
 
-    // 4) update report with AI results
+    // 4️⃣ Save AI results in Supabase
     const { error: updateErr } = await supabase
       .from("reports")
       .update({
@@ -143,7 +149,7 @@ export default async function handler(req, res) {
       console.error("❌ Supabase update error:", updateErr);
     }
 
-    // 5) respond
+    // 5️⃣ Respond
     return res.status(200).json({
       success: true,
       id: reportId,
@@ -151,7 +157,7 @@ export default async function handler(req, res) {
       ai: aiJson,
     });
   } catch (err) {
-    console.error("💥 Unhandled server error:", err);
+    console.error("💥 Server crash:", err);
     return res.status(500).json({ error: "Server-side failure" });
   }
 }
