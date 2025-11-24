@@ -4,133 +4,418 @@
   <meta charset="utf-8" />
   <title>AMI — Upload Report</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="/styles.css" />
+
+  <style>
+    :root {
+      --bg:#030414;
+      --card:#0b1020;
+      --muted:#98a0b3;
+      --accent:#00e0b8;
+    }
+
+    *{box-sizing:border-box}
+    body {
+      margin:0;
+      font-family:Inter, system-ui, sans-serif;
+      background:radial-gradient(circle at top, #071a33, #02030f);
+      color:#eaf6ff;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+
+    header {
+      padding:14px 24px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      max-width:1100px;
+      margin:0 auto;
+      width:100%;
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      text-decoration:none;
+      color:inherit;
+    }
+
+    .brand img {
+      height:32px;
+      width:auto;
+    }
+
+    .brand-title {
+      font-weight:800;
+      font-size:18px;
+    }
+    .brand-sub {
+      font-size:11px;
+      color:var(--muted);
+    }
+
+    nav {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      font-size:14px;
+    }
+
+    nav a {
+      color:var(--muted);
+      text-decoration:none;
+      padding:6px 10px;
+      border-radius:999px;
+    }
+
+    nav a.active {
+      background:rgba(0,224,184,0.12);
+      color:#fff;
+    }
+
+    .login-pill {
+      border:1px solid rgba(255,255,255,0.15);
+      padding:6px 12px;
+      border-radius:999px;
+      text-decoration:none;
+      color:#eaf6ff;
+      font-size:13px;
+    }
+
+    main {
+      flex:1;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding:10px 16px 30px;
+    }
+
+    .container {
+      width:100%;
+      max-width:1100px;
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: minmax(0,1.4fr) minmax(0,1fr);
+      gap:18px;
+    }
+
+    @media (max-width:950px){
+      .container{grid-template-columns:1fr}
+    }
+
+    .panel {
+      background:rgba(11,16,32,0.96);
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.08);
+      box-shadow:0 18px 50px rgba(0,0,0,0.6);
+      padding:20px 22px;
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:22px;
+    }
+
+    .muted {
+      color:var(--muted);
+      font-size:14px;
+      margin:0 0 16px;
+    }
+
+    .pill-row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:10px;
+    }
+
+    .pill {
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.04);
+      color:var(--muted);
+    }
+
+    label {
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    input[type="number"],
+    select {
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(3,8,20,0.96);
+      color:#fff;
+      font-size:14px;
+      margin-bottom:10px;
+    }
+
+    input:focus, select:focus {
+      outline:none;
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px rgba(0,224,184,0.5);
+    }
+
+    .btn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding:10px 16px;
+      border-radius:999px;
+      border:none;
+      background:linear-gradient(90deg,#00e0b8,#00b7ff);
+      color:#001821;
+      font-weight:700;
+      font-size:14px;
+      cursor:pointer;
+      box-shadow:0 0 18px rgba(0,255,220,0.3);
+    }
+
+    .btn:disabled {
+      opacity:0.6;
+      cursor:default;
+    }
+
+    .status {
+      margin-top:10px;
+      min-height:20px;
+      font-size:13px;
+      color:#ffb3b3;
+      white-space:pre-wrap;
+    }
+
+    .user-chip {
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .user-chip span {
+      color:#fff;
+      font-weight:600;
+    }
+
+    .logout-link {
+      font-size:12px;
+      color:var(--muted);
+      text-decoration:none;
+      margin-left:8px;
+      border-bottom:1px dotted rgba(255,255,255,0.3);
+      cursor:pointer;
+    }
+  </style>
 </head>
 <body>
 
-  <header class="topbar">
-    <div class="brand">
-      <span class="logo-text">AMI Health</span>
-      <span class="tagline">Upload reports</span>
-    </div>
+  <header>
+    <a class="brand" href="/index.html">
+      <img src="/logo.png" alt="AMI Logo" />
+      <div>
+        <div class="brand-title">AMI Health</div>
+        <div class="brand-sub">Artificial Medical Intelligence</div>
+      </div>
+    </a>
+
     <nav>
       <a href="/dashboard.html">Dashboard</a>
-      <a href="/upload.html">Upload Report</a>
+      <a href="/upload.html" class="active">Upload Report</a>
+      <a class="login-pill" href="/login.html">Logout / Switch user</a>
     </nav>
   </header>
 
-  <main class="page">
-    <section class="panel">
-      <p id="userEmail"></p>
-      <button id="logoutBtn">Logout</button>
-    </section>
+  <main>
+    <div class="container">
+      <!-- LEFT: Upload form -->
+      <section class="panel">
+        <h1>Upload scan or lab report</h1>
+        <p class="muted">
+          Select PDF or image files (JPG, PNG). Files are stored in a private Supabase bucket
+          (<b>reports</b>) and queued for AMI blood interpretation.
+        </p>
 
-    <section class="panel">
-      <h1>Upload Scan or Lab Report</h1>
+        <div class="pill-row">
+          <div class="pill">CBC / Full Blood Count</div>
+          <div class="pill">PDF / Image-based reports</div>
+          <div class="pill">AI-assisted interpretation</div>
+        </div>
 
-      <div class="form-row">
-        <input type="file" id="fileInput" accept=".pdf,image/*" multiple />
-      </div>
+        <div class="user-chip">
+          Signed in as:
+          <span id="userEmail">—</span>
+          <a class="logout-link" id="logoutLink">Logout</a>
+        </div>
 
-      <div class="form-row">
-        <input type="text" id="titleInput" placeholder="Report title (optional)" />
-      </div>
+        <div style="margin-top:14px"></div>
 
-      <div class="form-row">
-        <button id="uploadBtn">Upload & Queue</button>
-      </div>
+        <label for="fileInput">Report file(s)</label>
+        <input id="fileInput" type="file" accept=".pdf,image/*" multiple />
 
-      <div id="statusArea"></div>
-    </section>
+        <label for="titleInput">Report title (optional)</label>
+        <input id="titleInput" type="text" placeholder="e.g. CBC — Z. Taljaard" />
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:6px">
+          <div>
+            <label for="patientName">Patient name</label>
+            <input id="patientName" type="text" placeholder="Optional" />
+          </div>
+          <div>
+            <label for="patientAge">Age</label>
+            <input id="patientAge" type="number" min="0" max="120" placeholder="Years" />
+          </div>
+          <div>
+            <label for="patientSex">Sex</label>
+            <select id="patientSex">
+              <option value="Unknown">Unknown</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <button id="uploadBtn" class="btn">
+            <span>Upload &amp; Queue AI</span>
+          </button>
+        </div>
+
+        <div id="statusArea" class="status"></div>
+      </section>
+
+      <!-- RIGHT: Simple explainer -->
+      <section class="panel">
+        <h2 style="margin:0 0 8px;font-size:18px">What happens after upload?</h2>
+        <ol style="margin:8px 0 0 20px;font-size:13px;color:var(--muted);line-height:1.5">
+          <li>Your file is stored securely in the private <b>reports</b> bucket.</li>
+          <li>A signed URL is generated and sent to the AMI Blood AI engine on Hugging Face.</li>
+          <li>The engine extracts CBC values, applies AMI rule logic and generates an interpretation.</li>
+          <li>The AI result is saved back into the <code>reports</code> table.</li>
+          <li>On the dashboard, you can open the original PDF and view the AI JSON result.</li>
+        </ol>
+        <p style="margin-top:12px;font-size:12px;color:var(--muted)">
+          Note: AMI is a clinical decision support tool and does not replace clinician judgement.
+        </p>
+      </section>
+    </div>
   </main>
 
 <script type="module">
-import { supabase } from "/lib/supabaseClient.js";   // MUST LOAD
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-const email =
-  localStorage.getItem("ami_email") ||
-  localStorage.getItem("amihealth_email") ||
-  "";
+  const SUPA_URL = "https://tbyttsfztuudyqbrkonm.supabase.co";
+  const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieXR0c2Z6dHV1ZHlxYnJrb25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzA1MzgsImV4cCI6MjA3OTAwNjUzOH0.7T0S4_kkoWosdbmjlwtfSYzBcyipcPg1Fm8kIMa43uo";
 
-document.getElementById("userEmail").textContent =
-  email ? email : "Not signed in";
+  const supabase = createClient(SUPA_URL, SUPA_ANON);
 
-document.getElementById("logoutBtn").addEventListener("click", () => {
-  localStorage.removeItem("ami_email");
-  localStorage.removeItem("amihealth_email");
-  window.location.href = "/index.html";
-});
+  const userEmail = localStorage.getItem("user_email");
+  const userEmailEl = document.getElementById("userEmail");
+  const logoutLink = document.getElementById("logoutLink");
+  const fileInput = document.getElementById("fileInput");
+  const titleInput = document.getElementById("titleInput");
+  const patientName = document.getElementById("patientName");
+  const patientAge = document.getElementById("patientAge");
+  const patientSex = document.getElementById("patientSex");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const statusArea = document.getElementById("statusArea");
 
-const statusArea = document.getElementById("statusArea");
-function log(msg) {
-  const p = document.createElement("p");
-  p.textContent = msg;
-  p.style.color = "#fff";
-  p.style.background = "#333";
-  p.style.padding = "6px";
-  p.style.borderRadius = "6px";
-  statusArea.appendChild(p);
-}
+  if (!userEmail) {
+    window.location.href = "/login.html";
+  } else {
+    userEmailEl.textContent = userEmail;
+  }
 
-document.getElementById("uploadBtn").addEventListener("click", async () => {
-  statusArea.innerHTML = "";
+  logoutLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    localStorage.removeItem("user_email");
+    window.location.href = "/login.html";
+  });
 
-  if (!email) return alert("No email, please sign in again.");
+  function appendStatus(msg, isError = false) {
+    const color = isError ? "#ffb3b3" : "#8affc1";
+    const p = document.createElement("div");
+    p.textContent = msg;
+    p.style.color = color;
+    statusArea.appendChild(p);
+  }
 
-  const files = document.getElementById("fileInput").files;
-  const title = document.getElementById("titleInput").value.trim();
+  uploadBtn.addEventListener("click", async () => {
+    statusArea.innerHTML = "";
 
-  if (!files.length) return alert("Choose a file.");
+    if (!fileInput.files || fileInput.files.length === 0) {
+      appendStatus("Please select at least one PDF or image file.", true);
+      return;
+    }
 
-  log("⏳ Uploading file(s)...");
+    uploadBtn.disabled = true;
+    appendStatus("Uploading to Supabase storage...");
 
-  const uploadedPaths = [];
+    const uploadedPaths = [];
 
-  try {
-    for (const file of files) {
-      const safeName = `${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+    try {
+      for (const file of fileInput.files) {
+        const safeName = file.name.replace(/\s+/g, "_");
+        const fullName = `${Date.now()}_${safeName}`;
 
-      const { data, error } = await supabase.storage
-        .from("reports")
-        .upload(safeName, file);
+        const { data, error } = await supabase.storage
+          .from("reports")
+          .upload(fullName, file, { cacheControl: "3600", upsert: false });
 
-      if (error) {
-        console.error(error);
-        log("❌ Upload error: " + error.message);
-        return;
+        if (error) {
+          console.error("Upload error:", error);
+          appendStatus(`Failed to upload ${file.name}`, true);
+          uploadBtn.disabled = false;
+          return;
+        }
+
+        uploadedPaths.push(data.path);
+        appendStatus(`Uploaded: ${data.path}`);
       }
 
-      log("✅ Uploaded: " + safeName);
-      uploadedPaths.push(data.path);
+      appendStatus("Calling backend to create report + run AI...");
+
+      const resp = await fetch("/api/create-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          title: titleInput.value || null,
+          files: uploadedPaths,
+          name: patientName.value || "Unknown",
+          age: patientAge.value ? Number(patientAge.value) : 0,
+          sex: patientSex.value || "Unknown",
+        }),
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok || !json.success) {
+        console.error("create-report error:", json);
+        appendStatus(
+          "Backend failed to create report or run AI: " + (json.error || "Unknown error"),
+          true
+        );
+      } else {
+        appendStatus(
+          `✅ Success. Report queued. ID: ${json.id || "N/A"}`
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      appendStatus("Unexpected error during upload / queue.", true);
+    } finally {
+      uploadBtn.disabled = false;
     }
-
-    // Send to backend to generate AI report
-    log("⏳ Sending to AI engine...");
-
-    const resp = await fetch("/api/create-report", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        title,
-        files: uploadedPaths,
-      }),
-    });
-
-    const json = await resp.json();
-
-    if (!resp.ok || !json.success) {
-      console.error(json);
-      log("❌ AI request failed");
-    } else {
-      log("🎉 AI queued — Report ID: " + json.id);
-    }
-
-  } catch (err) {
-    console.error(err);
-    log("❌ Fatal error: " + err);
-  }
-});
+  });
 </script>
 
 </body>
