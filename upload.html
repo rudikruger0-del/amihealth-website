@@ -1,93 +1,82 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Upload Report — AMI Health</title>
 
   <style>
-    body { font-family: Inter, sans-serif; background:#020314; color:white; padding:40px; }
-    .card { max-width:600px; margin:auto; background:#0b1020; padding:30px; border-radius:12px; }
-    label { display:block; margin-top:18px; opacity:.7; font-size:14px; }
-    input, select { width:100%; padding:10px; margin-top:6px; border-radius:8px; border:none; background:#0f1529; color:white; }
-    button { width:100%; margin-top:25px; padding:14px; border:none; border-radius:10px; background:#00e0b8; font-weight:700; }
-    #status { margin-top:20px; white-space:pre-wrap; }
+    body {
+      background: #020314;
+      color: #e6eef8;
+      font-family: Inter, system-ui, sans-serif;
+      padding: 40px 16px;
+    }
+    .wrap { max-width: 700px; margin: 0 auto; }
+    .card {
+      background: rgba(255,255,255,0.05);
+      padding: 28px;
+      border-radius: 12px;
+    }
+    h1 { text-align: center; font-size: 28px; margin-bottom: 20px; }
+    label { margin-top: 18px; display: block; color:#98a0b3; }
+    input, select {
+      width: 100%; padding: 10px; border-radius: 8px;
+      background: #0f1529; border: none; color: #fff;
+      margin-top: 6px; font-size: 15px;
+    }
+    button {
+      margin-top: 22px; width: 100%; padding: 14px;
+      background: linear-gradient(90deg, #00e0b8, #00b3ff);
+      border: none; border-radius: 10px;
+      color: #001319; font-weight: 700; cursor: pointer;
+    }
+    #status { margin-top: 16px; white-space: pre-wrap; }
+    .user-bar { text-align: center; margin-bottom: 20px; color:#98a0b3; }
+    .user-bar a { color:#00e0b8; font-weight: 600; }
   </style>
 </head>
+
 <body>
 
-<div class="card">
-  <h1>Upload Report</h1>
+<div class="wrap">
 
-  <label>File</label>
-  <input type="file" id="fileInput">
+  <div class="user-bar">
+    Signed in as: <strong id="userEmail"></strong>
+    <a href="#" id="logoutBtn">Logout</a>
+  </div>
 
-  <label>Title</label>
-  <input type="text" id="title">
+  <div class="card">
+    <h1>Upload Report</h1>
 
-  <label>Patient name</label>
-  <input type="text" id="name">
+    <label>File</label>
+    <input type="file" id="fileInput" />
 
-  <label>Age</label>
-  <input type="number" id="age">
+    <label>Title</label>
+    <input type="text" id="reportTitle" placeholder="Optional" />
 
-  <label>Sex</label>
-  <select id="sex">
-    <option value="Unknown">Unknown</option>
-    <option value="Male">Male</option>
-    <option value="Female">Female</option>
-  </select>
+    <label>Patient name</label>
+    <input type="text" id="patientName" placeholder="Optional" />
 
-  <button id="uploadBtn">Upload & Queue AI</button>
+    <label>Age</label>
+    <input type="number" id="ageInput" placeholder="Optional" />
 
-  <div id="status"></div>
+    <label>Sex</label>
+    <select id="sexInput">
+      <option value="Unknown">Unknown</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+
+    <button id="uploadBtn">Upload & Queue AI</button>
+    <div id="status"></div>
+  </div>
+
 </div>
 
-
-<script src="./lib/supabaseClient.js"></script>
-
-<script>
-document.getElementById("uploadBtn").onclick = async () => {
-  const status = document.getElementById("status");
-  const file = document.getElementById("fileInput").files[0];
-
-  if (!file) {
-    status.textContent = "No file selected.";
-    return;
-  }
-
-  status.textContent = "Reading file...";
-
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const base64 = reader.result.split(",")[1];
-
-    const payload = {
-      email: localStorage.getItem("email"),
-      title: document.getElementById("title").value || "Untitled",
-      name: document.getElementById("name").value || null,
-      age: document.getElementById("age").value || null,
-      sex: document.getElementById("sex").value,
-      fileName: file.name,
-      fileContent: base64
-    };
-
-    status.textContent = "Uploading to server...";
-
-    const resp = await fetch("/api/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const json = await resp.json();
-
-    status.textContent = JSON.stringify(json, null, 2);
-  };
-
-  reader.readAsDataURL(file);
-};
-</script>
+<!-- These MUST be modules -->
+<script type="module" src="./lib/supabaseClient.js"></script>
+<script type="module" src="./api/upload.js"></script>
 
 </body>
 </html>
