@@ -1,180 +1,123 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Upload Report — AMI Health</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Report — AMI Health</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-  <style>
-    body {
-      margin: 0;
-      padding: 40px;
-      background: #040414;
-      color: #e6eef8;
-      font-family: Inter, system-ui, sans-serif;
-    }
+  <body>
+    <script src="lib/supabaseClient.js"></script>
 
-    .card {
-      max-width: 600px;
-      margin: auto;
-      background: #0b1020;
-      padding: 28px;
-      border-radius: 14px;
-    }
+    <div class="container">
+      <div id="userStatus" class="user-status">Checking login...</div>
 
-    input, select, button {
-      width: 100%;
-      margin-top: 10px;
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      background: #11182d;
-      color: white;
-      font-size: 15px;
-    }
+      <div class="card">
+        <h2>Upload Report</h2>
 
-    button {
-      background: linear-gradient(90deg, #00e0b8, #00b3ff);
-      color: #001319;
-      font-weight: bold;
-      cursor: pointer;
-    }
+        <form id="uploadForm">
+          <label>File</label>
+          <input type="file" id="fileInput" name="file" required />
 
-    label {
-      margin-top: 14px;
-      display: block;
-      color: #9ba8c7;
-      font-size: 14px;
-    }
+          <label>Title (optional)</label>
+          <input type="text" id="title" name="title" placeholder="e.g. CBC — Z. Taljaard" />
 
-    .error {
-      margin-top: 20px;
-      color: #ff4b4b;
-      white-space: pre-line;
-    }
-  </style>
-</head>
+          <label>Patient name (optional)</label>
+          <input type="text" id="name" name="name" placeholder="Optional" />
 
-<body>
-  <div class="card">
-    <h2>Upload Report</h2>
+          <label>Age (optional)</label>
+          <input type="number" id="age" name="age" placeholder="Years" />
 
-    <div style="margin-bottom: 10px;">
-      Signed in as: <strong id="userEmail">…</strong>
-      <a href="#" id="logout" style="margin-left:10px;color:#00e0b8;">Logout</a>
+          <label>Sex (optional)</label>
+          <select id="sex" name="sex">
+            <option value="unknown">Unknown</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+
+          <button type="submit" id="uploadBtn">Upload & Queue AI</button>
+        </form>
+
+        <div id="statusMessage" class="status"></div>
+      </div>
     </div>
 
-    <label>File</label>
-    <input type="file" id="fileInput" />
+    <script>
+      // =====================================================
+      // LOAD USER
+      // =====================================================
+      async function loadUser() {
+        const { data } = await supabase.auth.getUser();
+        const userStatus = document.getElementById("userStatus");
 
-    <label>Title (optional)</label>
-    <input type="text" id="titleInput" placeholder="e.g. CBC — Z. Taljaard" />
+        if (!data.user) {
+          userStatus.innerHTML =
+            `<span class="error">❌ Not logged in.</span>`;
+          return null;
+        }
 
-    <label>Patient name (optional)</label>
-    <input type="text" id="patientInput" />
+        userStatus.innerHTML = `Signed in as: <strong>${data.user.email}</strong> 
+                                <a id="logoutBtn" href="#" style="margin-left:10px;">Logout</a>`;
 
-    <label>Age (optional)</label>
-    <input type="number" id="ageInput" />
+        document.getElementById("logoutBtn").onclick = async () => {
+          await supabase.auth.signOut();
+          window.location.href = "/login.html";
+        };
 
-    <label>Sex (optional)</label>
-    <select id="sexInput">
-      <option value="Unknown">Unknown</option>
-      <option value="Male">Male</option>
-      <option value="Female">Female</option>
-    </select>
-
-    <button id="uploadBtn">Upload & Queue AI</button>
-
-    <div id="errorBox" class="error"></div>
-  </div>
-
-  <script src="./lib/supabaseClient.js"></script>
-
-  <script>
-    // ------------------------------
-    // 1️⃣ Load Supabase session
-    // ------------------------------
-    const userEmailBox = document.getElementById("userEmail");
-    const errorBox = document.getElementById("errorBox");
-    const logoutBtn = document.getElementById("logout");
-
-    let session = null;
-
-    async function loadUser() {
-      const { data } = await supabase.auth.getSession();
-      session = data.session;
-
-      if (!session) {
-        userEmailBox.textContent = "Not logged in";
-        return;
+        return data.user;
       }
 
-      userEmailBox.textContent = session.user.email;
-    }
+      let currentUser = null;
 
-    loadUser();
+      loadUser().then(u => { currentUser = u; });
 
-    // logout
-    logoutBtn.onclick = async () => {
-      await supabase.auth.signOut();
-      location.href = "/login";
-    };
+      // =====================================================
+      // UPLOAD HANDLER
+      // =====================================================
+      document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const status = document.getElementById("statusMessage");
 
-    // ------------------------------
-    // 2️⃣ Upload Handler
-    // ------------------------------
-    document.getElementById("uploadBtn").onclick = async () => {
-      errorBox.textContent = "";
+        if (!currentUser) {
+          status.innerHTML = `<span class="error">❌ You must be logged in.</span>`;
+          return;
+        }
 
-      if (!session) {
-        errorBox.textContent = "❌ Not logged in.";
-        return;
-      }
+        const fileInput = document.getElementById("fileInput");
+        if (!fileInput.files.length) {
+          status.innerHTML = `<span class="error">Please select a file.</span>`;
+          return;
+        }
 
-      const file = document.getElementById("fileInput").files[0];
-      if (!file) {
-        errorBox.textContent = "❌ Please select a file.";
-        return;
-      }
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        formData.append("email", currentUser.email);
+        formData.append("title", document.getElementById("title").value || "");
+        formData.append("name", document.getElementById("name").value || "");
+        formData.append("age", document.getElementById("age").value || "");
+        formData.append("sex", document.getElementById("sex").value || "");
 
-      const form = new FormData();
-      form.append("file", file);
-      form.append("email", session.user.email);
-      form.append("title", document.getElementById("titleInput").value);
-      form.append("name", document.getElementById("patientInput").value);
-      form.append("age", document.getElementById("ageInput").value);
-      form.append("sex", document.getElementById("sexInput").value);
+        status.innerHTML = `Uploading...`;
 
-      try {
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: form,
-        });
-
-        const text = await response.text();
-
-        // check if valid JSON
-        let json;
         try {
-          json = JSON.parse(text);
-        } catch {
-          errorBox.textContent =
-            "❌ Server returned non-JSON:\n" + text.substring(0, 200);
-          return;
-        }
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-        if (!response.ok) {
-          errorBox.textContent = "❌ Server error:\n" + JSON.stringify(json, null, 2);
-          return;
-        }
+          const result = await response.json().catch(() => null);
 
-        // success
-        errorBox.style.color = "#00e0b8";
-        errorBox.textContent = "✅ Uploaded! Report ID: " + json.id;
-      } catch (err) {
-        errorBox.textContent = "❌ Error:\n" + err.message;
-      }
-    };
-  </script>
-</body>
+          if (!response.ok) {
+            status.innerHTML = `<span class="error">❌ Upload failed: ${result?.error || "Server error"}</span>`;
+            return;
+          }
+
+          status.innerHTML = `<span class="success">✅ Upload complete. AI queued.</span>`;
+        } catch (err) {
+          status.innerHTML = `<span class="error">❌ Upload crashed: ${err}</span>`;
+        }
+      });
+    </script>
+  </body>
 </html>
