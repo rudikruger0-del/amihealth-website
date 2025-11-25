@@ -6,127 +6,246 @@
   <title>Upload Report — AMI Health</title>
 
   <style>
+    :root {
+      --bg: #020314;
+      --card: #080e23;
+      --muted: #8891a8;
+      --accent: #00e0b8;
+      --accent2: #00b3ff;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: Inter, system-ui;
-      background: #020214;
-      color: white;
-      padding: 30px;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #0a1840, #020314 55%, #000 100%);
+      color: #e8f2ff;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 16px 40px;
     }
-    .wrap { max-width: 650px; margin: auto; }
+
+    .shell {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .top-bar strong {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .top-bar a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
     .card {
-      background: rgba(255,255,255,0.05);
-      padding: 28px;
-      border-radius: 12px;
-      margin-top: 20px;
+      background: radial-gradient(circle at top left, #111b3b, #050816 55%);
+      border-radius: var(--radius);
+      padding: 26px 26px 24px;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
-    input, select {
-      width: 100%; padding: 12px;
-      margin-top: 8px; border-radius: 8px;
-      background: #0f1529; border: none; color: white;
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 24px;
+      text-align: left;
+      letter-spacing: 0.03em;
     }
-    button {
-      width: 100%; margin-top: 22px; padding: 14px;
-      border-radius: 10px; border: none;
-      background: linear-gradient(90deg,#00e0b8,#00b3ff);
-      color: black; font-weight: 700; font-size: 16px;
+
+    .subtitle {
+      margin: 0 0 22px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .field small {
+      font-size: 11px;
+      color: var(--muted);
+      opacity: 0.85;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(3, 9, 30, 0.9);
+      padding: 10px 14px;
+      color: #f5f7ff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease,
+        background 0.15s ease;
+    }
+
+    input::placeholder {
+      color: rgba(162, 173, 200, 0.7);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(0, 224, 184, 0.4);
+      background: rgba(8, 16, 44, 0.95);
+    }
+
+    input[type="file"] {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(8, 16, 44, 0.9);
       cursor: pointer;
     }
-    #status { margin-top: 14px; font-size: 14px; }
+
+    button {
+      width: 100%;
+      margin-top: 10px;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background-image: linear-gradient(90deg, var(--accent), var(--accent2));
+      color: #001720;
+      box-shadow: 0 0 20px rgba(0, 208, 255, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.08s ease, box-shadow 0.08s ease,
+        filter 0.08s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+      box-shadow: 0 16px 40px rgba(0, 208, 255, 0.45);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 20px;
+      font-size: 13px;
+      white-space: pre-wrap;
+      line-height: 1.4;
+    }
+
+    .status.ok {
+      color: #9af7d7;
+    }
+
+    .status.err {
+      color: #ffb5c0;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding-top: 18px;
+      }
+      .card {
+        padding: 22px 18px 20px;
+      }
+    }
   </style>
 </head>
 <body>
-
-  <div class="wrap">
-
-    <div style="text-align:center; margin-bottom:10px;">
-      Signed in as: <strong id="userEmail"></strong>
-      <a href="#" id="logoutBtn" style="color:#00e0b8; margin-left:6px;">Logout</a>
+  <div class="shell">
+    <div class="top-bar">
+      <div>
+        Signed in as:
+        <strong id="userEmailText">—</strong>
+      </div>
+      <a href="#" id="logoutLink">Logout</a>
     </div>
 
     <div class="card">
-      <h2 style="text-align:center;">Upload Report</h2>
+      <h1>Upload Report</h1>
+      <p class="subtitle">
+        Upload a PDF or image report. AMI will queue it, extract CBC values,
+        and apply AI rules for interpretation.
+      </p>
 
-      <label>File</label>
-      <input type="file" id="fileInput" />
+      <div class="field">
+        <label for="fileInput">File</label>
+        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" />
+        <small>PDF / image. Stored securely in the private <code>reports</code> bucket.</small>
+      </div>
 
-      <label>Title</label>
-      <input type="text" id="title" placeholder="Optional" />
+      <div class="field">
+        <label for="titleInput">Title <small>(optional)</small></label>
+        <input
+          id="titleInput"
+          type="text"
+          placeholder="e.g. CBC — Z. Taljaard"
+        />
+      </div>
 
-      <label>Patient name</label>
-      <input type="text" id="pname" placeholder="Optional" />
+      <div class="field">
+        <label for="nameInput">Patient name <small>(optional)</small></label>
+        <input id="nameInput" type="text" placeholder="Optional" />
+      </div>
 
-      <label>Age</label>
-      <input type="number" id="age" placeholder="Optional" />
+      <div class="field">
+        <label for="ageInput">Age <small>(optional)</small></label>
+        <input id="ageInput" type="number" min="0" max="130" placeholder="Years" />
+      </div>
 
-      <label>Sex</label>
-      <select id="sex">
-        <option value="Unknown">Unknown</option>
-        <option value="Male">Male</option>
-        <option value="Female">Female</option>
-      </select>
+      <div class="field">
+        <label for="sexInput">Sex <small>(optional)</small></label>
+        <select id="sexInput">
+          <option value="Unknown">Unknown</option>
+          <option value="Female">Female</option>
+          <option value="Male">Male</option>
+        </select>
+      </div>
 
-      <button id="uploadBtn">Upload & Queue AI</button>
+      <button id="uploadBtn">
+        Upload &amp; Queue AI
+      </button>
 
-      <pre id="status"></pre>
+      <div class="status" id="statusArea"></div>
     </div>
   </div>
 
-  <!-- 🔥 Load Supabase Client Correctly -->
-  <script type="module">
-    import { supabase } from "./lib/supabaseClient.js";
-
-    const emailBox = document.getElementById("userEmail");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const uploadBtn = document.getElementById("uploadBtn");
-    const statusBox = document.getElementById("status");
-
-    // ✅ Load session
-    const session = await supabase.auth.getSession();
-    if (!session.data.session) {
-      window.location.href = "/login.html";
-    } else {
-      emailBox.textContent = session.data.session.user.email;
-    }
-
-    // ✅ Logout works
-    logoutBtn.onclick = async () => {
-      await supabase.auth.signOut();
-      window.location.href = "/login.html";
-    };
-
-    // ✅ Upload handler
-    uploadBtn.onclick = async () => {
-      const file = document.getElementById("fileInput").files[0];
-      if (!file) {
-        statusBox.textContent = "❌ No file selected.";
-        return;
-      }
-
-      statusBox.textContent = "Uploading...";
-
-      const form = new FormData();
-      form.append("file", file);
-      form.append("title", document.getElementById("title").value || "");
-      form.append("name", document.getElementById("pname").value || "");
-      form.append("age", document.getElementById("age").value || "");
-      form.append("sex", document.getElementById("sex").value || "");
-      form.append("email", session.data.session.user.email);
-
-      try {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: form
-        });
-
-        const json = await res.json();
-        statusBox.textContent = JSON.stringify(json, null, 2);
-
-      } catch (err) {
-        statusBox.textContent = "❌ Upload crashed:\n" + err;
-      }
-    };
-  </script>
-
+  <!-- Single module script that wires everything up -->
+  <script type="module" src="./upload-page.js"></script>
 </body>
 </html>
