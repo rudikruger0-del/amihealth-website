@@ -3,147 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AMI Clinician Login</title>
+  <title>Clinician Login — AMI</title>
 
   <style>
-    :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#98a0b3;
-      --accent:#00e0b8;
-      --radius:12px;
-    }
-
     body {
       margin:0;
-      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background:linear-gradient(180deg,#020214 0%, #07102a 100%);
-      color:#e6eef8;
+      font-family:Inter,system-ui;
+      background:#020214;
+      height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      height:100vh;
-      padding:16px;
-      -webkit-font-smoothing:antialiased;
+      color:white;
     }
-
     .card {
-      background:rgba(255,255,255,0.04);
-      padding:36px;
-      border-radius:var(--radius);
-      width:100%;
-      max-width:420px;
+      background:#0b1020cc;
+      padding:32px;
+      border-radius:12px;
+      width:400px;
       text-align:center;
-      box-shadow:0 6px 30px rgba(0,0,0,0.35);
-      backdrop-filter:blur(6px);
     }
-
-    .logo {
-      width:80px;
-      height:auto;
-      margin-bottom:12px;
-    }
-
-    h1 {
-      margin:0 0 18px;
-      font-size:24px;
-      font-weight:800;
-      color:#fff;
-    }
-
-    label {
-      display:block;
-      text-align:left;
-      margin-top:18px;
-      margin-bottom:4px;
-      font-size:14px;
-      color:var(--muted);
-      font-weight:600;
-    }
-
     input {
       width:100%;
       padding:12px;
-      border-radius:8px;
+      margin-top:12px;
       border:none;
-      background:#0f1529;
-      color:#fff;
-      font-size:15px;
+      border-radius:8px;
+      background:#111829;
+      color:white;
     }
-
     button {
-      width:100%;
       margin-top:24px;
+      width:100%;
       padding:14px;
-      background:linear-gradient(90deg,var(--accent),#00b3ff);
       border:none;
       border-radius:10px;
+      background:linear-gradient(90deg,#00e0b8,#00b3ff);
       font-size:16px;
       font-weight:700;
       cursor:pointer;
       color:#001319;
-    }
-
-    .help {
-      margin-top:16px;
-      font-size:14px;
-      color:var(--muted);
-    }
-
-    .help a {
-      color:var(--accent);
-      text-decoration:none;
-      font-weight:600;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="card">
+<div class="card">
+  <h1>Clinician Login</h1>
 
-    <img src="logo.png" class="logo" alt="AMI Logo">
+  <input id="email" type="email" placeholder="you@hospital.co.za">
+  <input id="password" type="password" placeholder="••••••••">
 
-    <h1>Clinician Login</h1>
+  <button id="loginBtn">Login</button>
+</div>
 
-    <label>Email</label>
-    <input type="email" id="email" placeholder="you@hospital.co.za">
+<script type="module">
+  import { supabase } from "./lib/supabaseClient.js";
 
-    <label>Password</label>
-    <input type="password" id="password" placeholder="••••••••">
+  document.getElementById("loginBtn").onclick = async () => {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
 
-    <button id="loginBtn" type="button">Login</button>
+    if (!email || !password) {
+      alert("Enter email + password");
+      return;
+    }
 
-    <div class="help">
-      Need access? Email <a href="mailto:info@amihealth.co.za">info@amihealth.co.za</a>
-    </div>
-  </div>
-
-  <script type="module">
-    import { supabase } from "./lib/supabaseClient.js";
-
-    document.getElementById("loginBtn").addEventListener("click", async () => {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
-
-      if (!email || !password) {
-        alert("Please enter both email and password.");
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        alert("Login failed: " + error.message);
-        return;
-      }
-
-      window.location.href = "/dashboard.html";
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
-  </script>
+
+    if (error) {
+      alert("Login failed: " + error.message);
+      return;
+    }
+
+    window.location.href = "/dashboard.html";
+  };
+</script>
 
 </body>
 </html>
