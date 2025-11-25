@@ -1,231 +1,120 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AMI — Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AMI Clinician Login</title>
 
-  <style>
-    :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#98a0b3;
-      --accent:#00e0b8;
-    }
+  <style>
+    :root {
+      --bg:#030414;
+      --card:#0b1020;
+      --muted:#98a0b3;
+      --accent:#00e0b8;
+      --radius:12px;
+    }
 
-    *{box-sizing:border-box}
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, sans-serif;
-      background: radial-gradient(circle at top, #071a33, #02030f);
-      color: #eaf6ff;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 16px;
-    }
+    body {
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;
+      background:linear-gradient(180deg,#020214 0%, #07102a 100%);
+      color:#e6eef8;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      -webkit-font-smoothing:antialiased;
+      padding:16px;
+    }
 
-    .card {
-      width: 100%;
-      max-width: 380px;
-      background: rgba(11,16,32,0.96);
-      padding: 32px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.06);
-      box-shadow: 0 18px 50px rgba(0,0,0,0.6);
-      backdrop-filter: blur(14px);
-      animation: fadeIn 0.6s ease-out;
-    }
+    .card {
+      background:rgba(255,255,255,0.03);
+      padding:32px;
+      border-radius:var(--radius);
+      width:100%;
+      max-width:420px;
+      text-align:center;
+      box-shadow:0 6px 30px rgba(0,0,0,0.3);
+    }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .logo {
+      width:80px;
+      margin-bottom:12px;
+    }
 
-    .logo {
-      display: block;
-      margin: 0 auto 16px;
-      width: 72px;
-      filter: drop-shadow(0 0 10px rgba(0,255,220,0.3));
-    }
+    h1 {
+      font-size:24px;
+      margin:0 0 16px;
+      font-weight:800;
+      color:#fff;
+    }
 
-    h2 {
-      text-align: center;
-      margin: 0 0 8px;
-      font-weight: 700;
-      letter-spacing: .5px;
-    }
+    label {
+      display:block;
+      margin-top:16px;
+      text-align:left;
+      font-size:14px;
+      color:var(--muted);
+      font-weight:600;
+    }
 
-    p.lead {
-      text-align: center;
-      color: var(--muted);
-      margin-bottom: 20px;
-      font-size: 14px;
-    }
+    input {
+      width:100%;
+      margin-top:6px;
+      padding:12px;
+      border-radius:8px;
+      border:none;
+      background:#0f1529;
+      color:#fff;
+      font-size:15px;
+    }
 
-    label {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 6px;
-      display: block;
-    }
+    button {
+      margin-top:22px;
+      width:100%;
+      padding:14px;
+      background:linear-gradient(90deg,var(--accent),#00b3ff);
+      border:none;
+      border-radius:10px;
+      font-size:16px;
+      font-weight:700;
+      cursor:pointer;
+      color:#001319;
+    }
 
-    input {
-      width: 100%;
-      padding: 11px 12px;
-      border-radius: 9px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(5,10,25,0.95);
-      color: #fff;
-      font-size: 14px;
-      margin-bottom: 12px;
-      outline: none;
-    }
+    .help {
+      margin-top:16px;
+      font-size:14px;
+      color:var(--muted);
+    }
 
-    input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(0,224,184,0.5);
-    }
-
-    .btn {
-      width: 100%;
-      background: linear-gradient(90deg, #00e0b8, #00b7ff);
-      padding: 11px;
-      border: none;
-      border-radius: 999px;
-      font-size: 15px;
-      font-weight: 700;
-      color: #001821;
-      cursor: pointer;
-      margin-top: 6px;
-      box-shadow: 0 0 18px rgba(0, 255, 220, 0.3);
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-
-    #status {
-      text-align: center;
-      min-height: 20px;
-      font-size: 13px;
-      margin-top: 8px;
-      color: #ffb3b3;
-    }
-
-    .small {
-      margin-top: 18px;
-      text-align: center;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .small a {
-      color: #00e0ff;
-      text-decoration: none;
-    }
-  </style>
+    .help a {
+      color:var(--accent);
+      text-decoration:none;
+      font-weight:600;
+    }
+  </style>
 </head>
-
 <body>
 
-  <div class="card">
-    <img src="/logo.png" class="logo" alt="AMI Logo" />
+  <div class="card">
+    <img src="/logo.png" class="logo">
+    <h1>AMI Clinician Portal</h1>
 
-    <h2>AMI Clinician Portal</h2>
-    <p class="lead">Secure access for medical professionals</p>
+    <label>Email</label>
+    <input type="email" id="email" placeholder="you@hospital.co.za">
 
-    <label for="email">Email</label>
-    <input id="email" type="email" placeholder="you@hospital.co.za" />
+    <label>Password</label>
+    <input type="password" id="password">
 
-    <label for="password">Password</label>
-    <input id="password" type="password" placeholder="••••••••" />
+    <button id="loginBtn">Login</button>
 
-    <button id="loginBtn" class="btn">Login</button>
+    <div class="help">
+      Need access? Contact <a href="mailto:info@amihealth.co.za">info@amihealth.co.za</a>
+    </div>
+  </div>
 
-    <div id="status"></div>
-
-    <div class="small">
-      Need access? Contact
-      <a href="mailto:info@amihealth.co.za">info@amihealth.co.za</a>
-    </div>
-  </div>
-
-<script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
-  const SUPA_URL = "https://tbyttsfztuudyqbrkonm.supabase.co";
-  const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieXR0c2Z6dHV1ZHlxYnJrb25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0MzA1MzgsImV4cCI6MjA3OTAwNjUzOH0.7T0S4_kkoWosdbmjlwtfSYzBcyipcPg1Fm8kIMa43uo";
-
-  const supabase = createClient(SUPA_URL, SUPA_ANON);
-  const statusEl = document.getElementById("status");
-  const loginBtn = document.getElementById("loginBtn");
-
-  // Handle magic link / auth redirect (if you ever use it)
-  const hash = window.location.hash;
-  if (hash.includes("access_token")) {
-    (async () => {
-      const params = new URLSearchParams(hash.substring(1));
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-
-      if (access_token) {
-        const { data, error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token,
-        });
-
-        if (!error && data?.user?.email) {
-          localStorage.setItem("user_email", data.user.email);
-          window.location.href = "/dashboard.html";
-        }
-      }
-    })();
-  }
-
-  loginBtn.onclick = async () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-
-    if (!email || !password) {
-      statusEl.style.color = "#ff8a8a";
-      statusEl.textContent = "Please enter both fields";
-      return;
-    }
-
-    loginBtn.disabled = true;
-    statusEl.style.color = "#ffe29e";
-    statusEl.textContent = "Logging in...";
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error(error);
-      statusEl.style.color = "#ff8a8a";
-      statusEl.textContent = "Invalid email or password";
-      loginBtn.disabled = false;
-      return;
-    }
-
-    localStorage.setItem("user_email", email);
-    statusEl.style.color = "#8affc1";
-    statusEl.textContent = "Success — redirecting...";
-
-    setTimeout(() => {
-      window.location.href = "/dashboard.html";
-    }, 600);
-  };
-
-  // Enter key submits
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") loginBtn.click();
-  });
-</script>
-
+  <script src="./lib/supabaseClient.js"></script>
+  <script src="./api/login.js"></script>
 </body>
 </html>
