@@ -6,213 +6,88 @@
   <title>Upload Report — AMI Health</title>
 
   <style>
-    :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#98a0b3;
-      --accent:#00e0b8;
-      --radius:12px;
-    }
-
-    body {
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;
-      background:linear-gradient(180deg,#020214 0%, #07102a 100%);
-      color:#e6eef8;
-      padding:40px 16px;
-    }
-
-    .wrap {
-      max-width:700px;
-      margin:0 auto;
-    }
-
-    .card {
-      background:rgba(255,255,255,0.03);
-      padding:28px;
-      border-radius:var(--radius);
-      box-shadow:0 6px 30px rgba(0,0,0,0.35);
-    }
-
-    h1 {
-      margin:0 0 18px;
-      font-size:28px;
-      color:#fff;
-      font-weight:800;
-      text-align:center;
-    }
-
-    label {
-      display:block;
-      margin-top:18px;
-      font-size:14px;
-      color:var(--muted);
-      font-weight:600;
-    }
-
-    input, select {
-      width:100%;
-      margin-top:6px;
-      padding:10px;
-      border-radius:8px;
-      border:none;
-      background:#0f1529;
-      color:#fff;
-      font-size:15px;
-    }
-
-    button {
-      margin-top:22px;
-      width:100%;
-      padding:14px;
-      background:linear-gradient(90deg,var(--accent),#00b3ff);
-      border:none;
-      border-radius:10px;
-      font-size:16px;
-      font-weight:700;
-      cursor:pointer;
-      color:#001319;
-    }
-
-    .user-bar {
-      font-size:14px;
-      color:var(--muted);
-      margin-bottom:18px;
-      text-align:center;
-    }
-
-    .user-bar a {
-      color:var(--accent);
-      text-decoration:none;
-      font-weight:600;
-      margin-left:8px;
-      cursor:pointer;
-    }
-
-    .status {
-      margin-top:16px;
-      font-size:14px;
-      white-space:pre-wrap;
-      line-height:1.5;
-      color:#8ee6d5;
-    }
+    body { font-family: Inter, sans-serif; background:#020314; color:white; padding:40px; }
+    .card { max-width:600px; margin:auto; background:#0b1020; padding:30px; border-radius:12px; }
+    label { display:block; margin-top:18px; opacity:.7; font-size:14px; }
+    input, select { width:100%; padding:10px; margin-top:6px; border-radius:8px; border:none; background:#0f1529; color:white; }
+    button { width:100%; margin-top:25px; padding:14px; border:none; border-radius:10px; background:#00e0b8; font-weight:700; }
+    #status { margin-top:20px; white-space:pre-wrap; }
   </style>
 </head>
 <body>
 
-  <div class="wrap">
+<div class="card">
+  <h1>Upload Report</h1>
 
-    <div class="user-bar">
-      Signed in as: <strong id="userEmail"></strong>
-      <a id="logoutBtn">Logout</a>
-    </div>
+  <label>File</label>
+  <input type="file" id="fileInput">
 
-    <div class="card">
-      <h1>Upload Scan or Lab Report</h1>
+  <label>Title</label>
+  <input type="text" id="title">
 
-      <label>Report file(s)</label>
-      <input type="file" id="fileInput">
+  <label>Patient name</label>
+  <input type="text" id="name">
 
-      <label>Report title (optional)</label>
-      <input type="text" id="reportTitle" placeholder="e.g. CBC — Z. Taljaard">
+  <label>Age</label>
+  <input type="number" id="age">
 
-      <label>Patient name (optional)</label>
-      <input type="text" id="patientName" placeholder="Optional">
+  <label>Sex</label>
+  <select id="sex">
+    <option value="Unknown">Unknown</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+  </select>
 
-      <label>Age</label>
-      <input type="number" id="ageInput" placeholder="Year">
+  <button id="uploadBtn">Upload & Queue AI</button>
 
-      <label>Sex</label>
-      <select id="sexInput">
-        <option value="Unknown">Unknown</option>
-        <option value="Male">Male</option>
-        <option value="Female">Female</option>
-      </select>
+  <div id="status"></div>
+</div>
 
-      <button id="uploadBtn">Upload & Queue AI</button>
 
-      <div class="status" id="status"></div>
-    </div>
-  </div>
+<script src="./lib/supabaseClient.js"></script>
 
-  <!-- IMPORTANT: module mode -->
-  <script type="module">
-    import { supabase } from "./lib/supabaseClient.js";
+<script>
+document.getElementById("uploadBtn").onclick = async () => {
+  const status = document.getElementById("status");
+  const file = document.getElementById("fileInput").files[0];
 
-    // -------------------------------------------------------------------
-    // 1️⃣ CHECK SESSION
-    // -------------------------------------------------------------------
-    const { data: { session } } = await supabase.auth.getSession();
+  if (!file) {
+    status.textContent = "No file selected.";
+    return;
+  }
 
-    if (!session) {
-      window.location.href = "/login.html";
-    }
+  status.textContent = "Reading file...";
 
-    const email = session.user.email;
-    document.getElementById("userEmail").textContent = email;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64 = reader.result.split(",")[1];
 
-    // -------------------------------------------------------------------
-    // 2️⃣ LOGOUT
-    // -------------------------------------------------------------------
-    document.getElementById("logoutBtn").onclick = async () => {
-      await supabase.auth.signOut();
-      window.location.href = "/login.html";
+    const payload = {
+      email: localStorage.getItem("email"),
+      title: document.getElementById("title").value || "Untitled",
+      name: document.getElementById("name").value || null,
+      age: document.getElementById("age").value || null,
+      sex: document.getElementById("sex").value,
+      fileName: file.name,
+      fileContent: base64
     };
 
-    // -------------------------------------------------------------------
-    // 3️⃣ UPLOAD HANDLER
-    // -------------------------------------------------------------------
-    document.getElementById("uploadBtn").onclick = async () => {
-      const statusEl = document.getElementById("status");
-      const fileInput = document.getElementById("fileInput");
+    status.textContent = "Uploading to server...";
 
-      const file = fileInput.files[0];
-      if (!file) {
-        alert("Please select a file.");
-        return;
-      }
+    const resp = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-      statusEl.textContent = "Uploading file...";
+    const json = await resp.json();
 
-      const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
+    status.textContent = JSON.stringify(json, null, 2);
+  };
 
-      // Upload to Supabase Storage
-      const { error: uploadErr } = await supabase.storage
-        .from("reports")
-        .upload(filePath, file);
-
-      if (uploadErr) {
-        statusEl.textContent = "Upload failed.\n" + uploadErr.message;
-        return;
-      }
-
-      statusEl.textContent = "Saving report...";
-
-      // Call Vercel backend route
-      const resp = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          files: [filePath],
-          title: document.getElementById("reportTitle").value,
-          name: document.getElementById("patientName").value,
-          age: document.getElementById("ageInput").value,
-          sex: document.getElementById("sexInput").value,
-        }),
-      });
-
-      const json = await resp.json();
-      console.log("Server response:", json);
-
-      if (!resp.ok) {
-        statusEl.textContent = "Server error:\n" + JSON.stringify(json, null, 2);
-        return;
-      }
-
-      statusEl.textContent = "✅ Upload completed.\nAI is processing your report.";
-    };
-  </script>
+  reader.readAsDataURL(file);
+};
+</script>
 
 </body>
 </html>
