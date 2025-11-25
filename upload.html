@@ -1,202 +1,125 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Upload Report</title>
+  <meta charset="utf-8">
+  <title>Upload Report — AMI</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
 
   <style>
     body {
-      font-family:Inter, system-ui, sans-serif;
       margin:0;
-      padding:0;
-      background:linear-gradient(180deg,#020214,#07102a);
-      color:#e6eef8;
+      background:#020214;
+      font-family:Inter,system-ui;
+      color:white;
+      padding:20px;
     }
-
-    .container {
-      max-width:600px;
-      margin:40px auto;
-      background:rgba(255,255,255,0.05);
+    .card {
+      max-width:650px;
+      margin:auto;
+      background:#0b1020cc;
       padding:30px;
       border-radius:12px;
-      box-shadow:0 0 25px rgba(0,0,0,0.4);
     }
-
-    h2 { margin-top:0; }
-
     input, select {
       width:100%;
       padding:12px;
-      margin-top:8px;
-      margin-bottom:18px;
-      background:#0f1529;
+      margin-top:10px;
       border:none;
       border-radius:8px;
+      background:#111829;
       color:white;
-      font-size:15px;
     }
-
     button {
       width:100%;
-      background:linear-gradient(90deg,#00e0b8,#00b3ff);
-      border:none;
       padding:14px;
+      margin-top:22px;
+      border:none;
       border-radius:10px;
+      background:linear-gradient(90deg,#00e0b8,#00b3ff);
+      font-size:16px;
       font-weight:700;
       cursor:pointer;
       color:#001319;
-      font-size:16px;
     }
-
-    .status {
-      margin-top:15px;
+    #status {
+      margin-top:16px;
       color:#ff6b6b;
-      font-size:14px;
       white-space:pre-wrap;
-    }
-
-    .topbar {
-      padding:14px;
-      text-align:center;
-      font-size:15px;
-    }
-
-    .logout {
-      color:#00e0b8;
-      cursor:pointer;
-      font-weight:700;
-      margin-left:6px;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="topbar">
-    Signed in as: <span id="userEmail">Checking...</span>
-    <span id="logoutBtn" class="logout">Logout</span>
-  </div>
+<div class="card">
+  <h2>Upload Report</h2>
 
-  <div class="container">
+  <div>Signed in as: <span id="userEmail">...</span></div>
 
-    <h2>Upload Report</h2>
+  <input type="file" id="fileInput">
 
-    <label>File</label>
-    <input type="file" id="fileInput" accept=".pdf,image/*">
+  <input type="text" id="title" placeholder="Title (optional)">
+  <input type="text" id="patientName" placeholder="Patient name (optional)">
+  <input type="number" id="age" placeholder="Age">
+  <select id="sex">
+    <option>Unknown</option>
+    <option>Male</option>
+    <option>Female</option>
+  </select>
 
-    <label>Title (optional)</label>
-    <input type="text" id="title" placeholder="e.g. CBC — Z. Taljaard">
+  <button id="uploadBtn">Upload & Queue AI</button>
+  <div id="status"></div>
+</div>
 
-    <label>Patient name (optional)</label>
-    <input type="text" id="patient">
+<script type="module">
+  import { supabase } from "./lib/supabaseClient.js";
 
-    <label>Age (optional)</label>
-    <input type="number" id="age" placeholder="Years">
+  // Load logged-in user
+  async function loadUser() {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      document.getElementById("status").innerText = "❌ Not logged in.";
+      return;
+    }
+    document.getElementById("userEmail").innerText = data.user.email;
+  }
+  loadUser();
 
-    <label>Sex (optional)</label>
-    <select id="sex">
-      <option value="Unknown">Unknown</option>
-      <option value="Male">Male</option>
-      <option value="Female">Female</option>
-    </select>
-
-    <button id="uploadBtn">Upload & Queue AI</button>
-
-    <div class="status" id="status"></div>
-  </div>
-
-  <!-- Supabase global client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
-
-  <script>
-    // Create global Supabase client
-    const supabase = window.supabase.createClient(
-      "https://tbtytstzfutudyqbkronn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJiYWNrbmQiLCJleHAiOjE5OTg4NjYwMDAsImlhdCI6MTY0ODg2NjAwMH0.MKXN1ndHysxsB8WS1bh1NvHUXGgM9Uch75H2fFxFmHQ"
-    );
-
-    const statusBox = document.getElementById("status");
-
-    async function loadUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        window.location.href = "/login.html";
-        return;
-      }
-
-      document.getElementById("userEmail").textContent = user.email;
+  document.getElementById("uploadBtn").onclick = async () => {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) {
+      alert("Select PDF or image");
+      return;
     }
 
-    loadUser();
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      alert("Not logged in");
+      return;
+    }
 
-    // Logout
-    document.getElementById("logoutBtn").onclick = async () => {
-      await supabase.auth.signOut();
-      window.location.href = "/login.html";
-    };
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("email", user.user.email);
+    fd.append("title", document.getElementById("title").value);
+    fd.append("name", document.getElementById("patientName").value);
+    fd.append("age", document.getElementById("age").value);
+    fd.append("sex", document.getElementById("sex").value);
 
-    // Upload
-    document.getElementById("uploadBtn").onclick = async () => {
-      statusBox.textContent = "";
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: fd
+    });
 
-      const file = document.getElementById("fileInput").files[0];
-      if (!file) {
-        statusBox.textContent = "❌ Please choose a file.";
-        return;
-      }
+    const out = await res.json();
+    if (!res.ok) {
+      document.getElementById("status").innerText = JSON.stringify(out, null, 2);
+      return;
+    }
 
-      const title = document.getElementById("title").value || "Untitled";
-      const patient = document.getElementById("patient").value || null;
-      const age = document.getElementById("age").value || null;
-      const sex = document.getElementById("sex").value;
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        statusBox.textContent = "❌ Not logged in.";
-        return;
-      }
-
-      statusBox.textContent = "Uploading to storage...";
-
-      const filePath = `${Date.now()}-${file.name}`;
-
-      // Upload PDF to bucket
-      const { error: uploadError } = await supabase.storage
-        .from("reports")
-        .upload(filePath, file);
-
-      if (uploadError) {
-        statusBox.textContent = "❌ Upload failed: " + uploadError.message;
-        return;
-      }
-
-      statusBox.textContent = "Saving metadata...";
-
-      // Insert DB row
-      const { data, error: insertError } = await supabase
-        .from("reports")
-        .insert({
-          email: user.email,
-          title,
-          file_path: filePath,
-          name: patient,
-          age: age ? parseInt(age) : null,
-          sex,
-          ai_status: "processing"
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        statusBox.textContent = "❌ DB error: " + insertError.message;
-        return;
-      }
-
-      statusBox.textContent = "✅ Upload complete. AI queued.";
-    };
-  </script>
+    document.getElementById("status").innerText = "✅ Uploaded!";
+  };
+</script>
 
 </body>
 </html>
