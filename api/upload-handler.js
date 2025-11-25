@@ -1,53 +1,58 @@
-document.getElementById("uploadBtn").addEventListener("click", async () => {
-  const status = document.getElementById("status");
-  status.textContent = "Uploading to server...";
-
+document.addEventListener("DOMContentLoaded", () => {
+  const uploadBtn = document.getElementById("uploadBtn");
   const fileInput = document.getElementById("fileInput");
-  const titleInput = document.getElementById("reportTitle");
-  const patientNameInput = document.getElementById("patientName");
-  const ageInput = document.getElementById("ageInput");
-  const sexInput = document.getElementById("sexInput");
+  const titleInput = document.getElementById("title");
+  const nameInput = document.getElementById("patientName");
+  const ageInput = document.getElementById("age");
+  const sexInput = document.getElementById("sex");
+  const status = document.getElementById("status");
+  const userEmail = localStorage.getItem("user_email");
 
-  const user = JSON.parse(localStorage.getItem("amihealth-auth-session"))?.user;
-  const email = user?.email;
-
-  if (!email) {
-    status.textContent = "Not logged in.";
+  if (!userEmail) {
+    window.location.href = "/login";
     return;
   }
 
-  if (!fileInput.files.length) {
-    status.textContent = "Please select a file.";
-    return;
-  }
+  document.getElementById("userEmail").textContent = userEmail;
 
-  const file = fileInput.files[0];
+  document.getElementById("logoutBtn").onclick = () => {
+    localStorage.removeItem("user_email");
+    window.location.href = "/login";
+  };
 
-  const formData = new FormData();
-  formData.append("email", email);
-  formData.append("title", titleInput.value);
-  formData.append("name", patientNameInput.value);
-  formData.append("age", ageInput.value);
-  formData.append("sex", sexInput.value);
-  formData.append("file", file);
-
-  try {
-    const resp = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    const json = await resp.json();
-
-    if (!resp.ok) {
-      status.textContent = "Server error:\n" + JSON.stringify(json, null, 2);
+  uploadBtn.onclick = async () => {
+    const file = fileInput.files[0];
+    if (!file) {
+      status.textContent = "Please select a file.";
       return;
     }
 
-    status.textContent = "Upload complete! Report ID: " + json.id;
+    status.textContent = "Uploading to server...";
 
-  } catch (e) {
-    console.error(e);
-    status.textContent = "Unexpected error: " + e.toString();
-  }
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("email", userEmail);
+    formData.append("title", titleInput.value || "");
+    formData.append("name", nameInput.value || "");
+    formData.append("age", ageInput.value || "");
+    formData.append("sex", sexInput.value || "Unknown");
+
+    try {
+      const resp = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok) {
+        status.textContent = "Server error: " + JSON.stringify(json, null, 2);
+        return;
+      }
+
+      status.textContent = "Uploaded! AI is processing your report.";
+    } catch (err) {
+      status.textContent = "Upload failed: " + err.message;
+    }
+  };
 });
