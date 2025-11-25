@@ -1,65 +1,75 @@
-// api/upload.js
-export const config = { runtime: "nodejs" };
-
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: { autoRefreshToken: false, persistSession: false },
-  }
-);
+// /api/upload.js
+import { supabase } from "../lib/supabaseClient.js";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   try {
-    // Read raw request body
+    // Read raw body (important on Vercel)
     let raw = "";
     await new Promise((resolve) => {
-      req.on("data", (chunk) => (raw += chunk));
+      req.on("data", (c) => (raw += c));
       req.on("end", resolve);
     });
 
-    const { email, title, file_path, name, age, sex } = JSON.parse(raw || "{}");
+    let body = {};
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      return res.status(400).json({ error: "Invalid JSON" });
+    }
 
-    if (!email || !file_path) {
+    const { email, title, name, age, sex, fileName, fileContent } = body;
+
+    if (!email || !fileName || !fileContent) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Insert the report row
-    const { data, error } = await supabase
+    const filePath = `${email}/${Date.now()}-${fileName}`;
+
+    // Convert base64 → Blob
+    const buffer = Buffer.from(fileContent, "base64");
+
+    // Upload to Supabase storage
+    const { error: uploadErr } = await supabase.storage
+      .from("reports")
+      .upload(filePath, buffer, {
+        contentType: "application/pdf",
+        upsert: false
+      });
+
+    if (uploadErr) {
+      console.error("Upload failed:", uploadErr);
+      return res.status(500).json({ error: "Upload failed" });
+    }
+
+    // Save DB row
+    const { data: row, error: dbErr } = await supabase
       .from("reports")
       .insert({
         email,
-        title: title || "Untitled Report",
-        file_path,
-        created_at: new Date().toISOString(),
+        title,
+        name,
+        age,
+        sex,
+        file_path: filePath,
         ai_status: "processing",
-        name: name || null,
-        age: age || null,
-        sex: sex || null,
+        created_at: new Date().toISOString()
       })
       .select()
       .single();
 
-    if (error) {
-      console.error("INSERT ERROR:", error);
+    if (dbErr) {
+      console.error("Insert failed:", dbErr);
       return res.status(500).json({ error: "Insert failed" });
     }
 
-    // Return success
     return res.status(200).json({
       success: true,
-      id: data.id,
-      message: "Report saved, AI will process next",
+      message: "File uploaded & report created",
+      reportId: row.id
     });
 
   } catch (err) {
     console.error("UPLOAD CRASH:", err);
-    return res.status(500).json({ error: "Server crash" });
+    return res.status(500).json({ error: "Server crashed" });
   }
 }
