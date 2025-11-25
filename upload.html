@@ -1,123 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Upload Report — AMI Health</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload Report</title>
+  <link rel="stylesheet" href="ami.css">
+</head>
 
-  <body>
-    <script src="lib/supabaseClient.js"></script>
+<body>
 
-    <div class="container">
-      <div id="userStatus" class="user-status">Checking login...</div>
+<script src="/lib/supabaseClient.js"></script>
 
-      <div class="card">
-        <h2>Upload Report</h2>
+<div id="container" style="max-width: 600px; margin: 40px auto; padding: 20px; color: white;">
+  <h2>Upload Report</h2>
+  <div id="userDisplay">Checking login...</div>
 
-        <form id="uploadForm">
-          <label>File</label>
-          <input type="file" id="fileInput" name="file" required />
+  <form id="uploadForm">
+    <label>File</label><br/>
+    <input type="file" id="fileInput" name="file" accept="application/pdf,image/*" required /><br/><br/>
 
-          <label>Title (optional)</label>
-          <input type="text" id="title" name="title" placeholder="e.g. CBC — Z. Taljaard" />
+    <label>Title (optional)</label>
+    <input type="text" id="title" placeholder="e.g. CBC — Z. Taljaard" />
 
-          <label>Patient name (optional)</label>
-          <input type="text" id="name" name="name" placeholder="Optional" />
+    <label>Patient name (optional)</label>
+    <input type="text" id="patientName" placeholder="Optional" />
 
-          <label>Age (optional)</label>
-          <input type="number" id="age" name="age" placeholder="Years" />
+    <label>Age (optional)</label>
+    <input type="number" id="age" placeholder="Years" />
 
-          <label>Sex (optional)</label>
-          <select id="sex" name="sex">
-            <option value="unknown">Unknown</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
+    <label>Sex (optional)</label>
+    <select id="sex">
+      <option value="Unknown">Unknown</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
 
-          <button type="submit" id="uploadBtn">Upload & Queue AI</button>
-        </form>
+    <br/><br/>
+    <button type="submit" style="width:100%; padding:15px; background:#00ddff; border-radius:8px; font-size:16px; border:none; cursor:pointer;">
+      Upload & Queue AI
+    </button>
+  </form>
 
-        <div id="statusMessage" class="status"></div>
-      </div>
-    </div>
+  <p id="status" style="margin-top:20px; color:#ff5a5a;"></p>
+</div>
 
-    <script>
-      // =====================================================
-      // LOAD USER
-      // =====================================================
-      async function loadUser() {
-        const { data } = await supabase.auth.getUser();
-        const userStatus = document.getElementById("userStatus");
 
-        if (!data.user) {
-          userStatus.innerHTML =
-            `<span class="error">❌ Not logged in.</span>`;
-          return null;
-        }
+<script>
+let currentUser = null;
 
-        userStatus.innerHTML = `Signed in as: <strong>${data.user.email}</strong> 
-                                <a id="logoutBtn" href="#" style="margin-left:10px;">Logout</a>`;
+// -------------------------
+// LOAD USER SESSION
+// -------------------------
+async function loadUser() {
+  await new Promise(resolve => setTimeout(resolve, 600)); // wait for supabase to load
 
-        document.getElementById("logoutBtn").onclick = async () => {
-          await supabase.auth.signOut();
-          window.location.href = "/login.html";
-        };
+  if (!window.supabase) {
+    document.getElementById("userDisplay").innerText = "❌ Supabase failed to load.";
+    return;
+  }
 
-        return data.user;
-      }
+  const { data: { user } } = await supabase.auth.getUser();
 
-      let currentUser = null;
+  if (!user) {
+    document.getElementById("userDisplay").innerHTML = "Not logged in.";
+    currentUser = null;
+    return;
+  }
 
-      loadUser().then(u => { currentUser = u; });
+  currentUser = user;
+  document.getElementById("userDisplay").innerHTML = `
+      Signed in as: ${user.email} 
+      <a href="#" id="logoutBtn" style="color:#00ddff;">Logout</a>
+  `;
 
-      // =====================================================
-      // UPLOAD HANDLER
-      // =====================================================
-      document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const status = document.getElementById("statusMessage");
+  document.getElementById("logoutBtn").onclick = async () => {
+    await supabase.auth.signOut();
+    location.reload();
+  };
+}
 
-        if (!currentUser) {
-          status.innerHTML = `<span class="error">❌ You must be logged in.</span>`;
-          return;
-        }
+loadUser();
 
-        const fileInput = document.getElementById("fileInput");
-        if (!fileInput.files.length) {
-          status.innerHTML = `<span class="error">Please select a file.</span>`;
-          return;
-        }
 
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
-        formData.append("email", currentUser.email);
-        formData.append("title", document.getElementById("title").value || "");
-        formData.append("name", document.getElementById("name").value || "");
-        formData.append("age", document.getElementById("age").value || "");
-        formData.append("sex", document.getElementById("sex").value || "");
+// -------------------------
+// HANDLE UPLOAD
+// -------------------------
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-        status.innerHTML = `Uploading...`;
+  if (!currentUser) {
+    document.getElementById("status").innerText = "❌ Not logged in.";
+    return;
+  }
 
-        try {
-          const response = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) {
+    document.getElementById("status").innerText = "❌ Please select a file.";
+    return;
+  }
 
-          const result = await response.json().catch(() => null);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("email", currentUser.email);
+  formData.append("title", document.getElementById("title").value);
+  formData.append("name", document.getElementById("patientName").value);
+  formData.append("age", document.getElementById("age").value);
+  formData.append("sex", document.getElementById("sex").value);
 
-          if (!response.ok) {
-            status.innerHTML = `<span class="error">❌ Upload failed: ${result?.error || "Server error"}</span>`;
-            return;
-          }
+  document.getElementById("status").innerText = "Uploading...";
 
-          status.innerHTML = `<span class="success">✅ Upload complete. AI queued.</span>`;
-        } catch (err) {
-          status.innerHTML = `<span class="error">❌ Upload crashed: ${err}</span>`;
-        }
-      });
-    </script>
-  </body>
+  try {
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Server error");
+    }
+
+    document.getElementById("status").style.color = "#00ff8a";
+    document.getElementById("status").innerText = "✅ Upload successful! AI queued.";
+
+  } catch (err) {
+    document.getElementById("status").style.color = "#ff5a5a";
+    document.getElementById("status").innerText = "❌ Upload failed: " + err.message;
+  }
+});
+</script>
+
+</body>
 </html>
