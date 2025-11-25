@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AMI Clinician Login</title>
 
   <style>
@@ -16,43 +16,46 @@
 
     body {
       margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;
+      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       background:linear-gradient(180deg,#020214 0%, #07102a 100%);
       color:#e6eef8;
       display:flex;
-      justify-content:center;
       align-items:center;
+      justify-content:center;
       height:100vh;
-      -webkit-font-smoothing:antialiased;
       padding:16px;
+      -webkit-font-smoothing:antialiased;
     }
 
     .card {
-      background:rgba(255,255,255,0.03);
-      padding:32px;
+      background:rgba(255,255,255,0.04);
+      padding:36px;
       border-radius:var(--radius);
       width:100%;
       max-width:420px;
       text-align:center;
-      box-shadow:0 6px 30px rgba(0,0,0,0.3);
+      box-shadow:0 6px 30px rgba(0,0,0,0.35);
+      backdrop-filter:blur(6px);
     }
 
     .logo {
       width:80px;
+      height:auto;
       margin-bottom:12px;
     }
 
     h1 {
+      margin:0 0 18px;
       font-size:24px;
-      margin:0 0 16px;
       font-weight:800;
       color:#fff;
     }
 
     label {
       display:block;
-      margin-top:16px;
       text-align:left;
+      margin-top:18px;
+      margin-bottom:4px;
       font-size:14px;
       color:var(--muted);
       font-weight:600;
@@ -60,7 +63,6 @@
 
     input {
       width:100%;
-      margin-top:6px;
       padding:12px;
       border-radius:8px;
       border:none;
@@ -70,8 +72,8 @@
     }
 
     button {
-      margin-top:22px;
       width:100%;
+      margin-top:24px;
       padding:14px;
       background:linear-gradient(90deg,var(--accent),#00b3ff);
       border:none;
@@ -95,26 +97,57 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="card">
-    <img src="/logo.png" class="logo">
-    <h1>AMI Clinician Portal</h1>
+
+    <img src="logo.png" class="logo" alt="AMI Logo">
+
+    <h1>Clinician Login</h1>
 
     <label>Email</label>
     <input type="email" id="email" placeholder="you@hospital.co.za">
 
     <label>Password</label>
-    <input type="password" id="password">
+    <input type="password" id="password" placeholder="••••••••">
 
-    <button id="loginBtn">Login</button>
+    <button id="loginBtn" type="button">Login</button>
 
     <div class="help">
-      Need access? Contact <a href="mailto:info@amihealth.co.za">info@amihealth.co.za</a>
+      Need access? Email <a href="mailto:info@amihealth.co.za">info@amihealth.co.za</a>
     </div>
   </div>
 
-  <script src="./lib/supabaseClient.js"></script>
-  <script src="./api/login.js"></script>
+  <!-- 🔥 Fully working Supabase login script -->
+  <script type="module">
+    import { supabase } from "./lib/supabaseClient.js";
+
+    const btn = document.getElementById("loginBtn");
+    btn.addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+
+      // Supabase login
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        alert("Login failed: " + error.message);
+        return;
+      }
+
+      // redirect to dashboard
+      window.location.href = "/dashboard.html";
+    });
+  </script>
+
 </body>
 </html>
