@@ -1,14 +1,11 @@
-// api/upload.js
-
 export const config = {
   api: {
-    bodyParser: false, // Required for raw uploads
+    bodyParser: false,
   },
 };
 
 import { createClient } from "@supabase/supabase-js";
-import formidable from "formidable";
-import fs from "fs";
+import Busboy from "busboy";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -17,65 +14,80 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const form = formidable({ multiples: false });
+  try {
+    const busboy = Busboy({ headers: req.headers });
 
-  form.parse(req, async (err, fields, files) => {
-    try {
-      if (err) {
-        console.error("Form parse error:", err);
-        return res.status(500).json({ error: "Form parsing failed" });
-      }
+    let fileBuffer = null;
+    let filename = null;
+    const fields = {};
 
-      const file = files.file;
-      if (!file) return res.status(400).json({ error: "File missing" });
+    busboy.on("file", (_name, file, info) => {
+      filename = info.filename;
+      const chunks = [];
 
-      const buffer = fs.readFileSync(file.filepath);
-
-      const filePath = `${Date.now()}-${file.originalFilename}`;
-
-      // Upload to Supabase Storage
-      const { error: uploadErr } = await supabase.storage
-        .from("reports")
-        .upload(filePath, buffer, {
-          contentType: file.mimetype,
-        });
-
-      if (uploadErr) {
-        console.error("Supabase upload error:", uploadErr);
-        return res.status(500).json({ error: "Upload failed" });
-      }
-
-      // Insert DB row
-      const { data, error: insertErr } = await supabase
-        .from("reports")
-        .insert({
-          email: fields.email || null,
-          title: fields.title || "Untitled",
-          file_path: filePath,
-          name: fields.name || null,
-          age: fields.age ? parseInt(fields.age) : null,
-          sex: fields.sex || null,
-          ai_status: "processing",
-        })
-        .select()
-        .single();
-
-      if (insertErr) {
-        console.error("Insert failed:", insertErr);
-        return res.status(500).json({ error: "Insert failed" });
-      }
-
-      return res.status(200).json({
-        success: true,
-        id: data.id,
+      file.on("data", (chunk) => chunks.push(chunk));
+      file.on("end", () => {
+        fileBuffer = Buffer.concat(chunks);
       });
-    } catch (e) {
-      console.error("Final crash:", e);
-      return res.status(500).json({ error: "Server crashed" });
-    }
-  });
+    });
+
+    busboy.on("field", (name, value) => {
+      fields[name] = value;
+    });
+
+    busboy.on("finish", async () => {
+      try {
+        if (!fileBuffer || !filename) {
+          return res.status(400).json({ error: "No file received" });
+        }
+
+        const { email, title, patient, age, sex } = fields;
+
+        const safeTitle = title || "Untitled";
+        const filePath = `${Date.now()}-${filename}`;
+
+        // Upload file
+        const { error: storageError } = await supabase.storage
+          .from("reports")
+          .upload(filePath, fileBuffer, {
+            contentType: "application/pdf",
+            upsert: false,
+          });
+
+        if (storageError) {
+          return res.status(500).json({ error: "Storage upload failed", details: storageError });
+        }
+
+        // Insert into DB
+        const { data, error: dbError } = await supabase
+          .from("reports")
+          .insert({
+            email,
+            title: safeTitle,
+            file_path: filePath,
+            name: patient || null,
+            age: age ? parseInt(age) : null,
+            sex: sex || null,
+            ai_status: "processing",
+          })
+          .select()
+          .single();
+
+        if (dbError) {
+          return res.status(500).json({ error: "Database insert failed", details: dbError });
+        }
+
+        return res.status(200).json({ success: true, id: data.id });
+      } catch (err) {
+        return res.status(500).json({ error: "Upload handler crashed", details: err.message });
+      }
+    });
+
+    req.pipe(busboy);
+  } catch (error) {
+    return res.status(500).json({ error: "Fatal server error", details: error.message });
+  }
 }
