@@ -1,130 +1,66 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Upload Report — AMI Health</title>
 
   <style>
-    :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#98a0b3;
-      --accent:#00e0b8;
-      --radius:12px;
-    }
-
     body {
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;
-      background:linear-gradient(180deg,#020214 0%, #07102a 100%);
-      color:#e6eef8;
-      -webkit-font-smoothing:antialiased;
-      padding:40px 16px;
+      margin: 0;
+      font-family: Inter, system-ui;
+      background: #020214;
+      color: white;
+      padding: 30px;
     }
-
-    .wrap {
-      max-width:700px;
-      margin:0 auto;
-    }
-
+    .wrap { max-width: 650px; margin: auto; }
     .card {
-      background:rgba(255,255,255,0.03);
-      padding:28px;
-      border-radius:var(--radius);
-      box-shadow:0 6px 30px rgba(0,0,0,0.35);
+      background: rgba(255,255,255,0.05);
+      padding: 28px;
+      border-radius: 12px;
+      margin-top: 20px;
     }
-
-    h1 {
-      margin:0 0 18px;
-      font-size:28px;
-      color:#fff;
-      font-weight:800;
-      text-align:center;
-    }
-
-    label {
-      display:block;
-      margin-top:18px;
-      font-size:14px;
-      color:var(--muted);
-      font-weight:600;
-    }
-
     input, select {
-      width:100%;
-      margin-top:6px;
-      padding:10px;
-      border-radius:8px;
-      border:none;
-      background:#0f1529;
-      color:#fff;
-      font-size:15px;
+      width: 100%; padding: 12px;
+      margin-top: 8px; border-radius: 8px;
+      background: #0f1529; border: none; color: white;
     }
-
-    input[type="file"] { padding:0; }
-
     button {
-      margin-top:22px;
-      width:100%;
-      padding:14px;
-      background:linear-gradient(90deg,var(--accent),#00b3ff);
-      border:none;
-      border-radius:10px;
-      font-size:16px;
-      font-weight:700;
-      cursor:pointer;
-      color:#001319;
+      width: 100%; margin-top: 22px; padding: 14px;
+      border-radius: 10px; border: none;
+      background: linear-gradient(90deg,#00e0b8,#00b3ff);
+      color: black; font-weight: 700; font-size: 16px;
+      cursor: pointer;
     }
-
-    .user-bar {
-      font-size:14px;
-      color:var(--muted);
-      margin-bottom:18px;
-      text-align:center;
-    }
-
-    .user-bar a {
-      color:var(--accent);
-      text-decoration:none;
-      font-weight:600;
-      margin-left:8px;
-    }
-
-    .status {
-      margin-top:16px;
-      font-size:14px;
-      white-space:pre-wrap;
-      line-height:1.5;
-    }
+    #status { margin-top: 14px; font-size: 14px; }
   </style>
 </head>
 <body>
 
   <div class="wrap">
 
-    <div class="user-bar">
+    <div style="text-align:center; margin-bottom:10px;">
       Signed in as: <strong id="userEmail"></strong>
-      <a href="#" id="logoutBtn">Logout</a>
+      <a href="#" id="logoutBtn" style="color:#00e0b8; margin-left:6px;">Logout</a>
     </div>
 
     <div class="card">
-      <h1>Upload Report</h1>
+      <h2 style="text-align:center;">Upload Report</h2>
 
       <label>File</label>
-      <input type="file" id="fileInput">
+      <input type="file" id="fileInput" />
 
       <label>Title</label>
-      <input type="text" id="reportTitle" placeholder="Optional">
+      <input type="text" id="title" placeholder="Optional" />
 
       <label>Patient name</label>
-      <input type="text" id="patientName" placeholder="Optional">
+      <input type="text" id="pname" placeholder="Optional" />
 
       <label>Age</label>
-      <input type="number" id="ageInput" placeholder="Optional">
+      <input type="number" id="age" placeholder="Optional" />
 
       <label>Sex</label>
-      <select id="sexInput">
+      <select id="sex">
         <option value="Unknown">Unknown</option>
         <option value="Male">Male</option>
         <option value="Female">Female</option>
@@ -132,70 +68,64 @@
 
       <button id="uploadBtn">Upload & Queue AI</button>
 
-      <div class="status" id="status"></div>
+      <pre id="status"></pre>
     </div>
   </div>
 
-  <!-- SUPABASE CLIENT -->
-  <script src="./lib/supabaseClient.js"></script>
+  <!-- 🔥 Load Supabase Client Correctly -->
+  <script type="module">
+    import { supabase } from "./lib/supabaseClient.js";
 
-  <!-- WORKING UPLOAD SCRIPT -->
-  <script>
-    // Load logged-in user
-    const user = supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        window.location.href = "/login";
-        return;
-      }
-      const email = data.session.user.email;
-      document.getElementById("userEmail").textContent = email;
-    });
+    const emailBox = document.getElementById("userEmail");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const statusBox = document.getElementById("status");
 
-    // Logout
-    document.getElementById("logoutBtn").addEventListener("click", async () => {
+    // ✅ Load session
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      window.location.href = "/login.html";
+    } else {
+      emailBox.textContent = session.data.session.user.email;
+    }
+
+    // ✅ Logout works
+    logoutBtn.onclick = async () => {
       await supabase.auth.signOut();
-      window.location.href = "/login";
-    });
+      window.location.href = "/login.html";
+    };
 
-    // Upload Handler
-    document.getElementById("uploadBtn").addEventListener("click", async () => {
-      const fileInput = document.getElementById("fileInput");
-      const status = document.getElementById("status");
-
-      if (!fileInput.files.length) {
-        status.textContent = "Please select a file.";
+    // ✅ Upload handler
+    uploadBtn.onclick = async () => {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) {
+        statusBox.textContent = "❌ No file selected.";
         return;
       }
 
-      status.textContent = "Uploading...";
+      statusBox.textContent = "Uploading...";
 
-      const formData = new FormData();
-      formData.append("file", fileInput.files[0]);
-      formData.append("email", document.getElementById("userEmail").textContent);
-      formData.append("title", document.getElementById("reportTitle").value);
-      formData.append("name", document.getElementById("patientName").value);
-      formData.append("age", document.getElementById("ageInput").value);
-      formData.append("sex", document.getElementById("sexInput").value);
+      const form = new FormData();
+      form.append("file", file);
+      form.append("title", document.getElementById("title").value || "");
+      form.append("name", document.getElementById("pname").value || "");
+      form.append("age", document.getElementById("age").value || "");
+      form.append("sex", document.getElementById("sex").value || "");
+      form.append("email", session.data.session.user.email);
 
       try {
-        const response = await fetch("/api/upload", {
+        const res = await fetch("/api/upload", {
           method: "POST",
-          body: formData
+          body: form
         });
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          status.textContent = "Server error:\n" + JSON.stringify(result, null, 2);
-          return;
-        }
-
-        status.textContent = "Upload successful! Report ID: " + result.id;
+        const json = await res.json();
+        statusBox.textContent = JSON.stringify(json, null, 2);
 
       } catch (err) {
-        status.textContent = "Upload failed: " + err.message;
+        statusBox.textContent = "❌ Upload crashed:\n" + err;
       }
-    });
+    };
   </script>
 
 </body>
