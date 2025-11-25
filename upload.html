@@ -1,106 +1,202 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Upload Report</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script type="module" src="/lib/supabaseClient.js"></script>
+
+  <style>
+    body {
+      font-family:Inter, system-ui, sans-serif;
+      margin:0;
+      padding:0;
+      background:linear-gradient(180deg,#020214,#07102a);
+      color:#e6eef8;
+    }
+
+    .container {
+      max-width:600px;
+      margin:40px auto;
+      background:rgba(255,255,255,0.05);
+      padding:30px;
+      border-radius:12px;
+      box-shadow:0 0 25px rgba(0,0,0,0.4);
+    }
+
+    h2 { margin-top:0; }
+
+    input, select {
+      width:100%;
+      padding:12px;
+      margin-top:8px;
+      margin-bottom:18px;
+      background:#0f1529;
+      border:none;
+      border-radius:8px;
+      color:white;
+      font-size:15px;
+    }
+
+    button {
+      width:100%;
+      background:linear-gradient(90deg,#00e0b8,#00b3ff);
+      border:none;
+      padding:14px;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+      color:#001319;
+      font-size:16px;
+    }
+
+    .status {
+      margin-top:15px;
+      color:#ff6b6b;
+      font-size:14px;
+      white-space:pre-wrap;
+    }
+
+    .topbar {
+      padding:14px;
+      text-align:center;
+      font-size:15px;
+    }
+
+    .logout {
+      color:#00e0b8;
+      cursor:pointer;
+      font-weight:700;
+      margin-left:6px;
+    }
+  </style>
 </head>
 
-<body style="background:#0d0f23; color:white; font-family:Inter; padding:20px;">
-  <h2>Upload Report</h2>
+<body>
 
-  <div id="userEmail">Checking login...</div>
+  <div class="topbar">
+    Signed in as: <span id="userEmail">Checking...</span>
+    <span id="logoutBtn" class="logout">Logout</span>
+  </div>
 
-  <div>
+  <div class="container">
+
+    <h2>Upload Report</h2>
+
     <label>File</label>
-    <input type="file" id="fileInput" />
-  </div>
+    <input type="file" id="fileInput" accept=".pdf,image/*">
 
-  <div>
     <label>Title (optional)</label>
-    <input id="titleInput" />
-  </div>
+    <input type="text" id="title" placeholder="e.g. CBC — Z. Taljaard">
 
-  <div>
     <label>Patient name (optional)</label>
-    <input id="nameInput" />
-  </div>
+    <input type="text" id="patient">
 
-  <div>
     <label>Age (optional)</label>
-    <input id="ageInput" type="number" />
-  </div>
+    <input type="number" id="age" placeholder="Years">
 
-  <div>
     <label>Sex (optional)</label>
-    <select id="sexInput">
+    <select id="sex">
       <option value="Unknown">Unknown</option>
       <option value="Male">Male</option>
       <option value="Female">Female</option>
     </select>
+
+    <button id="uploadBtn">Upload & Queue AI</button>
+
+    <div class="status" id="status"></div>
   </div>
 
-  <button id="uploadBtn">Upload & Queue AI</button>
+  <!-- Supabase global client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
 
-  <pre id="status" style="white-space:pre-wrap; margin-top:20px; color:#ff5555;"></pre>
+  <script>
+    // Create global Supabase client
+    const supabase = window.supabase.createClient(
+      "https://tbtytstzfutudyqbkronn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJiYWNrbmQiLCJleHAiOjE5OTg4NjYwMDAsImlhdCI6MTY0ODg2NjAwMH0.MKXN1ndHysxsB8WS1bh1NvHUXGgM9Uch75H2fFxFmHQ"
+    );
 
-  <script type="module">
-    import { supabase } from "/lib/supabaseClient.js";
+    const statusBox = document.getElementById("status");
 
     async function loadUser() {
-      const { data } = await supabase.auth.getUser();
-      const box = document.getElementById("userEmail");
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!data.user) {
-        box.innerHTML = "❌ Not logged in.";
-        window.loggedInUser = null;
-      } else {
-        box.innerHTML = "Signed in as: " + data.user.email;
-        window.loggedInUser = data.user.email;
+      if (!user) {
+        window.location.href = "/login.html";
+        return;
       }
+
+      document.getElementById("userEmail").textContent = user.email;
     }
 
     loadUser();
 
-    document.getElementById("uploadBtn").onclick = async () => {
-      const status = document.getElementById("status");
-      status.textContent = "";
+    // Logout
+    document.getElementById("logoutBtn").onclick = async () => {
+      await supabase.auth.signOut();
+      window.location.href = "/login.html";
+    };
 
-      if (!window.loggedInUser) {
-        status.textContent = "❌ Not logged in.";
-        return;
-      }
+    // Upload
+    document.getElementById("uploadBtn").onclick = async () => {
+      statusBox.textContent = "";
 
       const file = document.getElementById("fileInput").files[0];
       if (!file) {
-        status.textContent = "❌ No file selected.";
+        statusBox.textContent = "❌ Please choose a file.";
         return;
       }
 
-      const form = new FormData();
-      form.append("file", file);
-      form.append("email", window.loggedInUser);
-      form.append("title", document.getElementById("titleInput").value);
-      form.append("name", document.getElementById("nameInput").value);
-      form.append("age", document.getElementById("ageInput").value);
-      form.append("sex", document.getElementById("sexInput").value);
+      const title = document.getElementById("title").value || "Untitled";
+      const patient = document.getElementById("patient").value || null;
+      const age = document.getElementById("age").value || null;
+      const sex = document.getElementById("sex").value;
 
-      status.textContent = "Uploading...";
-
-      try {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: form
-        });
-
-        const json = await res.json();
-
-        status.textContent = JSON.stringify(json, null, 2);
-      } catch (e) {
-        status.textContent = "❌ Upload crashed:\n" + e;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        statusBox.textContent = "❌ Not logged in.";
+        return;
       }
+
+      statusBox.textContent = "Uploading to storage...";
+
+      const filePath = `${Date.now()}-${file.name}`;
+
+      // Upload PDF to bucket
+      const { error: uploadError } = await supabase.storage
+        .from("reports")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        statusBox.textContent = "❌ Upload failed: " + uploadError.message;
+        return;
+      }
+
+      statusBox.textContent = "Saving metadata...";
+
+      // Insert DB row
+      const { data, error: insertError } = await supabase
+        .from("reports")
+        .insert({
+          email: user.email,
+          title,
+          file_path: filePath,
+          name: patient,
+          age: age ? parseInt(age) : null,
+          sex,
+          ai_status: "processing"
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        statusBox.textContent = "❌ DB error: " + insertError.message;
+        return;
+      }
+
+      statusBox.textContent = "✅ Upload complete. AI queued.";
     };
   </script>
+
 </body>
 </html>
