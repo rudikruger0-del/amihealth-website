@@ -14,7 +14,8 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
 
   try {
@@ -22,13 +23,13 @@ export default async function handler(req, res) {
 
     let fileBuffer = null;
     let filename = null;
-    const fields = {};
+    let fields = {};
 
     busboy.on("file", (_name, file, info) => {
       filename = info.filename;
       const chunks = [];
 
-      file.on("data", (chunk) => chunks.push(chunk));
+      file.on("data", chunk => chunks.push(chunk));
       file.on("end", () => {
         fileBuffer = Buffer.concat(chunks);
       });
@@ -41,53 +42,62 @@ export default async function handler(req, res) {
     busboy.on("finish", async () => {
       try {
         if (!fileBuffer || !filename) {
-          return res.status(400).json({ error: "No file received" });
+          return res.status(400).json({ error: "Missing file" });
         }
 
-        const { email, title, patient, age, sex } = fields;
+        const email = fields.email || null;
+        const title = fields.title || "Untitled";
+        const name = fields.name || null;
+        const age = fields.age ? parseInt(fields.age) : null;
+        const sex = fields.sex || null;
 
-        const safeTitle = title || "Untitled";
         const filePath = `${Date.now()}-${filename}`;
 
-        // Upload file
-        const { error: storageError } = await supabase.storage
+        const { error: uploadErr } = await supabase.storage
           .from("reports")
           .upload(filePath, fileBuffer, {
             contentType: "application/pdf",
-            upsert: false,
           });
 
-        if (storageError) {
-          return res.status(500).json({ error: "Storage upload failed", details: storageError });
+        if (uploadErr) {
+          console.error("Upload error:", uploadErr);
+          return res.status(500).json({ error: "Upload failed", details: uploadErr });
         }
 
-        // Insert into DB
-        const { data, error: dbError } = await supabase
+        const { data, error: insertErr } = await supabase
           .from("reports")
           .insert({
             email,
-            title: safeTitle,
+            title,
             file_path: filePath,
-            name: patient || null,
-            age: age ? parseInt(age) : null,
-            sex: sex || null,
+            name,
+            age,
+            sex,
             ai_status: "processing",
           })
           .select()
           .single();
 
-        if (dbError) {
-          return res.status(500).json({ error: "Database insert failed", details: dbError });
+        if (insertErr) {
+          console.error("Insert error:", insertErr);
+          return res.status(500).json({ error: "Insert failed", details: insertErr });
         }
 
-        return res.status(200).json({ success: true, id: data.id });
+        return res.status(200).json({
+          success: true,
+          id: data.id,
+        });
+
       } catch (err) {
-        return res.status(500).json({ error: "Upload handler crashed", details: err.message });
+        console.error("Finish error:", err);
+        return res.status(500).json({ error: "Internal error", details: err.message });
       }
     });
 
     req.pipe(busboy);
-  } catch (error) {
-    return res.status(500).json({ error: "Fatal server error", details: error.message });
+
+  } catch (err) {
+    console.error("Crash:", err);
+    return res.status(500).json({ error: "Server crash", details: err.message });
   }
 }
