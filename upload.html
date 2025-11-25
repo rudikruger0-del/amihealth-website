@@ -19,7 +19,6 @@
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;
       background:linear-gradient(180deg,#020214 0%, #07102a 100%);
       color:#e6eef8;
-      -webkit-font-smoothing:antialiased;
       padding:40px 16px;
     }
 
@@ -62,10 +61,6 @@
       font-size:15px;
     }
 
-    input[type="file"] {
-      padding:0;
-    }
-
     button {
       margin-top:22px;
       width:100%;
@@ -99,6 +94,7 @@
       font-size:14px;
       white-space:pre-wrap;
       line-height:1.5;
+      color:#8ee6d5;
     }
   </style>
 </head>
@@ -115,7 +111,7 @@
       <h1>Upload Scan or Lab Report</h1>
 
       <label>Report file(s)</label>
-      <input type="file" id="fileInput" multiple>
+      <input type="file" id="fileInput">
 
       <label>Report title (optional)</label>
       <input type="text" id="reportTitle" placeholder="e.g. CBC — Z. Taljaard">
@@ -134,12 +130,89 @@
       </select>
 
       <button id="uploadBtn">Upload & Queue AI</button>
+
       <div class="status" id="status"></div>
     </div>
   </div>
 
-  <!-- VERY IMPORTANT: modules enabled -->
-  <script type="module" src="./lib/supabaseClient.js"></script>
-  <script type="module" src="./api/upload.js"></script>
+  <!-- IMPORTANT: module mode -->
+  <script type="module">
+    import { supabase } from "./lib/supabaseClient.js";
+
+    // -------------------------------------------------------------------
+    // 1️⃣ CHECK SESSION
+    // -------------------------------------------------------------------
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      window.location.href = "/login.html";
+    }
+
+    const email = session.user.email;
+    document.getElementById("userEmail").textContent = email;
+
+    // -------------------------------------------------------------------
+    // 2️⃣ LOGOUT
+    // -------------------------------------------------------------------
+    document.getElementById("logoutBtn").onclick = async () => {
+      await supabase.auth.signOut();
+      window.location.href = "/login.html";
+    };
+
+    // -------------------------------------------------------------------
+    // 3️⃣ UPLOAD HANDLER
+    // -------------------------------------------------------------------
+    document.getElementById("uploadBtn").onclick = async () => {
+      const statusEl = document.getElementById("status");
+      const fileInput = document.getElementById("fileInput");
+
+      const file = fileInput.files[0];
+      if (!file) {
+        alert("Please select a file.");
+        return;
+      }
+
+      statusEl.textContent = "Uploading file...";
+
+      const filePath = `${session.user.id}/${Date.now()}-${file.name}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadErr } = await supabase.storage
+        .from("reports")
+        .upload(filePath, file);
+
+      if (uploadErr) {
+        statusEl.textContent = "Upload failed.\n" + uploadErr.message;
+        return;
+      }
+
+      statusEl.textContent = "Saving report...";
+
+      // Call Vercel backend route
+      const resp = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          files: [filePath],
+          title: document.getElementById("reportTitle").value,
+          name: document.getElementById("patientName").value,
+          age: document.getElementById("ageInput").value,
+          sex: document.getElementById("sexInput").value,
+        }),
+      });
+
+      const json = await resp.json();
+      console.log("Server response:", json);
+
+      if (!resp.ok) {
+        statusEl.textContent = "Server error:\n" + JSON.stringify(json, null, 2);
+        return;
+      }
+
+      statusEl.textContent = "✅ Upload completed.\nAI is processing your report.";
+    };
+  </script>
+
 </body>
 </html>
