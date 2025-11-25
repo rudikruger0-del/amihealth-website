@@ -2,104 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Upload Report — AMI Health</title>
 
   <style>
     body {
       margin: 0;
-      font-family: Inter, sans-serif;
-      background: #020314;
-      color: white;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .wrap {
-      max-width: 700px;
-      margin: 40px auto;
-      padding: 20px;
+      padding: 40px;
+      background: #040414;
+      color: #e6eef8;
+      font-family: Inter, system-ui, sans-serif;
     }
 
     .card {
-      background: rgba(255,255,255,0.05);
-      padding: 30px;
+      max-width: 600px;
+      margin: auto;
+      background: #0b1020;
+      padding: 28px;
       border-radius: 14px;
     }
 
-    h1 {
-      margin-top: 0;
-      text-align: center;
-    }
-
-    label {
-      display: block;
-      margin-top: 20px;
-      font-size: 14px;
-      opacity: 0.8;
-    }
-
-    input, select {
+    input, select, button {
       width: 100%;
-      margin-top: 8px;
+      margin-top: 10px;
       padding: 12px;
-      font-size: 15px;
       border-radius: 8px;
       border: none;
-      background: #0d1425;
+      background: #11182d;
       color: white;
+      font-size: 15px;
     }
 
     button {
-      width: 100%;
-      margin-top: 25px;
-      padding: 15px;
-      background: linear-gradient(90deg,#00e0b8,#00b3ff);
-      border: none;
-      color: black;
-      font-size: 17px;
-      font-weight: 700;
-      border-radius: 10px;
+      background: linear-gradient(90deg, #00e0b8, #00b3ff);
+      color: #001319;
+      font-weight: bold;
       cursor: pointer;
     }
 
-    #status {
-      margin-top: 20px;
-      white-space: pre-wrap;
+    label {
+      margin-top: 14px;
+      display: block;
+      color: #9ba8c7;
       font-size: 14px;
     }
 
-    #logout {
-      color:#00e0b8;
-      cursor:pointer;
-      float:right;
-      margin-bottom:10px;
+    .error {
+      margin-top: 20px;
+      color: #ff4b4b;
+      white-space: pre-line;
     }
   </style>
 </head>
 
 <body>
-
-<div class="wrap">
-  <div id="logout">Logout</div>
-  <h2>Signed in as: <span id="userEmail">-</span></h2>
-
   <div class="card">
-    <h1>Upload Report</h1>
+    <h2>Upload Report</h2>
+
+    <div style="margin-bottom: 10px;">
+      Signed in as: <strong id="userEmail">…</strong>
+      <a href="#" id="logout" style="margin-left:10px;color:#00e0b8;">Logout</a>
+    </div>
 
     <label>File</label>
-    <input type="file" id="file">
+    <input type="file" id="fileInput" />
 
-    <label>Title</label>
-    <input type="text" id="title" placeholder="Optional">
+    <label>Title (optional)</label>
+    <input type="text" id="titleInput" placeholder="e.g. CBC — Z. Taljaard" />
 
-    <label>Patient name</label>
-    <input type="text" id="pname" placeholder="Optional">
+    <label>Patient name (optional)</label>
+    <input type="text" id="patientInput" />
 
-    <label>Age</label>
-    <input type="number" id="age" placeholder="Optional">
+    <label>Age (optional)</label>
+    <input type="number" id="ageInput" />
 
-    <label>Sex</label>
-    <select id="sex">
+    <label>Sex (optional)</label>
+    <select id="sexInput">
       <option value="Unknown">Unknown</option>
       <option value="Male">Male</option>
       <option value="Female">Female</option>
@@ -107,82 +85,96 @@
 
     <button id="uploadBtn">Upload & Queue AI</button>
 
-    <div id="status"></div>
+    <div id="errorBox" class="error"></div>
   </div>
-</div>
 
-<script>
-/* -------------------------------
-    SESSION HANDLING
---------------------------------*/
-document.getElementById("userEmail").innerText =
-  localStorage.getItem("ami_user_email") || "Unknown";
+  <script src="./lib/supabaseClient.js"></script>
 
-document.getElementById("logout").onclick = () => {
-  localStorage.removeItem("ami_user_email");
-  window.location.href = "/login";
-};
+  <script>
+    // ------------------------------
+    // 1️⃣ Load Supabase session
+    // ------------------------------
+    const userEmailBox = document.getElementById("userEmail");
+    const errorBox = document.getElementById("errorBox");
+    const logoutBtn = document.getElementById("logout");
 
-/* -------------------------------
-    UPLOAD HANDLER
---------------------------------*/
-document.getElementById("uploadBtn").addEventListener("click", async () => {
-  const status = document.getElementById("status");
-  status.innerText = "";
+    let session = null;
 
-  const fileInput = document.getElementById("file");
-  const file = fileInput.files[0];
+    async function loadUser() {
+      const { data } = await supabase.auth.getSession();
+      session = data.session;
 
-  if (!file) {
-    status.innerText = "❌ Please choose a file.";
-    return;
-  }
+      if (!session) {
+        userEmailBox.textContent = "Not logged in";
+        return;
+      }
 
-  const email = localStorage.getItem("ami_user_email");
-  if (!email) {
-    status.innerText = "❌ Not logged in.";
-    return;
-  }
-
-  const form = new FormData();
-  form.append("file", file);
-  form.append("email", email);
-  form.append("title", document.getElementById("title").value);
-  form.append("name", document.getElementById("pname").value);
-  form.append("age", document.getElementById("age").value);
-  form.append("sex", document.getElementById("sex").value);
-
-  status.innerText = "⏳ Uploading to server...";
-
-  try {
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: form
-    });
-
-    const text = await res.text();
-    let json = null;
-
-    try { json = JSON.parse(text); }
-    catch {
-      status.innerText = "❌ Server returned non-JSON:\n" + text;
-      return;
+      userEmailBox.textContent = session.user.email;
     }
 
-    if (!res.ok) {
-      status.innerText = "❌ Error:\n" + JSON.stringify(json, null, 2);
-      return;
-    }
+    loadUser();
 
-    status.innerText =
-      "✅ Uploaded!\nReport ID: " + json.id +
-      "\nAI is now processing the report.";
+    // logout
+    logoutBtn.onclick = async () => {
+      await supabase.auth.signOut();
+      location.href = "/login";
+    };
 
-  } catch (err) {
-    status.innerText = "❌ Upload crashed:\n" + err;
-  }
-});
-</script>
+    // ------------------------------
+    // 2️⃣ Upload Handler
+    // ------------------------------
+    document.getElementById("uploadBtn").onclick = async () => {
+      errorBox.textContent = "";
 
+      if (!session) {
+        errorBox.textContent = "❌ Not logged in.";
+        return;
+      }
+
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) {
+        errorBox.textContent = "❌ Please select a file.";
+        return;
+      }
+
+      const form = new FormData();
+      form.append("file", file);
+      form.append("email", session.user.email);
+      form.append("title", document.getElementById("titleInput").value);
+      form.append("name", document.getElementById("patientInput").value);
+      form.append("age", document.getElementById("ageInput").value);
+      form.append("sex", document.getElementById("sexInput").value);
+
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: form,
+        });
+
+        const text = await response.text();
+
+        // check if valid JSON
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          errorBox.textContent =
+            "❌ Server returned non-JSON:\n" + text.substring(0, 200);
+          return;
+        }
+
+        if (!response.ok) {
+          errorBox.textContent = "❌ Server error:\n" + JSON.stringify(json, null, 2);
+          return;
+        }
+
+        // success
+        errorBox.style.color = "#00e0b8";
+        errorBox.textContent = "✅ Uploaded! Report ID: " + json.id;
+      } catch (err) {
+        errorBox.textContent = "❌ Error:\n" + err.message;
+      }
+    };
+  </script>
 </body>
 </html>
