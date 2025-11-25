@@ -1,65 +1,111 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Upload Report — AMI Health</title>
 
   <style>
     body {
-      background: #020314;
+      margin: 0;
+      background: #070b1a;
+      font-family: Inter, Arial, sans-serif;
       color: #e6eef8;
-      font-family: Inter, system-ui, sans-serif;
-      padding: 40px 16px;
+      padding: 40px 12px;
     }
-    .wrap { max-width: 700px; margin: 0 auto; }
-    .card {
-      background: rgba(255,255,255,0.05);
-      padding: 28px;
-      border-radius: 12px;
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 32px;
+      border-radius: 14px;
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
     }
-    h1 { text-align: center; font-size: 28px; margin-bottom: 20px; }
-    label { margin-top: 18px; display: block; color:#98a0b3; }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 28px;
+    }
+
+    label {
+      margin-top: 18px;
+      display: block;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
     input, select {
-      width: 100%; padding: 10px; border-radius: 8px;
-      background: #0f1529; border: none; color: #fff;
-      margin-top: 6px; font-size: 15px;
+      margin-top: 6px;
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      background: #10172b;
+      border: none;
+      color: white;
+      font-size: 15px;
     }
+
+    input[type="file"] {
+      padding: 8px;
+    }
+
     button {
-      margin-top: 22px; width: 100%; padding: 14px;
+      margin-top: 24px;
+      width: 100%;
+      padding: 14px;
       background: linear-gradient(90deg, #00e0b8, #00b3ff);
-      border: none; border-radius: 10px;
-      color: #001319; font-weight: 700; cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      color: #001319;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 16px;
     }
-    #status { margin-top: 16px; white-space: pre-wrap; }
-    .user-bar { text-align: center; margin-bottom: 20px; color:#98a0b3; }
-    .user-bar a { color:#00e0b8; font-weight: 600; }
+
+    #status {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      font-size: 14px;
+      color: #ff9f9f;
+    }
+
+    .top-bar {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .top-bar a {
+      color: #00e0b8;
+      margin-left: 10px;
+      text-decoration: none;
+      font-weight: 600;
+    }
   </style>
 </head>
 
 <body>
 
-<div class="wrap">
-
-  <div class="user-bar">
+  <div class="top-bar">
     Signed in as: <strong id="userEmail"></strong>
     <a href="#" id="logoutBtn">Logout</a>
   </div>
 
-  <div class="card">
+  <div class="container">
     <h1>Upload Report</h1>
 
     <label>File</label>
     <input type="file" id="fileInput" />
 
     <label>Title</label>
-    <input type="text" id="reportTitle" placeholder="Optional" />
+    <input type="text" id="titleInput" placeholder="Optional">
 
     <label>Patient name</label>
-    <input type="text" id="patientName" placeholder="Optional" />
+    <input type="text" id="nameInput" placeholder="Optional">
 
     <label>Age</label>
-    <input type="number" id="ageInput" placeholder="Optional" />
+    <input type="number" id="ageInput" placeholder="Optional">
 
     <label>Sex</label>
     <select id="sexInput">
@@ -69,14 +115,29 @@
     </select>
 
     <button id="uploadBtn">Upload & Queue AI</button>
+
     <div id="status"></div>
   </div>
 
-</div>
+  <!-- Load Supabase client for browser -->
+  <script type="module" src="/lib/supabaseClient.js"></script>
 
-<!-- These MUST be modules -->
-<script type="module" src="./lib/supabaseClient.js"></script>
-<script type="module" src="./api/upload.js"></script>
+  <!-- Upload handler -->
+  <script src="/upload-handler.js"></script>
+
+  <script>
+    // Show logged in email
+    const session = JSON.parse(localStorage.getItem("amihealth-auth-session"));
+    const email = session?.user?.email;
+
+    document.getElementById("userEmail").textContent = email || "Unknown";
+
+    // Logout
+    document.getElementById("logoutBtn").onclick = async () => {
+      localStorage.removeItem("amihealth-auth-session");
+      window.location.href = "/login";
+    };
+  </script>
 
 </body>
 </html>
