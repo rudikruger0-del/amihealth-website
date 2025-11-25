@@ -1,11 +1,9 @@
-// api/upload.js
 export const config = {
-  api: { bodyParser: false }, // important for file uploads
+  runtime: "nodejs",
 };
 
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase admin client (for uploading)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -19,62 +17,90 @@ const supabase = createClient(
   }
 );
 
-// Read raw stream into a buffer
-async function readStream(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on("data", (c) => chunks.push(c));
-    req.on("end", () => resolve(Buffer.concat(chunks)));
-    req.on("error", reject);
-  });
-}
-
 export default async function handler(req, res) {
+  console.log("🔥 /api/upload HIT:", req.method);
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // Parse JSON from request
-    const bodyText = (await readStream(req)).toString();
-    let body = {};
-    try {
-      body = JSON.parse(bodyText);
-    } catch {
-      return res.status(400).json({ error: "Invalid JSON" });
-    }
+    let raw = "";
+    await new Promise((resolve) => {
+      req.on("data", (chunk) => (raw += chunk));
+      req.on("end", resolve);
+    });
 
-    const { fileName, fileBase64 } = body;
+    const body = JSON.parse(raw || "{}");
 
-    if (!fileName || !fileBase64) {
+    const { email, files, title, name, age, sex } = body;
+
+    if (!email || !files || !files.length) {
       return res.status(400).json({ error: "Missing fields" });
     }
 
-    // Decode base64 file
-    const fileBuffer = Buffer.from(fileBase64, "base64");
+    const filePath = files[0];
 
-    // Upload to Supabase Storage
-    const filePath = `uploads/${Date.now()}-${fileName}`;
-
-    const { error: uploadErr } = await supabase.storage
+    // 1️⃣ Insert new report entry
+    const { data: inserted, error: insertErr } = await supabase
       .from("reports")
-      .upload(filePath, fileBuffer, {
-        upsert: true,
-        contentType: "application/pdf",
-      });
+      .insert({
+        email,
+        title: title || "Untitled Report",
+        file_path: filePath,
+        created_at: new Date().toISOString(),
+        ai_status: "processing",
+        name: name || null,
+        age: age || null,
+        sex: sex || null,
+      })
+      .select()
+      .single();
 
-    if (uploadErr) {
-      console.error("Upload error:", uploadErr);
-      return res.status(500).json({ error: "Failed to upload file" });
+    if (insertErr) {
+      console.error("❌ insert error:", insertErr);
+      return res.status(500).json({ error: "Insert failed" });
     }
 
-    // DONE
-    return res.status(200).json({
-      success: true,
-      file_path: filePath,
-    });
+    const signed = await supabase.storage
+      .from("reports")
+      .createSignedUrl(filePath, 3600);
+
+    const signedUrl = signed?.data?.signedUrl;
+
+    if (!signedUrl) {
+      return res.status(500).json({ error: "Failed to sign file" });
+    }
+
+    // 2️⃣ Send to HuggingFace
+    const aiResp = await fetch(
+      "https://amihealth-ami-blood-ai.hf.space/run/predict",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdf_url: signedUrl }),
+      }
+    );
+
+    const aiText = await aiResp.text();
+    let aiJson = null;
+    try {
+      aiJson = JSON.parse(aiText);
+    } catch {
+      aiJson = { error: "Invalid JSON", raw: aiText };
+    }
+
+    const status = aiJson?.error ? "failed" : "completed";
+
+    await supabase
+      .from("reports")
+      .update({ ai_status: status, ai_results: aiJson })
+      .eq("id", inserted.id);
+
+    return res.json({ success: true, id: inserted.id, status, ai: aiJson });
+
   } catch (err) {
-    console.error("UPLOAD CRASH:", err);
-    return res.status(500).json({ error: "Server crashed" });
+    console.error("💥 upload crash:", err);
+    return res.status(500).json({ error: "Server crash" });
   }
 }
