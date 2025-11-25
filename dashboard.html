@@ -1,518 +1,244 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>AMI — Dashboard</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>AMI — Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <style>
-    :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#98a0b3;
-      --accent:#00e0b8;
-    }
+  <style>
+    :root {
+      --bg:#030414;
+      --card:#0b1020;
+      --muted:#98a0b3;
+      --accent:#00e0b8;
+    }
 
-    *{box-sizing:border-box}
-    body {
-      margin:0;
-      font-family:Inter, system-ui, sans-serif;
-      background:radial-gradient(circle at top, #071a33, #02030f);
-      color:#eaf6ff;
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-    }
+    *{box-sizing:border-box}
+    body {
+      margin:0;
+      font-family:Inter, system-ui, sans-serif;
+      background:radial-gradient(circle at top, #071a33, #02030f);
+      color:#eaf6ff;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
 
-    header {
-      padding:14px 24px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      max-width:1100px;
-      margin:0 auto;
-      width:100%;
-    }
+    header {
+      padding:14px 24px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      max-width:1100px;
+      margin:0 auto;
+      width:100%;
+    }
 
-    .brand {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      text-decoration:none;
-      color:inherit;
-    }
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      text-decoration:none;
+      color:inherit;
+    }
 
-    .brand img {
-      height:32px;
-      width:auto;
-    }
+    .brand img {
+      height:32px;
+      width:auto;
+    }
 
-    .brand-title {
-      font-weight:800;
-      font-size:18px;
-    }
-    .brand-sub {
-      font-size:11px;
-      color:var(--muted);
-    }
+    .brand-title {
+      font-weight:800;
+      font-size:18px;
+    }
+    .brand-sub {
+      font-size:11px;
+      color:var(--muted);
+    }
 
-    nav {
-      display:flex;
-      gap:12px;
-      align-items:center;
-      font-size:14px;
-    }
+    nav {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      font-size:14px;
+    }
 
-    nav a {
-      color:var(--muted);
-      text-decoration:none;
-      padding:6px 10px;
-      border-radius:999px;
-    }
+    nav a {
+      color:var(--muted);
+      text-decoration:none;
+      padding:6px 10px;
+      border-radius:999px;
+    }
 
-    nav a.active {
-      background:rgba(0,224,184,0.12);
-      color:#fff;
-    }
+    nav a.active {
+      background:rgba(0,224,184,0.12);
+      color:#fff;
+    }
 
-    .login-pill {
-      border:1px solid rgba(255,255,255,0.15);
-      padding:6px 12px;
-      border-radius:999px;
-      text-decoration:none;
-      color:#eaf6ff;
-      font-size:13px;
-    }
+    .login-pill {
+      border:1px solid rgba(255,255,255,0.15);
+      padding:6px 12px;
+      border-radius:999px;
+      text-decoration:none;
+      color:#eaf6ff;
+      font-size:13px;
+    }
 
-    main {
-      flex:1;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-      padding:10px 16px 30px;
-    }
+    main {
+      flex:1;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding:10px 16px 30px;
+    }
 
-    .container {
-      width:100%;
-      max-width:1100px;
-      margin-top:10px;
-    }
+    .container {
+      width:100%;
+      max-width:1100px;
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+      gap:18px;
+    }
 
-    .panel {
-      background:rgba(11,16,32,0.96);
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,0.08);
-      box-shadow:0 18px 50px rgba(0,0,0,0.6);
-      padding:20px 22px;
-    }
+    @media (max-width:950px){
+      .container{grid-template-columns:1fr}
+    }
 
-    .top-row {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:12px;
-    }
+    .panel {
+      background:rgba(11,16,32,0.96);
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.08);
+      box-shadow:0 18px 50px rgba(0,0,0,0.6);
+      padding:20px 22px;
+    }
 
-    h1 {
-      margin:0;
-      font-size:22px;
-    }
+    h1 {
+      margin:0 0 8px;
+      font-size:22px;
+    }
 
-    .muted {
-      color:var(--muted);
-      font-size:13px;
-    }
+    .muted {
+      color:var(--muted);
+      font-size:14px;
+      margin:0 0 16px;
+    }
 
-    .user-chip {
-      font-size:13px;
-      color:var(--muted);
-    }
+    .btn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding:10px 16px;
+      border-radius:999px;
+      border:none;
+      background:linear-gradient(90deg,#00e0b8,#00b7ff);
+      color:#001821;
+      font-weight:700;
+      font-size:14px;
+      cursor:pointer;
+      box-shadow:0 0 18px rgba(0,255,220,0.3);
+      text-decoration:none;
+    }
 
-    .user-chip span {
-      color:#fff;
-      font-weight:600;
-    }
+    .btn.secondary {
+      background:transparent;
+      color:#eaf6ff;
+      border:1px solid rgba(255,255,255,0.18);
+      box-shadow:none;
+    }
 
-    .logout-link {
-      font-size:12px;
-      color:var(--muted);
-      text-decoration:none;
-      margin-left:8px;
-      border-bottom:1px dotted rgba(255,255,255,0.3);
-      cursor:pointer;
-    }
+    .user-chip {
+      font-size:13px;
+      color:var(--muted);
+    }
 
-    .btn {
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
-      padding:8px 14px;
-      border-radius:999px;
-      border:none;
-      background:linear-gradient(90deg,#00e0b8,#00b7ff);
-      color:#001821;
-      font-weight:600;
-      font-size:13px;
-      cursor:pointer;
-      box-shadow:0 0 12px rgba(0,255,220,0.3);
-      text-decoration:none;
-    }
+    .user-chip span {
+      color:#fff;
+      font-weight:600;
+    }
 
-    .btn.ghost {
-      background:rgba(255,255,255,0.05);
-      color:#eaf6ff;
-      box-shadow:none;
-      border:1px solid rgba(255,255,255,0.12);
-    }
-
-    table {
-      width:100%;
-      border-collapse:collapse;
-      margin-top:10px;
-      font-size:13px;
-    }
-
-    thead {
-      background:rgba(255,255,255,0.04);
-    }
-
-    th, td {
-      padding:8px 10px;
-      border-bottom:1px solid rgba(255,255,255,0.06);
-      text-align:left;
-    }
-
-    th {
-      font-weight:600;
-      color:var(--muted);
-      font-size:12px;
-    }
-
-    tr:hover td {
-      background:rgba(255,255,255,0.02);
-    }
-
-    .badge {
-      display:inline-flex;
-      align-items:center;
-      padding:3px 8px;
-      border-radius:999px;
-      font-size:11px;
-      font-weight:600;
-    }
-
-    .badge.processing {
-      background:rgba(255,184,77,0.12);
-      color:#ffcc66;
-    }
-    .badge.completed {
-      background:rgba(0,224,184,0.12);
-      color:#9fffe0;
-    }
-    .badge.failed {
-      background:rgba(255,102,102,0.12);
-      color:#ff9999;
-    }
-    .badge.pending {
-      background:rgba(160,160,160,0.12);
-      color:#cfcfcf;
-    }
-
-    .status-strip {
-      margin-top:6px;
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .table-actions {
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-    }
-
-    .status-text {
-      margin-top:8px;
-      font-size:13px;
-      color:#ffb3b3;
-      min-height:18px;
-    }
-  </style>
+    .status {
+      margin-top:10px;
+      min-height:20px;
+      font-size:13px;
+      color:#ffb3b3;
+      white-space:pre-wrap;
+    }
+  </style>
 </head>
 <body>
 
-  <header>
-    <a class="brand" href="/index.html">
-      <img src="/logo.png" alt="AMI Logo" />
-      <div>
-        <div class="brand-title">AMI Health</div>
-        <div class="brand-sub">Artificial Medical Intelligence</div>
-      </div>
-    </a>
+<header>
+  <a class="brand" href="/index.html">
+    <img src="/logo.png" alt="AMI Logo" />
+    <div>
+      <div class="brand-title">AMI Health</div>
+      <div class="brand-sub">Artificial Medical Intelligence</div>
+    </div>
+  </a>
 
-    <nav>
-      <a href="/dashboard.html" class="active">Dashboard</a>
-      <a href="/upload.html">Upload Report</a>
-      <a class="login-pill" href="/login.html">Logout / Switch user</a>
-    </nav>
-  </header>
+  <nav>
+    <a href="/dashboard.html" class="active">Dashboard</a>
+    <a href="/upload.html">Upload Report</a>
+    <a class="login-pill" href="/login.html" id="logoutLink">Logout</a>
+  </nav>
+</header>
 
-  <main>
-    <div class="container">
-      <section class="panel">
-        <div class="top-row">
-          <div>
-            <h1>Your reports</h1>
-            <div class="muted">
-              View original PDFs, download them, and inspect AMI’s AI interpretation.
-            </div>
-          </div>
-          <div>
-            <a href="/upload.html" class="btn">+ Upload new</a>
-          </div>
-        </div>
+<main>
+  <div class="container">
+    <!-- LEFT: main content -->
+    <section class="panel">
+      <h1>AMI Dashboard</h1>
+      <p class="muted">
+        Welcome back, <span id="userEmailText">—</span>.  
+        From here you can upload new lab or scan reports and send them to the AMI
+        Blood AI engine for interpretation.
+      </p>
 
-        <div class="user-chip">
-          Signed in as <span id="userEmail">—</span>
-          <a class="logout-link" id="logoutLink">Logout</a>
-        </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+        <a class="btn" href="/upload.html">Upload new report</a>
+        <button class="btn secondary" id="logoutBtn">Logout</button>
+      </div>
 
-        <div class="status-strip" id="summaryStrip"></div>
+      <div class="status" id="statusArea"></div>
+    </section>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Created</th>
-              <th>Title</th>
-              <th>File</th>
-              <th>AI status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="reportsBody">
-            <tr>
-              <td colspan="5">Loading…</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- RIGHT: simple explainer -->
+    <section class="panel">
+      <h2 style="margin:0 0 8px;font-size:18px">Next steps</h2>
+      <ol style="margin:8px 0 0 20px;font-size:13px;color:var(--muted);line-height:1.5">
+        <li>Click <b>Upload new report</b> and upload a PDF or image.</li>
+        <li>The file is stored in Supabase in the private <code>reports</code> bucket.</li>
+        <li>The AMI Blood AI engine reads the report and generates an interpretation.</li>
+        <li>Results are stored and can be surfaced in a richer dashboard later.</li>
+      </ol>
+    </section>
+  </div>
+</main>
 
-        <div id="statusText" class="status-text"></div>
-      </section>
-    </div>
-  </main>
+<script>
+  const email = localStorage.getItem("user_email");
+  const userEmailText = document.getElementById("userEmailText");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const logoutLink = document.getElementById("logoutLink");
+  const statusArea = document.getElementById("statusArea");
 
-<script type="module">
-  const userEmail = localStorage.getItem("user_email");
-  const userEmailEl = document.getElementById("userEmail");
-  const logoutLink = document.getElementById("logoutLink");
-  const tbody = document.getElementById("reportsBody");
-  const summaryStrip = document.getElementById("summaryStrip");
-  const statusText = document.getElementById("statusText");
+  if (!email) {
+    // Not logged in – kick back to login page
+    window.location.href = "/login.html";
+  } else {
+    userEmailText.textContent = email;
+  }
 
-  if (!userEmail) {
-    window.location.href = "/login.html";
-  } else {
-    userEmailEl.textContent = userEmail;
-  }
+  function doLogout(e) {
+    if (e) e.preventDefault();
+    localStorage.removeItem("user_email");
+    window.location.href = "/login.html";
+  }
 
-  logoutLink.addEventListener("click", (e) => {
-    e.preventDefault();
-    localStorage.removeItem("user_email");
-    window.location.href = "/login.html";
-  });
-
-  function statusBadge(status) {
-    const s = (status || "").toLowerCase();
-    const span = document.createElement("span");
-    span.classList.add("badge");
-
-    if (s === "completed" || s === "complete") {
-      span.classList.add("completed");
-      span.textContent = "completed";
-    } else if (s === "processing") {
-      span.classList.add("processing");
-      span.textContent = "processing";
-    } else if (s === "failed") {
-      span.classList.add("failed");
-      span.textContent = "failed";
-    } else {
-      span.classList.add("pending");
-      span.textContent = "pending";
-    }
-    return span;
-  }
-
-  async function loadReports() {
-    tbody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
-    statusText.textContent = "";
-
-    try {
-      const resp = await fetch(`/api/get-reports?email=${encodeURIComponent(userEmail)}`);
-      const json = await resp.json();
-
-      let reports;
-      if (Array.isArray(json)) {
-        reports = json;
-      } else if (Array.isArray(json.reports)) {
-        reports = json.reports;
-      } else {
-        reports = [];
-      }
-
-      if (!resp.ok) {
-        console.error(json);
-        tbody.innerHTML = '<tr><td colspan="5">Failed to load reports.</td></tr>';
-        return;
-      }
-
-      if (reports.length === 0) {
-        tbody.innerHTML =
-          '<tr><td colspan="5">No reports yet. Upload from the Upload page.</td></tr>';
-        summaryStrip.textContent = "";
-        return;
-      }
-
-      let total = reports.length;
-      let completed = 0;
-      let processing = 0;
-      let failed = 0;
-
-      tbody.innerHTML = "";
-
-      for (const r of reports) {
-        const tr = document.createElement("tr");
-        const created = r.created_at
-          ? new Date(r.created_at).toLocaleString()
-          : "—";
-
-        const statusVal =
-          r.ai_status ||
-          (r.ai_results && !r.ai_results.error
-            ? "completed"
-            : r.ai_results && r.ai_results.error
-            ? "failed"
-            : "pending");
-
-        if (statusVal === "completed" || statusVal === "complete") completed++;
-        else if (statusVal === "processing") processing++;
-        else if (statusVal === "failed") failed++;
-
-        const title = r.title || "Untitled";
-        const fileName = r.file_path || "";
-
-        tr.innerHTML = `
-          <td>${created}</td>
-          <td>${title}</td>
-          <td>${fileName}</td>
-          <td></td>
-          <td></td>
-        `;
-
-        // Status badge
-        const statusTd = tr.children[3];
-        statusTd.appendChild(statusBadge(statusVal));
-
-        // Actions
-        const actionsTd = tr.children[4];
-        const actionsDiv = document.createElement("div");
-        actionsDiv.className = "table-actions";
-
-        const viewBtn = document.createElement("button");
-        viewBtn.className = "btn ghost";
-        viewBtn.textContent = "View PDF";
-
-        const downloadBtn = document.createElement("button");
-        downloadBtn.className = "btn ghost";
-        downloadBtn.textContent = "Download";
-
-        const aiBtn = document.createElement("button");
-        aiBtn.className = "btn ghost";
-        aiBtn.textContent = "AI JSON";
-        if (!(statusVal === "completed" || statusVal === "complete")) {
-          aiBtn.disabled = true;
-          aiBtn.style.opacity = 0.4;
-        }
-
-        viewBtn.addEventListener("click", () => openSignedUrl(fileName, true));
-        downloadBtn.addEventListener("click", () => openSignedUrl(fileName, false));
-        aiBtn.addEventListener("click", () =>
-          openAiWindow(r.ai_results || r.ai_result || null)
-        );
-
-        actionsDiv.appendChild(viewBtn);
-        actionsDiv.appendChild(downloadBtn);
-        actionsDiv.appendChild(aiBtn);
-        actionsTd.appendChild(actionsDiv);
-
-        tbody.appendChild(tr);
-      }
-
-      summaryStrip.textContent =
-        `Total: ${total} • Completed: ${completed} • Processing: ${processing} • Failed: ${failed}`;
-    } catch (err) {
-      console.error(err);
-      tbody.innerHTML =
-        '<tr><td colspan="5">Unexpected error loading reports.</td></tr>';
-      statusText.textContent = "Error loading reports.";
-    }
-  }
-
-  async function openSignedUrl(filePath, inNewTab) {
-    if (!filePath) {
-      alert("No file path saved for this report.");
-      return;
-    }
-
-    try {
-      const resp = await fetch("/api/get-file-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file_path: filePath }),
-      });
-      const json = await resp.json();
-
-      if (!resp.ok || !json.url) {
-        console.error(json);
-        alert("Could not open file from storage.");
-        return;
-      }
-
-      if (inNewTab) {
-        window.open(json.url, "_blank");
-      } else {
-        window.location.href = json.url;
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to open file.");
-    }
-  }
-
-  function openAiWindow(ai) {
-    if (!ai || ai.error) {
-      alert("AI analysis not available yet for this report.");
-      return;
-    }
-
-    const win = window.open("", "_blank");
-    const pretty = JSON.stringify(ai, null, 2);
-
-    win.document.write(`
-      <html>
-        <head>
-          <title>AMI AI Result</title>
-        </head>
-        <body style="margin:0;background:#050815;color:#eaf6ff;font-family:monospace;">
-          <pre style="padding:16px;white-space:pre-wrap;word-break:break-word;">${pretty}</pre>
-        </body>
-      </html>
-    `);
-    win.document.close();
-  }
-
-  loadReports();
+  logoutBtn.addEventListener("click", doLogout);
+  logoutLink.addEventListener("click", doLogout);
 </script>
 
 </body>
