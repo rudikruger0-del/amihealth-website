@@ -1,8 +1,8 @@
 {
-  "version": 2,
-  "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
-  ],
-  "cleanUrls": false,
-  "trailingSlash": false
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
 }
