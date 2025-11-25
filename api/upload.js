@@ -45,10 +45,8 @@ export default async function handler(req, res) {
 
       const email = fields.email || null;
       const title = fields.title || "Untitled";
-      const name = fields.name || null;
-      const age = fields.age ? parseInt(fields.age) : null;
-      const sex = fields.sex || null;
 
+      // Only include fields that really exist in the table
       const filePath = `${Date.now()}-${filename}`;
 
       const { error: uploadErr } = await supabase.storage
@@ -69,9 +67,6 @@ export default async function handler(req, res) {
           email,
           title,
           file_path: filePath,
-          name,
-          age,
-          sex,
           ai_status: "processing",
         })
         .select()
