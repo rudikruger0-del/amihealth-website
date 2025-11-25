@@ -6,246 +6,183 @@
   <title>Upload Report — AMI Health</title>
 
   <style>
-    :root {
-      --bg: #020314;
-      --card: #080e23;
-      --muted: #8891a8;
-      --accent: #00e0b8;
-      --accent2: #00b3ff;
-      --radius: 18px;
-    }
-
-    * { box-sizing: border-box; }
-
     body {
       margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #0a1840, #020314 55%, #000 100%);
-      color: #e8f2ff;
+      font-family: Inter, sans-serif;
+      background: #020314;
+      color: white;
       -webkit-font-smoothing: antialiased;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 32px 16px 40px;
     }
 
-    .shell {
-      width: 100%;
-      max-width: 720px;
-    }
-
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-
-    .top-bar strong {
-      color: #fff;
-      font-weight: 600;
-    }
-
-    .top-bar a {
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
+    .wrap {
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 20px;
     }
 
     .card {
-      background: radial-gradient(circle at top left, #111b3b, #050816 55%);
-      border-radius: var(--radius);
-      padding: 26px 26px 24px;
-      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(255,255,255,0.05);
+      padding: 30px;
+      border-radius: 14px;
     }
 
     h1 {
-      margin: 0 0 4px;
-      font-size: 24px;
-      text-align: left;
-      letter-spacing: 0.03em;
+      margin-top: 0;
+      text-align: center;
     }
 
-    .subtitle {
-      margin: 0 0 22px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .field {
-      margin-bottom: 16px;
-    }
-
-    .field label {
+    label {
       display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .field small {
-      font-size: 11px;
-      color: var(--muted);
-      opacity: 0.85;
-    }
-
-    input,
-    select {
-      width: 100%;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(3, 9, 30, 0.9);
-      padding: 10px 14px;
-      color: #f5f7ff;
+      margin-top: 20px;
       font-size: 14px;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease,
-        background 0.15s ease;
+      opacity: 0.8;
     }
 
-    input::placeholder {
-      color: rgba(162, 173, 200, 0.7);
-    }
-
-    input:focus,
-    select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(0, 224, 184, 0.4);
-      background: rgba(8, 16, 44, 0.95);
-    }
-
-    input[type="file"] {
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(8, 16, 44, 0.9);
-      cursor: pointer;
+    input, select {
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: 8px;
+      border: none;
+      background: #0d1425;
+      color: white;
     }
 
     button {
       width: 100%;
-      margin-top: 10px;
+      margin-top: 25px;
+      padding: 15px;
+      background: linear-gradient(90deg,#00e0b8,#00b3ff);
       border: none;
-      border-radius: 999px;
-      padding: 12px 16px;
-      font-size: 15px;
+      color: black;
+      font-size: 17px;
       font-weight: 700;
+      border-radius: 10px;
       cursor: pointer;
-      background-image: linear-gradient(90deg, var(--accent), var(--accent2));
-      color: #001720;
-      box-shadow: 0 0 20px rgba(0, 208, 255, 0.35);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: transform 0.08s ease, box-shadow 0.08s ease,
-        filter 0.08s ease;
     }
 
-    button:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-      box-shadow: 0 16px 40px rgba(0, 208, 255, 0.45);
-    }
-
-    button:disabled {
-      opacity: 0.55;
-      cursor: default;
-      transform: none;
-      box-shadow: none;
-    }
-
-    .status {
-      margin-top: 14px;
-      min-height: 20px;
-      font-size: 13px;
+    #status {
+      margin-top: 20px;
       white-space: pre-wrap;
-      line-height: 1.4;
+      font-size: 14px;
     }
 
-    .status.ok {
-      color: #9af7d7;
-    }
-
-    .status.err {
-      color: #ffb5c0;
-    }
-
-    @media (max-width: 640px) {
-      body {
-        padding-top: 18px;
-      }
-      .card {
-        padding: 22px 18px 20px;
-      }
+    #logout {
+      color:#00e0b8;
+      cursor:pointer;
+      float:right;
+      margin-bottom:10px;
     }
   </style>
 </head>
+
 <body>
-  <div class="shell">
-    <div class="top-bar">
-      <div>
-        Signed in as:
-        <strong id="userEmailText">—</strong>
-      </div>
-      <a href="#" id="logoutLink">Logout</a>
-    </div>
 
-    <div class="card">
-      <h1>Upload Report</h1>
-      <p class="subtitle">
-        Upload a PDF or image report. AMI will queue it, extract CBC values,
-        and apply AI rules for interpretation.
-      </p>
+<div class="wrap">
+  <div id="logout">Logout</div>
+  <h2>Signed in as: <span id="userEmail">-</span></h2>
 
-      <div class="field">
-        <label for="fileInput">File</label>
-        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" />
-        <small>PDF / image. Stored securely in the private <code>reports</code> bucket.</small>
-      </div>
+  <div class="card">
+    <h1>Upload Report</h1>
 
-      <div class="field">
-        <label for="titleInput">Title <small>(optional)</small></label>
-        <input
-          id="titleInput"
-          type="text"
-          placeholder="e.g. CBC — Z. Taljaard"
-        />
-      </div>
+    <label>File</label>
+    <input type="file" id="file">
 
-      <div class="field">
-        <label for="nameInput">Patient name <small>(optional)</small></label>
-        <input id="nameInput" type="text" placeholder="Optional" />
-      </div>
+    <label>Title</label>
+    <input type="text" id="title" placeholder="Optional">
 
-      <div class="field">
-        <label for="ageInput">Age <small>(optional)</small></label>
-        <input id="ageInput" type="number" min="0" max="130" placeholder="Years" />
-      </div>
+    <label>Patient name</label>
+    <input type="text" id="pname" placeholder="Optional">
 
-      <div class="field">
-        <label for="sexInput">Sex <small>(optional)</small></label>
-        <select id="sexInput">
-          <option value="Unknown">Unknown</option>
-          <option value="Female">Female</option>
-          <option value="Male">Male</option>
-        </select>
-      </div>
+    <label>Age</label>
+    <input type="number" id="age" placeholder="Optional">
 
-      <button id="uploadBtn">
-        Upload &amp; Queue AI
-      </button>
+    <label>Sex</label>
+    <select id="sex">
+      <option value="Unknown">Unknown</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
 
-      <div class="status" id="statusArea"></div>
-    </div>
+    <button id="uploadBtn">Upload & Queue AI</button>
+
+    <div id="status"></div>
   </div>
+</div>
 
-  <!-- Single module script that wires everything up -->
-  <script type="module" src="./upload-page.js"></script>
+<script>
+/* -------------------------------
+    SESSION HANDLING
+--------------------------------*/
+document.getElementById("userEmail").innerText =
+  localStorage.getItem("ami_user_email") || "Unknown";
+
+document.getElementById("logout").onclick = () => {
+  localStorage.removeItem("ami_user_email");
+  window.location.href = "/login";
+};
+
+/* -------------------------------
+    UPLOAD HANDLER
+--------------------------------*/
+document.getElementById("uploadBtn").addEventListener("click", async () => {
+  const status = document.getElementById("status");
+  status.innerText = "";
+
+  const fileInput = document.getElementById("file");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    status.innerText = "❌ Please choose a file.";
+    return;
+  }
+
+  const email = localStorage.getItem("ami_user_email");
+  if (!email) {
+    status.innerText = "❌ Not logged in.";
+    return;
+  }
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("email", email);
+  form.append("title", document.getElementById("title").value);
+  form.append("name", document.getElementById("pname").value);
+  form.append("age", document.getElementById("age").value);
+  form.append("sex", document.getElementById("sex").value);
+
+  status.innerText = "⏳ Uploading to server...";
+
+  try {
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: form
+    });
+
+    const text = await res.text();
+    let json = null;
+
+    try { json = JSON.parse(text); }
+    catch {
+      status.innerText = "❌ Server returned non-JSON:\n" + text;
+      return;
+    }
+
+    if (!res.ok) {
+      status.innerText = "❌ Error:\n" + JSON.stringify(json, null, 2);
+      return;
+    }
+
+    status.innerText =
+      "✅ Uploaded!\nReport ID: " + json.id +
+      "\nAI is now processing the report.";
+
+  } catch (err) {
+    status.innerText = "❌ Upload crashed:\n" + err;
+  }
+});
+</script>
+
 </body>
 </html>
