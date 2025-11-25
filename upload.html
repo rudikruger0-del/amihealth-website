@@ -91,6 +91,7 @@
       text-decoration:none;
       font-weight:600;
       margin-left:8px;
+      cursor:pointer;
     }
 
     .status {
@@ -107,7 +108,7 @@
 
     <div class="user-bar">
       Signed in as: <strong id="userEmail"></strong>
-      <a href="#" id="logoutBtn">Logout</a>
+      <a id="logoutBtn">Logout</a>
     </div>
 
     <div class="card">
@@ -137,9 +138,8 @@
     </div>
   </div>
 
-  <!-- 🔥 FIXED FILE PATHS -->
-  <script src="/lib/supabaseClient.js"></script>
-  <script src="/api/upload.js"></script>
-
+  <!-- VERY IMPORTANT: modules enabled -->
+  <script type="module" src="./lib/supabaseClient.js"></script>
+  <script type="module" src="./api/upload.js"></script>
 </body>
 </html>
