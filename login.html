@@ -119,12 +119,17 @@
     </div>
   </div>
 
-  <!-- 🔥 Fully working Supabase login script -->
-  <script type="module">
-    import { supabase } from "./lib/supabaseClient.js";
+  <!-- Load Supabase JS (global window.supabase) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.js"></script>
 
-    const btn = document.getElementById("loginBtn");
-    btn.addEventListener("click", async () => {
+  <script>
+    // Create global supabase client
+    const supabase = window.supabase.createClient(
+      "https://tbtytstzfutudyqbkronn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJiYWNrbmQiLCJleHAiOjE5OTg4NjYwMDAsImlhdCI6MTY0ODg2NjAwMH0.MKXN1ndHysxsB8WS1bh1NvHUXGgM9Uch75H2fFxFmHQ"
+    );
+
+    document.getElementById("loginBtn").addEventListener("click", async () => {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
 
@@ -133,18 +138,13 @@
         return;
       }
 
-      // Supabase login
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         alert("Login failed: " + error.message);
         return;
       }
 
-      // redirect to dashboard
       window.location.href = "/dashboard.html";
     });
   </script>
