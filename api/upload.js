@@ -1,81 +1,76 @@
-// api/upload.js
 import { supabase } from "../lib/supabaseClient.js";
 
-document.addEventListener("DOMContentLoaded", () => {
-  const uploadBtn = document.getElementById("uploadBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const statusEl = document.getElementById("status");
+console.log("upload.js loaded");
 
-  // Logout handler
-  logoutBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    localStorage.removeItem("user_email");
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  window.location.href = "/login.html";
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const user = (await supabase.auth.getUser()).data.user;
+
+  if (!user) {
     window.location.href = "/login.html";
+    return;
+  }
+
+  document.getElementById("userEmail").textContent = user.email;
+});
+
+document.getElementById("uploadBtn").addEventListener("click", async () => {
+  const status = document.getElementById("status");
+  status.textContent = "Uploading...";
+
+  const fileInput = document.getElementById("fileInput");
+  const title = document.getElementById("reportTitle").value;
+  const name = document.getElementById("patientName").value;
+  const age = document.getElementById("ageInput").value;
+  const sex = document.getElementById("sexInput").value;
+
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) {
+    status.textContent = "Not logged in!";
+    return;
+  }
+
+  if (!fileInput.files.length) {
+    status.textContent = "Please select a file.";
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const filePath = `${user.id}/${Date.now()}-${file.name}`;
+
+  // Upload file to Supabase Storage
+  const { error: uploadError } = await supabase.storage
+    .from("reports")
+    .upload(filePath, file);
+
+  if (uploadError) {
+    status.textContent = "Upload failed: " + uploadError.message;
+    return;
+  }
+
+  // Now create a report and trigger the AI
+  const response = await fetch("/api/create-report", {
+    method: "POST",
+    body: JSON.stringify({
+      email: user.email,
+      title,
+      files: [filePath],
+      name,
+      age,
+      sex,
+    }),
   });
 
-  uploadBtn.addEventListener("click", async () => {
-    statusEl.textContent = "";
+  const json = await response.json();
 
-    const email = localStorage.getItem("user_email");
-    if (!email) {
-      statusEl.textContent = "Not logged in.";
-      return (window.location.href = "/login.html");
-    }
+  if (!json.success) {
+    status.textContent = "Error: " + json.error;
+    return;
+  }
 
-    const fileInput = document.getElementById("fileInput");
-    const files = fileInput.files;
-    if (!files.length) {
-      statusEl.textContent = "Select a file first.";
-      return;
-    }
-
-    statusEl.textContent = "Uploading…";
-
-    const uploaded = [];
-    for (const file of files) {
-      const path = `${email}/${Date.now()}_${file.name}`;
-
-      const { data, error } = await supabase.storage
-        .from("reports")
-        .upload(path, file);
-
-      if (error) {
-        statusEl.textContent = "Upload failed.";
-        console.error(error);
-        return;
-      }
-
-      uploaded.push(path);
-    }
-
-    statusEl.textContent = "Saving report…";
-
-    const body = {
-      email,
-      title: document.getElementById("reportTitle").value || null,
-      files: uploaded,
-      name: document.getElementById("patientName").value || null,
-      age: document.getElementById("ageInput").value || null,
-      sex: document.getElementById("sexInput").value || "Unknown"
-    };
-
-    const resp = await fetch("/api/create-report", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    const result = await resp.json();
-
-    if (!resp.ok) {
-      statusEl.textContent = "Error: " + result.error;
-      return;
-    }
-
-    statusEl.textContent = "AI queued… Redirecting…";
-
-    setTimeout(() => {
-      window.location.href = "/dashboard.html";
-    }, 1500);
-  });
+  status.textContent = "Uploaded! AI is processing... Report ID: " + json.id;
 });
