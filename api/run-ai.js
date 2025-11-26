@@ -1,101 +1,39 @@
-// /api/run-ai.js
-import { createClient } from "@supabase/supabase-js";
-
-export const config = { runtime: "nodejs" };
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-// 🔥 Correct endpoint based on your logs:
-const AI_API_URL = "https://ami-blood-ai-docker-production.up.railway.app/run/predict-upload";
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
+export async function runAI(pdfBase64, extractedText) {
   try {
-    const body =
-      req.body ||
-      (await new Promise((resolve) => {
-        let raw = "";
-        req.on("data", (c) => (raw += c));
-        req.on("end", () => resolve(JSON.parse(raw)));
-      }));
-
-    const { report_id, file_path } = body;
-
-    if (!report_id || !file_path) {
-      return res.status(400).json({ error: "Missing report_id or file_path" });
-    }
-
-    // 1️⃣ Create signed URL for PDF
-    const { data: signed, error: signedErr } = await supabase.storage
-      .from("reports")
-      .createSignedUrl(file_path, 600);
-
-    if (signedErr || !signed) {
-      console.error("Signed URL error:", signedErr);
-      return res.status(500).json({ error: "Failed to sign PDF URL" });
-    }
-
-    const signedUrl = signed.signedUrl;
-
-    // Mark as running
-    await supabase.from("reports").update({
-      ai_status: "running"
-    }).eq("id", report_id);
-
-    // 2️⃣ Send PDF to your AI
-    const aiResponse = await fetch(AI_API_URL, {
+    const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+      },
       body: JSON.stringify({
-        report_id,
-        pdf_url: signedUrl,
-      }),
-    });
+        model: "gpt-4o-mini",
+        input: [
+          {
+            role: "system",
+            content: "You are AMI, a powerful diagnostic assistant for lab blood reports."
+          },
+          {
+            role: "user",
+            content: `
+              Extracted Blood Report Text:
+              ${extractedText}
 
-    let aiJson;
-    try {
-      aiJson = await aiResponse.json();
-    } catch (err) {
-      console.error("AI returned non-JSON:", err);
-      throw new Error("Invalid AI response");
-    }
+              Attached PDF (base64):
+              ${pdfBase64}
 
-    console.log("AI Response:", aiJson);
-
-    // AI error?
-    if (!aiResponse.ok || aiJson.error) {
-      await supabase
-        .from("reports")
-        .update({
-          ai_status: "failed",
-          ai_results: { error: aiJson.error || "AI failed" },
-        })
-        .eq("id", report_id);
-
-      return res.status(500).json({ error: "AI failed", details: aiJson });
-    }
-
-    // 3️⃣ Save AI results
-    await supabase
-      .from("reports")
-      .update({
-        ai_status: "complete",
-        ai_results: aiJson.results || aiJson,
+              Generate a clear, professional medical summary + explanations.
+            `
+          }
+        ]
       })
-      .eq("id", report_id);
-
-    return res.status(200).json({ ok: true, results: aiJson });
-  } catch (err) {
-    console.error("run-ai.js crash:", err);
-    return res.status(500).json({
-      error: "Server crash in run-ai",
-      details: String(err),
     });
+
+    const data = await response.json();
+    return data;
+
+  } catch (err) {
+    console.error("AI Request Error:", err);
+    return { error: err.message };
   }
 }
