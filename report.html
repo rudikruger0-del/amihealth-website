@@ -8,28 +8,77 @@ async function loadReport() {
     return;
   }
 
-  // 1) LOAD REPORT DATA
-  const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const data = await res.json();
-
-  if (!data || !data.report) {
-    document.querySelector("#aiText").textContent = "Unable to load report.";
+  /* ----------------------------------
+     1️⃣ Fetch report details from API
+  ---------------------------------- */
+  let res;
+  try {
+    res = await fetch(`/api/get-ai-report?id=${id}`);
+  } catch (err) {
+    console.error("API error:", err);
+    document.querySelector("#aiText").textContent = "Server unavailable.";
     return;
   }
 
-  const rpt = data.report;
+  if (!res.ok) {
+    document.querySelector("#aiText").textContent =
+      "Unable to load report (server error).";
+    return;
+  }
 
-  // 2) LOAD PDF SIGNED URL
-  const pdfRes = await fetch("/api/get-file-url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ file_path: rpt.file_path }),
-  });
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    console.error("JSON parse error:", err);
+    document.querySelector("#aiText").textContent =
+      "Invalid data returned by server.";
+    return;
+  }
 
-  const pdfJson = await pdfRes.json();
+  if (!data || !data.results) {
+    document.querySelector("#aiText").textContent = "No report found.";
+    return;
+  }
+
+  const rpt = data.results;
+
+
+  /* ----------------------------------
+     2️⃣ Get signed URL for the PDF
+  ---------------------------------- */
+  let pdfRes;
+  try {
+    pdfRes = await fetch("/api/get-file-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_path: rpt.file_path })
+    });
+  } catch (err) {
+    console.error("PDF URL fetch error:", err);
+    alert("Failed to load PDF.");
+    return;
+  }
+
+  let pdfJson;
+  try {
+    pdfJson = await pdfRes.json();
+  } catch {
+    alert("Invalid PDF response.");
+    return;
+  }
+
+  if (!pdfJson?.url) {
+    alert("Failed to load PDF.");
+    return;
+  }
+
   document.querySelector("#pdfFrame").src = pdfJson.url;
 
-  // 3) PATIENT INFO
+
+  /* ----------------------------------
+     3️⃣ Fill Patient Info
+  ---------------------------------- */
   document.querySelector("#patientInfo").innerHTML = `
     <b>Name:</b> ${rpt.name || "-"}<br>
     <b>Age:</b> ${rpt.age || "-"}<br>
@@ -37,19 +86,46 @@ async function loadReport() {
     <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
   `;
 
-  // 4) CBC RESULTS
+
+  /* ----------------------------------
+     4️⃣ CBC Table
+  ---------------------------------- */
   const cbc = rpt.cbc_json || {};
-  let rows = `<tr><th>Test</th><th>Value</th></tr>`;
+  let rows = "<tr><th>Test</th><th>Value</th></tr>";
+
   for (const key in cbc) {
-    rows += `<tr><td>${key}</td><td>${cbc[key]}</td></tr>`;
+    rows += `<tr>
+               <td>${key}</td>
+               <td>${cbc[key]}</td>
+             </tr>`;
   }
   document.querySelector("#cbcTable").innerHTML = rows;
 
-  // 5) AI TEXT
-  document.querySelector("#aiText").textContent =
-    typeof rpt.ai_results === "string"
-      ? rpt.ai_results
-      : JSON.stringify(rpt.ai_results, null, 2);
+
+  /* ----------------------------------
+     5️⃣ AI Output (WITH LOGO + DISCLAIMER)
+  ---------------------------------- */
+
+  const amiLogo = `
+    <div style="text-align:center; margin-bottom:12px;">
+      <img src="/assets/ami-logo.png" 
+           style="width:140px; opacity:0.9;" />
+    </div>
+  `;
+
+  const disclaimer = `
+    <hr style="margin:18px 0; opacity:0.3;">
+    <p style="font-size:13px; opacity:0.7;">
+      <b>Disclaimer:</b> AMI is an AI medical assistant. 
+      This analysis is <u>not a diagnosis</u>.  
+      A licensed healthcare professional should confirm all findings.
+    </p>
+  `;
+
+  document.querySelector("#aiText").innerHTML =
+    amiLogo +
+    `<div style="white-space:pre-wrap;">${rpt.ai_results}</div>` +
+    disclaimer;
 }
 
 loadReport();
