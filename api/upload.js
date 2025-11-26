@@ -1,138 +1,102 @@
-// /api/upload.js  — PERMANENT, SAFE VERSION
-import { createClient } from "@supabase/supabase-js";
-import formidable from "formidable";
-import fs from "fs";
+import { useState } from "react";
+import { useRouter } from "next/router";
 
-export const config = {
-  api: { bodyParser: false }, // required for formidable
-};
+export default function UploadPage() {
+  const router = useRouter();
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+  const [file, setFile] = useState(null);
+  const [title, setTitle] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [sex, setSex] = useState("Unknown");
+  const [status, setStatus] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
-// Simple, safe filename cleaner
-function slugifyName(name = "report.pdf") {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9.\-]+/g, "_") // keep letters, numbers, dot, dash
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
+  const handleUpload = async (e) => {
+    e.preventDefault();
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+    if (!file) {
+      setStatus("Please select a file.");
+      return;
+    }
 
-  try {
-    const form = formidable({ multiples: false });
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("email", userEmail);
+    formData.append("title", title);
+    formData.append("name", name);
+    formData.append("age", age);
+    formData.append("sex", sex);
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("Form parse error:", err);
-        return res.status(400).json({ error: "Form parsing failed" });
-      }
+    setStatus("Uploading...");
 
-      // Normalize all fields
-      const cleanEmail = Array.isArray(fields.email)
-        ? fields.email[0]
-        : fields.email;
-      const cleanTitle = Array.isArray(fields.title)
-        ? fields.title[0]
-        : fields.title;
-      const cleanName = Array.isArray(fields.name)
-        ? fields.name[0]
-        : fields.name;
-      const cleanAge = Array.isArray(fields.age) ? fields.age[0] : fields.age;
-      const cleanSex = Array.isArray(fields.sex) ? fields.sex[0] : fields.sex;
-
-      if (!cleanEmail) {
-        return res.status(400).json({ error: "Missing email" });
-      }
-
-      const rawFile = Array.isArray(files.file)
-        ? files.file[0]
-        : files.file;
-
-      if (!rawFile) {
-        return res.status(400).json({ error: "Missing file" });
-      }
-
-      // 1️⃣ Build a SAFE storage path
-      const originalName = rawFile.originalFilename || "report.pdf";
-      const safeName = slugifyName(originalName);
-      const timestamp = Date.now();
-
-      // Our canonical pattern: 1732671234567_safe-name.pdf
-      const storagePath = `${timestamp}_${safeName}`;
-
-      // 2️⃣ Upload to Supabase storage
-      const buffer = fs.readFileSync(rawFile.filepath);
-
-      const { data: uploadData, error: uploadErr } = await supabase.storage
-        .from("reports")
-        .upload(storagePath, buffer, {
-          contentType: rawFile.mimetype || "application/pdf",
-        });
-
-      if (uploadErr) {
-        console.error("Storage upload failed:", uploadErr);
-        return res.status(500).json({ error: "Storage upload failed" });
-      }
-
-      // 🔒 Use the ACTUAL path Supabase stored, not our guess
-      const finalPath = uploadData?.path || storagePath;
-
-      // 3️⃣ Insert DB record (reports table)
-      const { data: row, error: dbErr } = await supabase
-        .from("reports")
-        .insert({
-          email: cleanEmail,
-          title: cleanTitle || "Untitled report",
-          name: cleanName || null,
-          age: cleanAge ? Number(cleanAge) : null,
-          sex: cleanSex || "Unknown",
-          file_path: finalPath,        // 👉 ALWAYS matches storage now
-          ai_status: "queued",
-        })
-        .select()
-        .single();
-
-      if (dbErr) {
-        console.error("DB insert failed:", dbErr);
-        return res.status(500).json({ error: "DB insert failed" });
-      }
-
-      const reportId = row.id;
-
-      // 4️⃣ Trigger your AI worker (Railway / FastAPI, etc.)
-      const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-      try {
-        await fetch(`${baseUrl}/api/run-ai`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            report_id: reportId,
-            file_path: finalPath,
-          }),
-        });
-      } catch (aiErr) {
-        console.error("Failed to trigger AI:", aiErr);
-        // We don't fail the upload; doctor can still view the PDF
-      }
-
-      // 5️⃣ Respond to browser
-      return res.status(200).json({
-        ok: true,
-        report_id: reportId,
-      });
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
     });
-  } catch (e) {
-    console.error("UPLOAD SERVER_CRASH:", e);
-    return res.status(500).json({ error: "SERVER_CRASH" });
-  }
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      setStatus("Upload failed ❌");
+      return;
+    }
+
+    setStatus("Upload complete ✓");
+    setStatus("AI analysing this report…");
+
+    // ❌ NO AI CALL — worker handles it automatically
+
+    // Redirect to dashboard (optional)
+    // router.push(`/report?id=${data.report_id}`);
+  };
+
+  return (
+    <div className="upload-container">
+      <h1>Upload Report</h1>
+
+      <form onSubmit={handleUpload}>
+        <input
+          type="email"
+          placeholder="Your email"
+          value={userEmail}
+          onChange={(e) => setUserEmail(e.target.value)}
+          required
+        />
+
+        <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+
+        <input
+          type="text"
+          placeholder="Report Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Patient Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <input
+          type="number"
+          placeholder="Age"
+          value={age}
+          onChange={(e) => setAge(e.target.value)}
+        />
+
+        <select value={sex} onChange={(e) => setSex(e.target.value)}>
+          <option>Unknown</option>
+          <option>Male</option>
+          <option>Female</option>
+        </select>
+
+        <button type="submit">Upload & Queue AI</button>
+      </form>
+
+      <p>{status}</p>
+    </div>
+  );
 }
