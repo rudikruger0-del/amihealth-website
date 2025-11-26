@@ -183,7 +183,7 @@
     <section class="panel">
       <h1>AMI Dashboard</h1>
       <p class="muted">
-        Welcome back, <span id="userEmailText">Loading…</span>.  
+        Welcome back, <span id="userEmailText">Loading…</span>.
         From here you can upload lab or scan reports for AI-assisted interpretation.
       </p>
 
@@ -195,21 +195,33 @@
       <div class="status" id="statusArea"></div>
     </section>
 
-    <!-- RIGHT CARD -->
+    <!-- RIGHT CARD — REPORT TABLE -->
     <section class="panel">
-      <h2 style="margin:0 0 8px;font-size:18px">Next steps</h2>
-      <ol style="margin:8px 0 0 20px;font-size:13px;color:var(--muted);line-height:1.5">
-        <li>Click <b>Upload new report</b> to upload a PDF or image.</li>
-        <li>The file is safely stored in Supabase’s private <code>reports</code> bucket.</li>
-        <li>AMI processes the report using multimodal AI.</li>
-        <li>Interpretations are stored and will appear in advanced dashboards coming soon.</li>
-      </ol>
+      <h2 style="margin:0 0 8px;font-size:18px">Your Reports</h2>
+
+      <input id="searchBox" placeholder="Search reports…"
+        style="width:100%;padding:10px;border-radius:8px;
+        background:#0f1529;border:1px solid rgba(255,255,255,0.1);
+        color:white;font-size:14px;margin:10px 0 16px" />
+
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="color:#98a0b3;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <th style="padding:6px">Title</th>
+            <th style="padding:6px">Patient</th>
+            <th style="padding:6px">Date</th>
+            <th style="padding:6px">AI</th>
+            <th style="padding:6px">PDF</th>
+          </tr>
+        </thead>
+        <tbody id="reportRows"></tbody>
+      </table>
     </section>
 
   </div>
 </main>
 
-<!-- ✔ FIXED AUTH, REAL SUPABASE LOGIN CHECK -->
+<!-- AUTH + REPORT LOADER -->
 <script type="module">
   import { supabase } from "./lib/supabaseClient.js";
 
@@ -217,19 +229,85 @@
   const logoutBtn = document.getElementById("logoutBtn");
   const logoutLink = document.getElementById("logoutLink");
 
+  const rowsEl = document.getElementById("reportRows");
+  const searchEl = document.getElementById("searchBox");
+
+  let ALL_REPORTS = [];
+
+  // --------------------------
+  // AUTH CHECK
+  // --------------------------
   async function loadUser() {
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return window.location.href = "/login.html";
 
-    if (!session) {
-      window.location.href = "/login.html";
+    userEmailText.textContent = session.user.email;
+
+    loadReports(session.user.email);
+  }
+
+  // --------------------------
+  // LOAD REPORTS
+  // --------------------------
+  async function loadReports(email) {
+    rowsEl.innerHTML = `<tr><td colspan="5" style="padding:10px;color:#98a0b3">Loading…</td></tr>`;
+
+    const resp = await fetch(`/api/get-reports?email=${encodeURIComponent(email)}`);
+    const json = await resp.json();
+
+    ALL_REPORTS = json.reports || [];
+    renderTable(ALL_REPORTS);
+  }
+
+  // --------------------------
+  // RENDER TABLE
+  // --------------------------
+  function renderTable(list) {
+    rowsEl.innerHTML = "";
+
+    if (!list.length) {
+      rowsEl.innerHTML =
+        `<tr><td colspan="5" style="padding:10px;color:#98a0b3">No reports found.</td></tr>`;
       return;
     }
 
-    userEmailText.textContent = session.user.email;
+    list.forEach((r) => {
+      const tr = document.createElement("tr");
+
+      const pdfUrl =
+        `https://tbyttsfztuudygbkrbnm.supabase.co/storage/v1/object/public/reports/${r.file_path}`;
+
+      tr.innerHTML = `
+        <td style="padding:8px">${r.title || "-"}</td>
+        <td style="padding:8px">${r.name || "-"}</td>
+        <td style="padding:8px">${new Date(r.created_at).toLocaleString()}</td>
+        <td style="padding:8px">
+          <a href="/ai-report.html?id=${r.id}" style="color:#00e0b8">View AI</a>
+        </td>
+        <td style="padding:8px">
+          <a href="${pdfUrl}" target="_blank" style="color:#00b7ff">Open PDF</a>
+        </td>
+      `;
+
+      tr.style.borderBottom = "1px solid rgba(255,255,255,0.06)";
+      rowsEl.appendChild(tr);
+    });
   }
 
-  loadUser();
+  // --------------------------
+  // SEARCH
+  // --------------------------
+  searchEl.addEventListener("input", () => {
+    const q = searchEl.value.toLowerCase();
+    const filtered = ALL_REPORTS.filter((r) =>
+      JSON.stringify(r).toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  });
 
+  // --------------------------
+  // LOGOUT
+  // --------------------------
   async function doLogout(e) {
     e.preventDefault();
     await supabase.auth.signOut();
@@ -238,6 +316,8 @@
 
   logoutBtn.addEventListener("click", doLogout);
   logoutLink.addEventListener("click", doLogout);
+
+  loadUser();
 </script>
 
 </body>
