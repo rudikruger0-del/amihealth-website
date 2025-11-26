@@ -1,7 +1,7 @@
-// /api/get-file-url.js
-import { createClient } from "@supabase/supabase-js";
-
+// /api/get-file-url.js — supports GET ?path=... and POST {file_path}
 export const config = { runtime: "nodejs" };
+
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,26 +9,46 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-
   try {
-    const path = req.query.path;
+    let filePath = null;
 
-    if (!path) {
-      return res.status(400).json({ error: "Missing path" });
+    if (req.method === "GET") {
+      const url = new URL(req.url, "http://localhost");
+      filePath =
+        url.searchParams.get("path") || url.searchParams.get("file_path");
+    } else if (req.method === "POST") {
+      let raw = "";
+      await new Promise((resolve) => {
+        req.on("data", (chunk) => (raw += chunk));
+        req.on("end", resolve);
+      });
+
+      try {
+        const body = JSON.parse(raw || "{}");
+        filePath = body.file_path || body.path;
+      } catch {
+        return res.status(400).json({ error: "Invalid JSON body" });
+      }
+    } else {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    if (!filePath) {
+      return res.status(400).json({ error: "Missing file path" });
     }
 
     const { data, error } = await supabase.storage
       .from("reports")
-      .createSignedUrl(path, 300); // 5 minutes
+      .createSignedUrl(filePath, 60 * 10); // 10 min
 
-    if (error) {
-      console.error("Signed URL error:", error);
-      return res.status(500).json({ error: "Failed to generate URL" });
+    if (error || !data?.signedUrl) {
+      console.error("get-file-url signedUrl error:", error);
+      return res.status(500).json({ error: "Failed to create signed URL" });
     }
 
     return res.status(200).json({ url: data.signedUrl });
-
   } catch (err) {
-    return res.status(500).json({ error: "Server error" });
+    console.error("get-file-url crash:", err);
+    return res.status(500).json({ error: "Server-side failure" });
   }
 }
