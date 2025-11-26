@@ -21,18 +21,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const url = new URL(req.url, "http://localhost");
-  const email = url.searchParams.get("email");
-
-  if (!email) {
-    return res.status(400).json({ error: "Missing email" });
-  }
-
   try {
+    const url = new URL(req.url, "http://localhost");
+    const email = url.searchParams.get("email");
+
+    if (!email) {
+      return res.status(400).json({ error: "Missing email" });
+    }
+
+    // 🔥 Correct query — email is a simple TEXT field
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .contains("email", [email])     // 🔥 FIXED LINE — email column is ARRAY
+      .eq("email", email)  // ← FIXED
       .order("created_at", { ascending: false });
 
     if (error) {
