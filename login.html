@@ -15,13 +15,11 @@
       --radius: 18px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-family: Inter, system-ui, sans-serif;
       background: radial-gradient(circle at top, #0b1230 0, #020214 55%, #02010c 100%);
       color: #e6eef8;
       min-height: 100vh;
@@ -29,7 +27,6 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      -webkit-font-smoothing: antialiased;
     }
 
     .card {
@@ -48,16 +45,6 @@
       overflow: hidden;
     }
 
-    .card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      border: 1px solid rgba(0, 224, 184, 0.25);
-      opacity: 0.25;
-      pointer-events: none;
-    }
-
     .logo-wrap {
       width: 90px;
       height: 90px;
@@ -74,7 +61,7 @@
       width: 64px;
       height: 64px;
       object-fit: contain;
-      border-radius: 18px;
+      border-radius: 16px;
       background: #020214;
       padding: 6px;
     }
@@ -84,7 +71,6 @@
       font-size: 24px;
       font-weight: 800;
       letter-spacing: 0.02em;
-      color: #ffffff;
     }
 
     .subtitle {
@@ -105,19 +91,17 @@
 
     input {
       width: 100%;
-      padding: 12px 12px;
+      padding: 12px;
       border-radius: 9px;
-      border: 1px solid rgba(255,255,255,0.06);
-      background: rgba(7, 11, 30, 0.96);
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(7,11,30,0.95);
       color: #fff;
       font-size: 15px;
-      outline: none;
-      transition: border 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
 
     input:focus {
-      border-color: rgba(0, 224, 184, 0.7);
-      box-shadow: 0 0 0 1px rgba(0, 224, 184, 0.5);
+      border-color: rgba(0,224,184,0.7);
+      box-shadow: 0 0 0 1px rgba(0,224,184,0.4);
       background: #06091c;
     }
 
@@ -132,26 +116,24 @@
       font-size: 16px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 14px 40px rgba(0, 179, 255, 0.45);
-      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.12s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 18px 55px rgba(0, 179, 255, 0.5);
-    }
-
-    button:active {
-      transform: translateY(0);
-      box-shadow: 0 8px 24px rgba(0, 179, 255, 0.5);
-      opacity: 0.95;
+      box-shadow: 0 14px 40px rgba(0,179,255,0.5);
     }
 
     button:disabled {
-      opacity: 0.55;
+      opacity: 0.5;
       cursor: default;
-      box-shadow: none;
     }
+
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      text-align: left;
+      min-height: 18px;
+    }
+
+    .status.ok     { color: #7ef7d3; }
+    .status.err    { color: #ff8f9b; }
+    .status.info   { color: #98a0b3; }
 
     .help {
       margin-top: 16px;
@@ -164,21 +146,6 @@
       text-decoration: none;
       font-weight: 600;
     }
-
-    .status {
-      margin-top: 12px;
-      font-size: 13px;
-      text-align: left;
-      min-height: 18px;
-    }
-
-    .status.ok {
-      color: #7ef7d3;
-    }
-
-    .status.err {
-      color: #ff8f9b;
-    }
   </style>
 </head>
 
@@ -186,21 +153,19 @@
 
   <div class="card">
     <div class="logo-wrap">
-      <!-- your logo.png in project root -->
-      <img src="logo.png" alt="AMI Logo">
+      <img src="logo.png" alt="AMI Logo" />
     </div>
 
     <h1>Clinician Login</h1>
     <div class="subtitle">Secure AI-assisted blood report analysis for clinicians.</div>
 
-    <label for="email">Email</label>
-    <input type="email" id="email" placeholder="you@hospital.co.za" autocomplete="email" />
+    <label>Email</label>
+    <input type="email" id="email" placeholder="you@hospital.co.za" />
 
-    <label for="password">Password</label>
-    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+    <label>Password</label>
+    <input type="password" id="password" placeholder="••••••••" />
 
-    <button id="loginBtn" type="button">Login</button>
-
+    <button id="loginBtn">Login</button>
     <div class="status" id="loginStatus"></div>
 
     <div class="help">
@@ -208,7 +173,7 @@
     </div>
   </div>
 
-  <!-- Login logic -->
+  <!-- LOGIN LOGIC -->
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
@@ -217,11 +182,9 @@
     const btn = document.getElementById("loginBtn");
     const statusEl = document.getElementById("loginStatus");
 
-    function setStatus(msg, type = "info") {
-      statusEl.textContent = msg || "";
-      statusEl.classList.remove("ok", "err");
-      if (type === "ok") statusEl.classList.add("ok");
-      if (type === "err") statusEl.classList.add("err");
+    function setStatus(msg, type="info") {
+      statusEl.textContent = msg;
+      statusEl.className = "status " + type;
     }
 
     async function signIn() {
@@ -234,13 +197,10 @@
       }
 
       btn.disabled = true;
-      setStatus("Signing in…");
+      setStatus("Signing in…", "info");
 
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
           setStatus("Login failed: " + error.message, "err");
@@ -255,8 +215,10 @@
         }
 
         setStatus("Login successful. Redirecting…", "ok");
-        // Go straight to upload page
-        window.location.href = "/upload.html";
+
+        // ✔ REDIRECT TO DASHBOARD — NOT UPLOAD
+        window.location.href = "/dashboard.html";
+
       } catch (err) {
         console.error("Login crash:", err);
         setStatus("Network error: " + String(err.message || err), "err");
@@ -266,15 +228,15 @@
 
     btn.addEventListener("click", signIn);
 
-    // Enter key support
-    [emailInput, passInput].forEach((el) =>
+    // Press Enter to submit
+    [emailInput, passInput].forEach((el) => {
       el.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           signIn();
         }
-      })
-    );
+      });
+    });
   </script>
 
 </body>
