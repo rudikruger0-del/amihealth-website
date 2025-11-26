@@ -11,7 +11,7 @@ const statusArea = document.getElementById("statusArea");
 const userEmailText = document.getElementById("userEmailText");
 const logoutLink = document.getElementById("logoutLink");
 
-// ---- Auth guard using localStorage (same as dashboard) ----
+// ---- Auth guard using localStorage ----
 const email = localStorage.getItem("user_email");
 if (!email) {
   window.location.href = "/login.html";
@@ -19,6 +19,7 @@ if (!email) {
   userEmailText.textContent = email;
 }
 
+// Logout
 logoutLink.addEventListener("click", (e) => {
   e.preventDefault();
   localStorage.removeItem("user_email");
@@ -31,7 +32,7 @@ function setStatus(message, type = "") {
   if (type) statusArea.classList.add(type);
 }
 
-// ---- Main upload flow ----
+// ---- MAIN UPLOAD FLOW ----
 uploadBtn.addEventListener("click", async () => {
   const file = fileInput.files[0];
 
@@ -41,53 +42,38 @@ uploadBtn.addEventListener("click", async () => {
   }
 
   uploadBtn.disabled = true;
-  setStatus("1/3 Uploading file to secure storage...");
+  setStatus("Uploading report to server...");
 
   try {
-    // 1️⃣ Upload to Supabase Storage (public front-end client)
-    const filePath = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    // Build multipart form-data request
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("email", email);
+    formData.append("title", titleInput.value || "");
+    formData.append("name", nameInput.value || "");
+    formData.append("age", ageInput.value || "");
+    formData.append("sex", sexInput.value || "Unknown");
 
-    const { error: uploadError } = await supabase.storage
-      .from("reports")
-      .upload(filePath, file);
-
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
-      setStatus("Upload failed: " + uploadError.message, "err");
-      uploadBtn.disabled = false;
-      return;
-    }
-
-    setStatus("2/3 File stored. Creating report & calling AI...");
-
-    // 2️⃣ Call backend /api/create-report to insert row + run AI
-    const payload = {
-      email,
-      title: titleInput.value || null,
-      files: [filePath],
-      name: nameInput.value || null,
-      age: ageInput.value ? Number(ageInput.value) : null,
-      sex: sexInput.value || null,
-    };
-
-    const resp = await fetch("/api/create-report", {
+    // Send to backend API
+    const resp = await fetch("/api/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: formData,
     });
 
     const raw = await resp.text();
     let data;
+
     try {
       data = JSON.parse(raw);
     } catch {
-      data = { success: false, error: "Non-JSON response from server", raw };
+      setStatus("Server returned invalid response:\n" + raw, "err");
+      uploadBtn.disabled = false;
+      return;
     }
 
-    if (!resp.ok || !data.success) {
-      console.error("create-report failed:", resp.status, data || raw);
+    if (!resp.ok || !data.ok) {
       setStatus(
-        "Server error while creating report.\n" +
+        "Server error during upload:\n" +
           (data.error || resp.statusText || "Unknown error"),
         "err"
       );
@@ -95,18 +81,20 @@ uploadBtn.addEventListener("click", async () => {
       return;
     }
 
-    // 3️⃣ Done
-    const id = data.id || data.reportId || "(unknown id)";
+    const reportId = data.report_id || data.id || "(unknown ID)";
+
+    // SUCCESS
     setStatus(
-      `✅ 3/3 Report queued for AI.\nReport ID: ${id}\nYou’ll later be able to view the PDF and AI JSON on the dashboard.`,
+      `✅ Upload complete!\nAI queued for Report ID: ${reportId}\nYou can view it later on the dashboard.`,
       "ok"
     );
 
-    // Optionally, clear inputs (keep file so the user sees what was sent)
+    // Clear inputs (keep file to show what's uploaded)
     titleInput.value = "";
     nameInput.value = "";
     ageInput.value = "";
     sexInput.value = "Unknown";
+
   } catch (err) {
     console.error("Upload crash:", err);
     setStatus("Unexpected error: " + String(err), "err");
