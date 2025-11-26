@@ -173,7 +173,7 @@
     </div>
   </div>
 
-  <!-- LOGIN LOGIC -->
+  <!-- ONLY ONE LOGIN SCRIPT — CLEAN -->
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
@@ -199,44 +199,30 @@
       btn.disabled = true;
       setStatus("Signing in…", "info");
 
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) {
-          setStatus("Login failed: " + error.message, "err");
-          btn.disabled = false;
-          return;
-        }
-
-        if (!data.session) {
-          setStatus("No session returned from Supabase.", "err");
-          btn.disabled = false;
-          return;
-        }
-
-        setStatus("Login successful. Redirecting…", "ok");
-
-        // ✔ REDIRECT TO DASHBOARD — NOT UPLOAD
-        window.location.href = "/dashboard.html";
-
-      } catch (err) {
-        console.error("Login crash:", err);
-        setStatus("Network error: " + String(err.message || err), "err");
+      if (error) {
+        setStatus("Login failed: " + error.message, "err");
         btn.disabled = false;
+        return;
       }
+
+      if (!data.session) {
+        setStatus("No session returned from Supabase.", "err");
+        btn.disabled = false;
+        return;
+      }
+
+      setStatus("Login successful. Redirecting…", "ok");
+      window.location.href = "/dashboard.html";
     }
 
     btn.addEventListener("click", signIn);
-
-    // Press Enter to submit
-    [emailInput, passInput].forEach((el) => {
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          signIn();
-        }
-      });
-    });
+    emailInput.addEventListener("keydown", e => e.key==="Enter" && signIn());
+    passInput.addEventListener("keydown", e => e.key==="Enter" && signIn());
   </script>
 
 </body>
