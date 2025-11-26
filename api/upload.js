@@ -1,17 +1,21 @@
-// /api/upload.js
+// api/upload-report.js
+export const config = { runtime: "nodejs" };
+
 import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
 import fs from "fs";
 
-export const config = {
-  api: { bodyParser: false }, // required for formidable
-};
-
-// Supabase admin client (SERVICE_ROLE_KEY so we can write to DB + storage)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// Disable Next.js body parser:
+export const config2 = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -19,108 +23,85 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Parse multipart form (PDF + metadata)
     const form = formidable({ multiples: false });
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("Form parse error:", err);
-        return res.status(400).json({ error: "Form parsing failed" });
-      }
-
-      // 🔹 Normalise all fields to simple strings
-      const cleanEmail = Array.isArray(fields.email)
-        ? fields.email[0]
-        : fields.email;
-      const cleanTitle = Array.isArray(fields.title)
-        ? fields.title[0]
-        : fields.title;
-      const cleanName = Array.isArray(fields.name)
-        ? fields.name[0]
-        : fields.name;
-      const cleanAge = Array.isArray(fields.age) ? fields.age[0] : fields.age;
-      const cleanSex = Array.isArray(fields.sex) ? fields.sex[0] : fields.sex;
-
-      if (!cleanEmail) {
-        return res.status(400).json({ error: "Missing email" });
-      }
-
-      const file = files.file?.[0];
-      if (!file) {
-        return res.status(400).json({ error: "Missing file" });
-      }
-
-      // ------------------------------
-      // 1️⃣ Upload file to Supabase storage
-      // ------------------------------
-      const buffer = fs.readFileSync(file.filepath);
-      const filename = `${Date.now()}-${file.originalFilename}`;
-      const filePath = filename.replace(/\s+/g, "_");
-
-      const { error: uploadErr } = await supabase.storage
-        .from("reports")
-        .upload(filePath, buffer, {
-          contentType: file.mimetype || "application/pdf",
-        });
-
-      if (uploadErr) {
-        console.error("Storage upload failed:", uploadErr);
-        return res.status(500).json({ error: "Storage upload failed" });
-      }
-
-      // ------------------------------
-      // 2️⃣ Insert DB record in reports table
-      // ------------------------------
-      const { data, error: dbErr } = await supabase
-        .from("reports")
-        .insert({
-          email: cleanEmail,
-          title: cleanTitle || "Untitled report",
-          name: cleanName || null,
-          age: cleanAge ? Number(cleanAge) : null,
-          sex: cleanSex || "Unknown",
-          file_path: filePath,
-          ai_status: "queued", // or "processing" if you prefer
-        })
-        .select()
-        .single();
-
-      if (dbErr) {
-        console.error("DB insert failed:", dbErr);
-        return res.status(500).json({ error: "DB insert failed" });
-      }
-
-      const reportId = data.id;
-
-      // ------------------------------
-      // 3️⃣ Trigger AI processor (run-ai.js)
-      // ------------------------------
-      const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-      try {
-        await fetch(`${baseUrl}/api/run-ai`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            report_id: reportId,
-            file_path: filePath,
-          }),
-        });
-      } catch (aiErr) {
-        console.error("Failed to trigger AI:", aiErr);
-        // We don't fail the upload for this – doctor can still see the PDF
-      }
-
-      // ------------------------------
-      // 4️⃣ Respond to browser
-      // ------------------------------
-      return res.status(200).json({
-        ok: true,
-        report_id: reportId,
-      });
+    const { fields, files } = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) =>
+        err ? reject(err) : resolve({ fields, files })
+      );
     });
-  } catch (e) {
-    console.error("UPLOAD SERVER_CRASH:", e);
-    return res.status(500).json({ error: "SERVER_CRASH" });
+
+    const { user_id, email, name, age, sex, title } = fields;
+
+    if (!user_id || !email) {
+      return res.status(400).json({ error: "Missing user info" });
+    }
+
+    const file = files.file;
+    if (!file) return res.status(400).json({ error: "Missing file" });
+
+    // Read PDF/Image
+    const fileBuffer = fs.readFileSync(file.filepath);
+
+    // Create SAFE filename
+    const extension = file.originalFilename.split(".").pop();
+    const safeName =
+      `${Date.now()}_${crypto.randomUUID()}.${extension}`.replace(/\s+/g, "_");
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("reports")
+      .upload(safeName, fileBuffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Upload failed:", uploadError);
+      return res.status(500).json({ error: "Upload failed" });
+    }
+
+    // Create new report row
+    const { data: insertData, error: insertError } = await supabase
+      .from("reports")
+      .insert({
+        user_id,
+        email,
+        name: name || null,
+        age: age || null,
+        sex: sex || null,
+        title: title || "Untitled Report",
+        file_path: safeName, // 🔥 EXACT MATCH FOR STORAGE
+        ai_status: "pending",
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      console.error("Database insert failed:", insertError);
+      return res.status(500).json({ error: "Database insert failed" });
+    }
+
+    // Trigger AI worker
+    await fetch(`${process.env.WORKER_URL}/run-ai`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: insertData.id,
+        file_path: safeName,
+        email,
+      }),
+    }).catch((err) => console.error("AI trigger failed:", err));
+
+    return res.status(200).json({
+      ok: true,
+      id: insertData.id,
+      file_path: safeName,
+      message: "Report uploaded successfully. AI processing started.",
+    });
+  } catch (err) {
+    console.error("Upload crash:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 }
