@@ -9,76 +9,108 @@
     :root {
       --bg:#030414;
       --card:#0b1020;
-      --muted:#98a0b3;
+      --muted:#96a0b8;
       --accent:#00e0b8;
     }
 
     body {
       margin:0;
-      background:var(--bg);
       font-family:Inter, system-ui, sans-serif;
+      background:#02040e;
       color:#eaf6ff;
     }
 
     header {
-      padding:14px 20px;
+      padding:18px 24px;
       display:flex;
       align-items:center;
       justify-content:space-between;
-      background:#020614;
+      background:#050a16;
       border-bottom:1px solid rgba(255,255,255,0.08);
     }
 
-    header img { height:40px; }
+    header img {
+      height:40px;
+    }
 
-    .btn {
-      padding:10px 16px;
-      border-radius:12px;
+    #backBtn {
+      color:#00d4ff;
+      text-decoration:none;
+      font-size:14px;
+    }
+
+    #pdfBtn {
+      padding:10px 18px;
+      border-radius:999px;
       background:linear-gradient(90deg,#00e0b8,#00b7ff);
       color:#001821;
-      border:none;
       font-weight:700;
+      border:none;
       cursor:pointer;
     }
 
-    .wrapper {
+    .container {
+      max-width:1200px;
+      margin:20px auto;
+      padding:0 20px;
       display:grid;
       grid-template-columns:1.2fr 1fr;
-      gap:22px;
-      padding:22px;
+      gap:20px;
     }
+
+    .left-viewer {
+      background:#000;
+      border-radius:12px;
+      overflow:hidden;
+      height:85vh;
+    }
+
+    iframe { width:100%; height:100%; border:none;}
 
     .panel {
       background:var(--card);
       padding:20px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,0.08);
-    }
-
-    h2 { margin-top:0; font-size:20px; }
-    pre {
-      background:#06101f;
-      padding:14px;
-      border-radius:10px;
-      overflow:auto;
-      font-size:13px;
-      color:#b8e9ff;
-    }
-
-    iframe {
-      width:100%;
-      height:85vh;
-      border:1px solid rgba(255,255,255,0.1);
       border-radius:12px;
-      background:#000;
+      border:1px solid rgba(255,255,255,0.07);
+      margin-bottom:18px;
+    }
+
+    h2 {
+      margin-top:0;
+      font-size:20px;
+      font-weight:700;
+    }
+
+    .row {
+      margin:4px 0;
+      font-size:14px;
+    }
+
+    .risk-badge {
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:6px;
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:10px;
+    }
+
+    .high { background:#ff4e6a33; color:#ff4e6a; }
+    .moderate { background:#ffb74d33; color:#ffb74d; }
+    .low { background:#00e0b833; color:#00e0b8; }
+
+    .section-title {
+      margin-top:14px;
+      font-weight:600;
+      opacity:0.9;
     }
 
     .disclaimer {
       margin-top:20px;
+      text-align:center;
       font-size:12px;
       color:var(--muted);
-      text-align:center;
-      padding-bottom:50px;
+      padding:10px;
     }
   </style>
 </head>
@@ -86,43 +118,42 @@
 <body>
 
 <header>
-  <a href="/dashboard.html" style="color:#00e0b8;text-decoration:none;font-weight:700;">← Back</a>
-  <img src="/logo.png" alt="AMI Logo">
-  <button class="btn" id="printBtn">Print / Download PDF</button>
+  <a id="backBtn" href="/dashboard.html">← Back</a>
+  <img src="/logo.png"/>
+  <button id="pdfBtn">Print / Download PDF</button>
 </header>
 
-<div class="wrapper">
-
-  <!-- LEFT: ORIGINAL REPORT -->
-  <div>
+<div class="container">
+  <div class="left-viewer">
     <iframe id="pdfFrame"></iframe>
   </div>
 
-  <!-- RIGHT: AI DATA -->
   <div>
 
-    <div class="panel">
+    <div class="panel" id="patientPanel">
       <h2>Patient Info</h2>
-      <div id="patientInfo">Loading…</div>
+      <div class="row"><b>Name:</b> <span id="name">Loading…</span></div>
+      <div class="row"><b>Age:</b> <span id="age">-</span></div>
+      <div class="row"><b>Sex:</b> <span id="sex">-</span></div>
+      <div class="row"><b>Date:</b> <span id="date">-</span></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="cbcPanel">
       <h2>CBC Results</h2>
-      <pre id="cbcBox">Loading…</pre>
+      <div id="cbcContent">Loading…</div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="aiPanel">
       <h2>AI Interpretation</h2>
-      <pre id="aiBox">Loading…</pre>
+      <div id="aiContent">Loading…</div>
     </div>
 
     <div class="disclaimer">
-      This AI interpretation is assistive and not a medical diagnosis.
+      This AI interpretation is assistive and not a medical diagnosis.  
       Always consult a licensed medical professional for clinical decisions.
     </div>
 
   </div>
-
 </div>
 
 <script>
@@ -130,55 +161,86 @@ async function loadReport() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
 
-  if (!id) {
-    document.getElementById("aiBox").textContent = "Missing report ID.";
-    return;
-  }
-
   console.log("Requesting:", `/api/get-ai-report?id=${id}`);
 
-  // Get AI + CBC + metadata
-  const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
   const data = await res.json();
 
-  console.log("API returned:", data);
-
   if (!data.ok) {
-    document.getElementById("aiBox").textContent = "Report not found.";
+    document.getElementById("aiContent").textContent = "Report not found.";
     return;
   }
 
   const rpt = data.report;
 
-  document.getElementById("patientInfo").innerHTML = `
-    <b>Name:</b> ${rpt.name || "-"}<br>
-    <b>Age:</b> ${rpt.age || "-"}<br>
-    <b>Sex:</b> ${rpt.sex || "-"}<br>
-    <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
-  `;
-
-  // Load CBC
-  document.getElementById("cbcBox").textContent =
-    rpt.cbc_json ? JSON.stringify(rpt.cbc_json, null, 2) : "No CBC data.";
-
-  // Load AI results
-  document.getElementById("aiBox").textContent =
-    rpt.ai_results ? JSON.stringify(rpt.ai_results, null, 2) : "No AI results.";
+  // Fill patient panel
+  document.getElementById("name").textContent = rpt.name;
+  document.getElementById("age").textContent = rpt.age;
+  document.getElementById("sex").textContent = rpt.sex;
+  document.getElementById("date").textContent = new Date(rpt.created_at).toLocaleString();
 
   // Load PDF
-  const pdfReq = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
-  const pdfData = await pdfReq.json();
+  const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+  const pdfJson = await pdfRes.json();
+  document.getElementById("pdfFrame").src = pdfJson.url;
 
-  if (pdfData.url) {
-    document.getElementById("pdfFrame").src = pdfData.url;
+  // CBC render
+  const cbc = rpt.cbc_json;
+  const cbcBox = document.getElementById("cbcContent");
+
+  if (!cbc) {
+    cbcBox.textContent = "No CBC data.";
   } else {
-    document.getElementById("pdfFrame").src = "";
+    cbcBox.innerHTML = Object.entries(cbc)
+      .map(([k,v]) => `<div class="row"><b>${k}:</b> ${v}</div>`)
+      .join("");
   }
+
+  // AI Interpretation
+  renderAI(rpt.ai_results);
 }
 
-document.getElementById("printBtn").onclick = () => {
-  document.getElementById("pdfFrame").contentWindow.print();
-};
+function renderAI(ai) {
+  const box = document.getElementById("aiContent");
+  if (!ai) {
+    box.textContent = "No AI data.";
+    return;
+  }
+
+  const json = ai.json || {};
+
+  let risk = json?.risk_assessment?.overall_risk || "low";
+  let badgeClass = risk === "high" ? "high" : risk === "moderate" ? "moderate" : "low";
+
+  box.innerHTML = `
+    <div class="risk-badge ${badgeClass}">${risk.toUpperCase()} RISK</div>
+
+    <div class="section-title">Summary</div>
+    <div>${(json.summary || []).map(s => `• ${s}`).join("<br>")}</div>
+
+    <div class="section-title">Trend Summary</div>
+    <div>${(json.trend_summary || []).map(s => `• ${s}`).join("<br>")}</div>
+
+    <div class="section-title">Flagged Results</div>
+    <div>${
+      (json.flagged_results || [])
+        .map(f => `<b>${f.test}</b>: ${f.value} (ref: ${f.reference_range}) — ${f.status}`)
+        .join("<br>")
+      || "None"
+    }</div>
+
+    <div class="section-title">Recommendations</div>
+    <div>${
+      (json.recommendations?.follow_up_tests || []).map(s => `• ${s}`).join("<br>")
+      || "None"
+    }</div>
+
+    <div class="section-title">When to Seek Urgent Care</div>
+    <div>${json.recommendations?.when_to_seek_urgent_care || "None"}</div>
+  `;
+}
+
+document.getElementById("pdfBtn").onclick = () => window.print();
 
 loadReport();
 </script>
