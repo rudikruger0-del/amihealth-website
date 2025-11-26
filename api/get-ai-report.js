@@ -27,22 +27,19 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Report not found" });
     }
 
+    // Return the full report row, nicely shaped
     return res.status(200).json({
       report: {
         id: data.id,
-        email: data.email,
+        email: data.email || null,
         file_path: data.file_path,
         created_at: data.created_at,
-        name: data.name,
-        age: data.age,
-        sex: data.sex,
-
-        // AI output
+        name: data.name || null,
+        age: data.age || null,
+        sex: data.sex || null,
+        ai_status: data.ai_status || null,
         ai_results: data.ai_results || null,
-        cbc_json: data.cbc_json || {},
-
-        // status
-        ai_status: data.ai_status,
+        cbc_json: data.cbc_json || {},   // optional column
       },
     });
   } catch (err) {
