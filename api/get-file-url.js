@@ -1,3 +1,4 @@
+// api/get-file-url.js
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
@@ -8,34 +9,28 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    let raw = "";
-    await new Promise(r => {
-      req.on("data", c => raw += c);
-      req.on("end", r);
-    });
+    const { path } = req.query; // <-- FIXED: frontend uses ?path=
 
-    const { file_path } = JSON.parse(raw || "{}");
-
-    if (!file_path) {
-      return res.status(400).json({ error: "Missing file_path" });
+    if (!path) {
+      return res.status(400).json({ error: "Missing file path" });
     }
 
     const { data, error } = await supabase.storage
       .from("reports")
-      .createSignedUrl(file_path, 600);
+      .createSignedUrl(path, 600);
 
     if (error || !data?.signedUrl) {
       return res.status(500).json({ error: "Unable to generate signed URL" });
     }
 
     return res.status(200).json({ url: data.signedUrl });
-
   } catch (err) {
+    console.error("get-file-url ERROR:", err);
     return res.status(500).json({ error: "Server error" });
   }
 }
