@@ -1,371 +1,359 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>AMI — Dashboard</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Upload Report — AMI Health</title>
 
   <style>
     :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#98a0b3;
-      --accent:#00e0b8;
+      --bg: #030414;
+      --card: #0b1020;
+      --muted: #98a0b3;
+      --accent: #00e0b8;
+      --accent-2: #00b3ff;
+      --radius: 18px;
     }
 
-    * { box-sizing:border-box; }
+    * { box-sizing: border-box; }
+
     body {
-      margin:0;
-      font-family:Inter, system-ui, sans-serif;
-      background:radial-gradient(circle at top, #071a33, #02030f);
-      color:#eaf6ff;
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(circle at top, #0a1234 0, #020214 55%, #02010c 100%);
+      color: #e6eef8;
+      min-height: 100vh;
+      padding: 28px 16px 40px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    header {
-      padding:14px 24px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      max-width:1100px;
-      margin:0 auto;
-      width:100%;
+    .wrap {
+      max-width: 820px;
+      margin: 0 auto;
     }
 
-    .brand {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      text-decoration:none;
-      color:inherit;
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      font-size: 14px;
+      color: var(--muted);
     }
 
-    .brand img { height:32px; }
-    .brand-title { font-weight:800; font-size:18px; }
-    .brand-sub { font-size:11px; color:var(--muted); }
-
-    nav { display:flex; gap:12px; }
-
-    nav a {
-      color:var(--muted);
-      text-decoration:none;
-      padding:6px 10px;
-      border-radius:999px;
+    .topbar span strong {
+      color: #ffffff;
     }
 
-    nav a.active {
-      background:rgba(0,224,184,0.12); color:#fff;
+    .topbar button {
+      background: transparent;
+      border-radius: 999px;
+      padding: 6px 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      color: #e6eef8;
+      font-size: 13px;
+      cursor: pointer;
     }
 
-    .login-pill {
-      border:1px solid rgba(255,255,255,0.15);
-      padding:6px 12px;
-      border-radius:999px;
-      color:#eaf6ff;
+    .topbar button:hover {
+      border-color: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.03);
     }
 
-    main {
-      flex:1;
-      display:flex;
-      justify-content:center;
-      padding:20px;
+    .card {
+      background: radial-gradient(circle at top left, rgba(0, 224, 184, 0.07), transparent 45%),
+                  radial-gradient(circle at bottom right, rgba(0, 179, 255, 0.07), transparent 45%),
+                  rgba(6, 10, 30, 0.96);
+      padding: 28px 26px 22px;
+      border-radius: var(--radius);
+      box-shadow: 0 16px 60px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255,255,255,0.06);
     }
 
-    .container {
-      width:100%;
-      max-width:1100px;
-      display:grid;
-      grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
-      gap:18px;
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
     }
 
-    .panel {
-      background:rgba(11,16,32,0.96);
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,0.08);
-      box-shadow:0 18px 50px rgba(0,0,0,0.6);
-      padding:22px;
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      max-width: 520px;
     }
 
-    h1 { margin:0 0 10px; font-size:22px; }
-    h2 { margin:0 0 10px; font-size:18px; }
-
-    .muted { color:var(--muted); font-size:14px; }
-
-    .btn {
-      padding:10px 16px;
-      border-radius:999px;
-      border:none;
-      background:linear-gradient(90deg,#00e0b8,#00b7ff);
-      color:#001821;
-      font-weight:700;
-      cursor:pointer;
-      text-decoration:none;
+    label {
+      display: block;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
     }
 
-    /* Reports Table */
-    .search-box {
-      width:100%;
-      padding:10px;
-      margin-bottom:12px;
-      border-radius:10px;
-      background:#0b152d;
-      border:1px solid rgba(255,255,255,0.1);
-      color:#eaf6ff;
+    input[type="file"] {
+      width: 100%;
+      padding: 10px 0;
+      font-size: 14px;
+      color: #dce7ff;
     }
 
-    table {
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 10px 11px;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(7, 11, 30, 0.96);
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
 
-    th {
-      text-align:left;
-      padding:8px;
-      color:var(--muted);
-      font-weight:600;
-      border-bottom:1px solid rgba(255,255,255,0.1);
+    input:focus,
+    select:focus {
+      border-color: rgba(0,224,184,0.75);
+      box-shadow: 0 0 0 1px rgba(0,224,184,0.5);
+      background: #06091c;
     }
 
-    td {
-      padding:8px;
-      border-bottom:1px solid rgba(255,255,255,0.05);
-      color:#fff;
+    .row {
+      display: flex;
+      gap: 12px;
     }
 
-    a.tbl {
-      color:#00d4ff;
-      text-decoration:none;
-      font-size:13px;
+    .row > div {
+      flex: 1;
     }
 
-    /* PDF Viewer Modal */
-    #pdfModal {
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.75);
-      backdrop-filter:blur(4px);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      z-index:9999;
+    button#uploadBtn {
+      margin-top: 24px;
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border: none;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #001319;
+      box-shadow: 0 14px 40px rgba(0, 179, 255, 0.45);
+      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.12s ease;
     }
 
-    #pdfBox {
-      background:#0b1020;
-      width:90%;
-      height:90%;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.15);
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;
+    button#uploadBtn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 55px rgba(0, 179, 255, 0.5);
     }
 
-    #pdfFrame {
-      width:100%;
-      height:100%;
-      border:none;
-      background:#000;
+    button#uploadBtn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 8px 24px rgba(0, 179, 255, 0.5);
+      opacity: 0.96;
     }
 
-    .modal-header {
-      padding:10px;
-      display:flex;
-      justify-content:space-between;
-      background:#020614;
-      border-bottom:1px solid rgba(255,255,255,0.1);
+    button#uploadBtn:disabled {
+      opacity: 0.55;
+      cursor: default;
+      box-shadow: none;
     }
 
-    .modal-header button {
-      padding:6px 14px;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      font-weight:600;
+    .status {
+      margin-top: 16px;
+      font-size: 13px;
+      white-space: pre-wrap;
+      line-height: 1.45;
+      min-height: 20px;
     }
 
-    .btn-close {
-      background:#ff4e6a; color:#fff;
+    .status.ok {
+      color: #7ef7d3;
     }
 
-    .btn-print {
-      background:#00e0b8; color:#001821;
+    .status.err {
+      color: #ff8f9b;
+    }
+
+    @media (max-width: 640px) {
+      .card { padding: 22px 18px 20px; }
+      .row { flex-direction: column; }
     }
   </style>
 </head>
-
 <body>
 
-<header>
-  <a class="brand" href="/dashboard.html">
-    <img src="/logo.png" alt="AMI Logo" />
-    <div>
-      <div class="brand-title">AMI Health</div>
-      <div class="brand-sub">Artificial Medical Intelligence</div>
+  <div class="wrap">
+
+    <div class="topbar">
+      <span>Signed in as: <strong id="userEmail">Checking…</strong></span>
+      <button id="logoutBtn" type="button">Logout</button>
     </div>
-  </a>
 
-  <nav>
-    <a href="/dashboard.html" class="active">Dashboard</a>
-    <a href="/upload.html">Upload Report</a>
-    <a class="login-pill" href="#" id="logoutLink">Logout</a>
-  </nav>
-</header>
-
-<main>
-  <div class="container">
-
-    <!-- LEFT PANEL -->
-    <section class="panel">
-      <h1>AMI Dashboard</h1>
-      <p class="muted">
-        Welcome back, <span id="userEmailText">Loading…</span>.
-      </p>
-
-      <div style="margin-top:14px; display:flex; gap:10px;">
-        <a class="btn" href="/upload.html">Upload new report</a>
-        <button class="btn" id="logoutBtn" style="background:#222;color:#fff;">
-          Logout
-        </button>
+    <div class="card">
+      <h1>Upload Report</h1>
+      <div class="subtitle">
+        Upload a PDF or image report. AMI will queue it, extract CBC values, and apply AI rules for interpretation.
       </div>
-    </section>
 
-    <!-- RIGHT PANEL — REPORTS LIST -->
-    <section class="panel">
-      <h2>Your Reports</h2>
-      <input class="search-box" placeholder="Search reports…" id="searchBox" />
+      <label for="fileInput">File</label>
+      <input type="file" id="fileInput" accept=".pdf,image/*" />
 
-      <table>
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Patient</th>
-            <th>Date</th>
-            <th>AI</th>
-            <th>PDF</th>
-          </tr>
-        </thead>
-        <tbody id="reportsTable">
-          <tr><td colspan="5">Loading…</td></tr>
-        </tbody>
-      </table>
-    </section>
+      <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+        PDF / image. Stored securely in the private <code>reports</code> bucket.
+      </div>
 
-  </div>
-</main>
+      <label for="reportTitle">Title (optional)</label>
+      <input type="text" id="reportTitle" placeholder="e.g. CBC — Z. Taljaard" />
 
-<!-- PDF MODAL -->
-<div id="pdfModal">
-  <div id="pdfBox">
-    <div class="modal-header">
-      <button class="btn-print">Print</button>
-      <button class="btn-close">Close</button>
+      <label for="patientName">Patient name (optional)</label>
+      <input type="text" id="patientName" placeholder="Optional" />
+
+      <div class="row">
+        <div>
+          <label for="ageInput">Age (optional)</label>
+          <input type="number" id="ageInput" placeholder="Years" min="0" max="130" />
+        </div>
+        <div>
+          <label for="sexInput">Sex (optional)</label>
+          <select id="sexInput">
+            <option value="Unknown" selected>Unknown</option>
+            <option value="Female">Female</option>
+            <option value="Male">Male</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="uploadBtn" type="button">Upload & Queue AI</button>
+      <div class="status" id="status"></div>
     </div>
-    <iframe id="pdfFrame"></iframe>
   </div>
-</div>
 
-<!-- LOGIC -->
-<script type="module">
-  import { supabase } from "./lib/supabaseClient.js";
+  <script type="module">
+    import { supabase } from "./lib/supabaseClient.js";
 
-  const userEmailText = document.getElementById("userEmailText");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const logoutLink = document.getElementById("logoutLink");
-  const reportsTable = document.getElementById("reportsTable");
-  const searchBox = document.getElementById("searchBox");
+    const userEmailEl = document.getElementById("userEmail");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const statusEl = document.getElementById("status");
 
-  let fullReportList = [];
+    const fileInput = document.getElementById("fileInput");
+    const titleInput = document.getElementById("reportTitle");
+    const nameInput = document.getElementById("patientName");
+    const ageInput = document.getElementById("ageInput");
+    const sexInput = document.getElementById("sexInput");
 
-  /* AUTH CHECK */
-  async function loadUser() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return (window.location.href = "/login.html");
-    userEmailText.textContent = session.user.email;
-    loadReports(session.user.email);
-  }
+    let currentEmail = null;
 
-  /* FETCH REPORTS */
-  async function loadReports(email) {
-    const res = await fetch(`/api/get-reports?email=${email}`);
-    const json = await res.json();
-
-    fullReportList = json.reports || [];
-    renderReports(fullReportList);
-  }
-
-  /* RENDER REPORT TABLE */
-  function renderReports(list) {
-    if (!list.length) {
-      reportsTable.innerHTML = `<tr><td colspan="5">No reports found.</td></tr>`;
-      return;
+    function setStatus(msg, type = "info") {
+      statusEl.textContent = msg || "";
+      statusEl.classList.remove("ok", "err");
+      if (type === "ok") statusEl.classList.add("ok");
+      if (type === "err") statusEl.classList.add("err");
     }
 
-    reportsTable.innerHTML = list.map(r => `
-      <tr>
-        <td>${r.title || "-"}</td>
-        <td>${r.name || "-"}</td>
-        <td>${new Date(r.created_at).toLocaleString()}</td>
-        <td><a class="tbl" href="/api/get-ai-report?id=${r.id}" target="_blank">View AI</a></td>
-        <td><a class="tbl pdfOpen" data-path="${r.file_path}" href="#">Open PDF</a></td>
-      </tr>
-    `).join("");
+    async function loadUser() {
+      try {
+        const { data, error } = await supabase.auth.getUser();
 
-    // Attach PDF open events
-    document.querySelectorAll(".pdfOpen").forEach(el => {
-      el.addEventListener("click", e => {
-        e.preventDefault();
-        openPDF(el.dataset.path);
-      });
-    });
-  }
+        if (error || !data?.user) {
+          userEmailEl.textContent = "Not logged in";
+          setStatus("Not logged in. Please log in again.", "err");
+          uploadBtn.disabled = true;
+          return;
+        }
 
-  /* SEARCH FILTER */
-  searchBox.addEventListener("input", () => {
-    const q = searchBox.value.toLowerCase();
-    const filtered = fullReportList.filter(r =>
-      (r.title || "").toLowerCase().includes(q) ||
-      (r.name || "").toLowerCase().includes(q)
-    );
-    renderReports(filtered);
-  });
+        currentEmail = data.user.email;
+        userEmailEl.textContent = currentEmail || "Unknown";
+        uploadBtn.disabled = false;
+        setStatus("");
+      } catch (err) {
+        console.error("loadUser error:", err);
+        userEmailEl.textContent = "Error";
+        setStatus("Cannot read session. Please log in again.", "err");
+        uploadBtn.disabled = true;
+      }
+    }
 
-  /* PDF VIEWER */
-  const pdfModal = document.getElementById("pdfModal");
-  const pdfFrame = document.getElementById("pdfFrame");
+    async function doLogout() {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.error("Logout error:", err);
+      }
+      window.location.href = "/login.html";
+    }
 
-  function openPDF(path) {
-    pdfFrame.src = `https://tybttsfztuudygbkrbnm.supabase.co/storage/v1/object/public/reports/${path}`;
-    pdfModal.style.display = "flex";
-  }
+    logoutBtn.addEventListener("click", doLogout);
 
-  document.querySelector(".btn-close").onclick = () =>
-    (pdfModal.style.display = "none");
+    async function doUpload() {
+      if (!currentEmail) {
+        setStatus("You are not logged in. Please log in again.", "err");
+        return;
+      }
 
-  document.querySelector(".btn-print").onclick = () =>
-    pdfFrame.contentWindow.print();
+      const file = fileInput.files[0];
+      if (!file) {
+        setStatus("Please select a file to upload.", "err");
+        return;
+      }
 
-  /* LOGOUT */
-  async function doLogout() {
-    await supabase.auth.signOut();
-    window.location.href = "/login.html";
-  }
-  logoutBtn.onclick = doLogout;
-  logoutLink.onclick = doLogout;
+      const form = new FormData();
+      form.append("file", file);
+      form.append("email", currentEmail);
+      form.append("title", titleInput.value.trim());
+      form.append("name", nameInput.value.trim());
+      form.append("age", ageInput.value ? ageInput.value : "");
+      form.append("sex", sexInput.value);
 
-  loadUser();
+      uploadBtn.disabled = true;
+      setStatus("Uploading to server and queuing AI…");
 
-  /* AUTO-REFRESH EVERY 8 SECONDS */
-  setInterval(() => {
-    const email = userEmailText.textContent;
-    if (email && email.includes("@")) loadReports(email);
-  }, 8000);
-</script>
+      try {
+        const resp = await fetch("/api/upload", {
+          method: "POST",
+          body: form,
+        });
 
+        const text = await resp.text();
+        let parsed;
+
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = null;
+        }
+
+        if (!resp.ok) {
+          const msg = parsed?.error || text || `HTTP ${resp.status}`;
+          setStatus("Server error: " + msg, "err");
+          uploadBtn.disabled = false;
+          return;
+        }
+
+        const reportId = parsed?.id || parsed?.reportId || "(unknown ID)";
+        setStatus("✅ Upload complete. AI queued for report ID: " + reportId, "ok");
+
+        // Optional: clear form
+        fileInput.value = "";
+        titleInput.value = "";
+        nameInput.value = "";
+        ageInput.value = "";
+        sexInput.value = "Unknown";
+      } catch (err) {
+        console.error("Upload crash:", err);
+        setStatus("Network error: " + String(err.message || err), "err");
+        uploadBtn.disabled = false;
+      }
+    }
+
+    uploadBtn.addEventListener("click", doUpload);
+
+    // Initial load
+    await loadUser();
+  </script>
 </body>
 </html>
