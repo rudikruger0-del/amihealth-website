@@ -1,3 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AMI — Report Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+  body {
+    margin:0;
+    font-family:Inter, sans-serif;
+    background:#02030f;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+  }
+
+  header {
+    padding:16px 24px;
+    background:#050919;
+    border-bottom:1px solid rgba(255,255,255,0.1);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  header a {
+    color:#00d4ff;
+    text-decoration:none;
+    font-weight:600;
+  }
+
+  .wrapper {
+    display:flex;
+    flex:1;
+    overflow:hidden;
+  }
+
+  /* Left PDF viewer */
+  .left {
+    flex:1;
+    background:black;
+    border-right:1px solid rgba(255,255,255,0.1);
+  }
+
+  #pdfFrame {
+    width:100%;
+    height:100%;
+    border:none;
+  }
+
+  /* Right side */
+  .right {
+    width:40%;
+    background:#0b1020;
+    padding:20px;
+    overflow-y:auto;
+  }
+
+  .section {
+    background:#0f162d;
+    padding:16px;
+    border-radius:10px;
+    margin-bottom:18px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+
+  h2, h3 { margin-top:0; }
+
+  table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+    font-size:14px;
+  }
+
+  th, td {
+    padding:6px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    text-align:left;
+  }
+
+  .ai-text {
+    white-space:pre-wrap;
+    font-size:14px;
+  }
+
+  .printBtn {
+    padding:10px 20px;
+    border-radius:999px;
+    border:none;
+    background:linear-gradient(90deg,#00e0b8,#00b7ff);
+    font-weight:700;
+    cursor:pointer;
+    color:#001821;
+  }
+
+  @media print {
+    header, .left { display:none; }
+    .right { width:100%; background:white; color:black; }
+    .section { background:white; color:black; border:none; }
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <a href="/dashboard.html">← Back</a>
+  <button class="printBtn" onclick="window.print()">Print Report</button>
+</header>
+
+<div class="wrapper">
+  <div class="left">
+    <iframe id="pdfFrame"></iframe>
+  </div>
+
+  <div class="right">
+
+    <div class="section">
+      <h2>Patient Info</h2>
+      <div id="patientInfo">Loading…</div>
+    </div>
+
+    <div class="section">
+      <h3>CBC Results</h3>
+      <table id="cbcTable"></table>
+    </div>
+
+    <div class="section">
+      <h3>AI Interpretation</h3>
+      <div id="aiText" class="ai-text">Loading…</div>
+    </div>
+
+  </div>
+</div>
+
 <script>
 async function loadReport() {
   const params = new URLSearchParams(window.location.search);
@@ -8,77 +146,36 @@ async function loadReport() {
     return;
   }
 
-  /* ----------------------------------
-     1️⃣ Fetch report details from API
-  ---------------------------------- */
-  let res;
-  try {
-    res = await fetch(`/api/get-ai-report?id=${id}`);
-  } catch (err) {
-    console.error("API error:", err);
-    document.querySelector("#aiText").textContent = "Server unavailable.";
-    return;
-  }
-
+  /* Fetch report */
+  let res = await fetch(`/api/get-ai-report?id=${id}`);
   if (!res.ok) {
-    document.querySelector("#aiText").textContent =
-      "Unable to load report (server error).";
+    document.querySelector("#aiText").textContent = "Error loading report.";
     return;
   }
 
-  let data;
-  try {
-    data = await res.json();
-  } catch (err) {
-    console.error("JSON parse error:", err);
-    document.querySelector("#aiText").textContent =
-      "Invalid data returned by server.";
-    return;
-  }
-
-  if (!data || !data.results) {
-    document.querySelector("#aiText").textContent = "No report found.";
-    return;
-  }
-
+  const data = await res.json();
   const rpt = data.results;
 
+  if (!rpt) {
+    document.querySelector("#aiText").textContent = "Report not found.";
+    return;
+  }
 
-  /* ----------------------------------
-     2️⃣ Get signed URL for the PDF
-  ---------------------------------- */
-  let pdfRes;
-  try {
-    pdfRes = await fetch("/api/get-file-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file_path: rpt.file_path })
-    });
-  } catch (err) {
-    console.error("PDF URL fetch error:", err);
+  /* Fetch signed PDF URL */
+  let pdfRes = await fetch("/api/get-file-url", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ file_path: rpt.file_path })
+  });
+
+  const pdfJson = await pdfRes.json();
+  if (pdfJson?.url) {
+    document.querySelector("#pdfFrame").src = pdfJson.url;
+  } else {
     alert("Failed to load PDF.");
-    return;
   }
 
-  let pdfJson;
-  try {
-    pdfJson = await pdfRes.json();
-  } catch {
-    alert("Invalid PDF response.");
-    return;
-  }
-
-  if (!pdfJson?.url) {
-    alert("Failed to load PDF.");
-    return;
-  }
-
-  document.querySelector("#pdfFrame").src = pdfJson.url;
-
-
-  /* ----------------------------------
-     3️⃣ Fill Patient Info
-  ---------------------------------- */
+  /* Fill patient info */
   document.querySelector("#patientInfo").innerHTML = `
     <b>Name:</b> ${rpt.name || "-"}<br>
     <b>Age:</b> ${rpt.age || "-"}<br>
@@ -86,47 +183,40 @@ async function loadReport() {
     <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
   `;
 
-
-  /* ----------------------------------
-     4️⃣ CBC Table
-  ---------------------------------- */
+  /* CBC table */
   const cbc = rpt.cbc_json || {};
   let rows = "<tr><th>Test</th><th>Value</th></tr>";
-
   for (const key in cbc) {
-    rows += `<tr>
-               <td>${key}</td>
-               <td>${cbc[key]}</td>
-             </tr>`;
+    rows += `<tr><td>${key}</td><td>${cbc[key]}</td></tr>`;
   }
   document.querySelector("#cbcTable").innerHTML = rows;
 
-
-  /* ----------------------------------
-     5️⃣ AI Output (WITH LOGO + DISCLAIMER)
-  ---------------------------------- */
-
+  /* AI text with logo + disclaimer */
   const amiLogo = `
-    <div style="text-align:center; margin-bottom:12px;">
-      <img src="/assets/ami-logo.png" 
-           style="width:140px; opacity:0.9;" />
+    <div style="text-align:center;margin-bottom:12px;">
+      <img src="/assets/ami-logo.png" style="width:140px;opacity:0.9;">
     </div>
   `;
 
   const disclaimer = `
-    <hr style="margin:18px 0; opacity:0.3;">
-    <p style="font-size:13px; opacity:0.7;">
-      <b>Disclaimer:</b> AMI is an AI medical assistant. 
-      This analysis is <u>not a diagnosis</u>.  
-      A licensed healthcare professional should confirm all findings.
+    <hr style="opacity:0.3;margin:16px 0;">
+    <p style="font-size:13px;opacity:0.7;">
+      <b>Disclaimer:</b> AMI provides AI-assisted medical interpretation.
+      This is <u>not a diagnosis</u>. Medical decisions must be confirmed
+      by a licensed healthcare professional.
     </p>
   `;
 
   document.querySelector("#aiText").innerHTML =
     amiLogo +
-    `<div style="white-space:pre-wrap;">${rpt.ai_results}</div>` +
+    (typeof rpt.ai_results === "string"
+     ? rpt.ai_results
+     : JSON.stringify(rpt.ai_results, null, 2)) +
     disclaimer;
 }
 
 loadReport();
 </script>
+
+</body>
+</html>
