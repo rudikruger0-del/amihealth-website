@@ -1,10 +1,10 @@
-export const config = {
-  api: { bodyParser: false },
-};
-
 import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
 import fs from "fs";
+
+export const config = {
+  api: { bodyParser: false }
+};
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -16,62 +16,61 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const form = formidable({ multiples: false });
+  try {
+    const form = formidable({ multiples: false });
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error("Form parse error:", err);
-      return res.status(500).json({ error: "FORMIDABLE_PARSE_FAILED" });
-    }
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        console.error("Form parse error:", err);
+        return res.status(400).json({ error: "Form parsing failed" });
+      }
 
-    try {
-      const file = files.file;
+      const file = files.file?.[0];
       if (!file) return res.status(400).json({ error: "Missing file" });
 
-      // Read file
-      const fileBuffer = fs.readFileSync(file.filepath);
+      const buffer = fs.readFileSync(file.filepath);
       const filename = `${Date.now()}-${file.originalFilename}`;
+      const filePath = filename.replace(/\s+/g, "_");
 
       // Upload to Supabase storage
       const { error: uploadErr } = await supabase.storage
         .from("reports")
-        .upload(filename, fileBuffer, {
-          contentType: file.mimetype || "application/pdf",
+        .upload(filePath, buffer, {
+          contentType: file.mimetype || "application/octet-stream",
         });
 
       if (uploadErr) {
-        console.error("UPLOAD ERROR:", uploadErr);
-        return res.status(500).json({ error: "UPLOAD_FAILED" });
+        console.error(uploadErr);
+        return res.status(500).json({ error: "Storage upload failed" });
       }
 
-      // Insert DB record
-      const { data: insertData, error: dbErr } = await supabase
+      // Insert database record
+      const { data, error: dbErr } = await supabase
         .from("reports")
         .insert({
-          email: fields.email,
+          email: fields.email || null,
           title: fields.title || null,
           name: fields.name || null,
-          age: fields.age ? parseInt(fields.age) : null,
+          age: fields.age ? Number(fields.age) : null,
           sex: fields.sex || null,
-          file_path: filename,
-          ai_status: "queued",
+          file_path: filePath,
+          ai_status: "processing",
         })
         .select()
-        .single(); // IMPORTANT — returns inserted row including id
+        .single();
 
       if (dbErr) {
-        console.error("DB INSERT ERROR:", dbErr);
-        return res.status(500).json({ error: "DB_INSERT_FAILED" });
+        console.error(dbErr);
+        return res.status(500).json({ error: "DB insert failed" });
       }
 
-      // Return correct report ID
       return res.status(200).json({
         ok: true,
-        report_id: insertData.id,
+        report_id: data.id
       });
-    } catch (e) {
-      console.error("SERVER CRASH:", e);
-      return res.status(500).json({ error: "SERVER_CRASH" });
-    }
-  });
+    });
+  } catch (e) {
+    console.error("CRASH:", e);
+    return res.status(500).json({ error: "SERVER_CRASH" });
+  }
 }
