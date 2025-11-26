@@ -41,9 +41,7 @@
       color: var(--muted);
     }
 
-    .topbar span strong {
-      color: #ffffff;
-    }
+    .topbar span strong { color: #ffffff; }
 
     .topbar button {
       background: transparent;
@@ -111,24 +109,10 @@
       color: #fff;
       font-size: 14px;
       outline: none;
-      transition: border 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
 
-    input:focus,
-    select:focus {
-      border-color: rgba(0,224,184,0.75);
-      box-shadow: 0 0 0 1px rgba(0,224,184,0.5);
-      background: #06091c;
-    }
-
-    .row {
-      display: flex;
-      gap: 12px;
-    }
-
-    .row > div {
-      flex: 1;
-    }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
 
     button#uploadBtn {
       margin-top: 24px;
@@ -141,84 +125,59 @@
       font-weight: 700;
       cursor: pointer;
       color: #001319;
-      box-shadow: 0 14px 40px rgba(0, 179, 255, 0.45);
-      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.12s ease;
-    }
-
-    button#uploadBtn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 18px 55px rgba(0, 179, 255, 0.5);
-    }
-
-    button#uploadBtn:active:not(:disabled) {
-      transform: translateY(0);
-      box-shadow: 0 8px 24px rgba(0, 179, 255, 0.5);
-      opacity: 0.96;
-    }
-
-    button#uploadBtn:disabled {
-      opacity: 0.55;
-      cursor: default;
-      box-shadow: none;
     }
 
     .status {
       margin-top: 16px;
       font-size: 13px;
       white-space: pre-wrap;
-      line-height: 1.45;
-      min-height: 20px;
     }
 
-    .status.ok {
-      color: #7ef7d3;
-    }
-
-    .status.err {
-      color: #ff8f9b;
-    }
+    .status.ok { color: #7ef7d3; }
+    .status.err { color: #ff8f9b; }
 
     @media (max-width: 640px) {
-      .card { padding: 22px 18px 20px; }
+      .card { padding: 22px 18px; }
       .row { flex-direction: column; }
     }
   </style>
 </head>
+
 <body>
 
   <div class="wrap">
 
     <div class="topbar">
       <span>Signed in as: <strong id="userEmail">Checking…</strong></span>
-      <button id="logoutBtn" type="button">Logout</button>
+      
+      <div style="display:flex; gap:10px;">
+        <button id="backBtn" type="button">← Back to Dashboard</button>
+        <button id="logoutBtn" type="button">Logout</button>
+      </div>
     </div>
 
     <div class="card">
       <h1>Upload Report</h1>
       <div class="subtitle">
-        Upload a PDF or image report. AMI will queue it, extract CBC values, and apply AI rules for interpretation.
+        Upload a PDF or image report. AMI will extract CBC values and run AI interpretation.
       </div>
 
-      <label for="fileInput">File</label>
+      <label>File</label>
       <input type="file" id="fileInput" accept=".pdf,image/*" />
 
-      <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
-        PDF / image. Stored securely in the private <code>reports</code> bucket.
-      </div>
+      <label>Title</label>
+      <input id="reportTitle" type="text" placeholder="e.g. CBC — Z. Taljaard" />
 
-      <label for="reportTitle">Title (optional)</label>
-      <input type="text" id="reportTitle" placeholder="e.g. CBC — Z. Taljaard" />
-
-      <label for="patientName">Patient name (optional)</label>
-      <input type="text" id="patientName" placeholder="Optional" />
+      <label>Patient Name</label>
+      <input id="patientName" type="text" />
 
       <div class="row">
         <div>
-          <label for="ageInput">Age (optional)</label>
-          <input type="number" id="ageInput" placeholder="Years" min="0" max="130" />
+          <label>Age</label>
+          <input id="ageInput" type="number" />
         </div>
         <div>
-          <label for="sexInput">Sex (optional)</label>
+          <label>Sex</label>
           <select id="sexInput">
             <option value="Unknown" selected>Unknown</option>
             <option value="Female">Female</option>
@@ -227,8 +186,9 @@
         </div>
       </div>
 
-      <button id="uploadBtn" type="button">Upload & Queue AI</button>
-      <div class="status" id="status"></div>
+      <button id="uploadBtn">Upload & Queue AI</button>
+
+      <div id="status" class="status"></div>
     </div>
   </div>
 
@@ -237,6 +197,7 @@
 
     const userEmailEl = document.getElementById("userEmail");
     const logoutBtn = document.getElementById("logoutBtn");
+    const backBtn = document.getElementById("backBtn");
     const uploadBtn = document.getElementById("uploadBtn");
     const statusEl = document.getElementById("status");
 
@@ -248,112 +209,60 @@
 
     let currentEmail = null;
 
-    function setStatus(msg, type = "info") {
-      statusEl.textContent = msg || "";
-      statusEl.classList.remove("ok", "err");
-      if (type === "ok") statusEl.classList.add("ok");
-      if (type === "err") statusEl.classList.add("err");
+    function setStatus(msg, type="") {
+      statusEl.textContent = msg;
+      statusEl.className = "status " + (type || "");
     }
 
     async function loadUser() {
-      try {
-        const { data, error } = await supabase.auth.getUser();
-
-        if (error || !data?.user) {
-          userEmailEl.textContent = "Not logged in";
-          setStatus("Not logged in. Please log in again.", "err");
-          uploadBtn.disabled = true;
-          return;
-        }
-
-        currentEmail = data.user.email;
-        userEmailEl.textContent = currentEmail || "Unknown";
-        uploadBtn.disabled = false;
-        setStatus("");
-      } catch (err) {
-        console.error("loadUser error:", err);
-        userEmailEl.textContent = "Error";
-        setStatus("Cannot read session. Please log in again.", "err");
+      const { data,error } = await supabase.auth.getUser();
+      if (!data?.user) {
+        userEmailEl.textContent = "Not logged in";
         uploadBtn.disabled = true;
-      }
-    }
-
-    async function doLogout() {
-      try {
-        await supabase.auth.signOut();
-      } catch (err) {
-        console.error("Logout error:", err);
-      }
-      window.location.href = "/login.html";
-    }
-
-    logoutBtn.addEventListener("click", doLogout);
-
-    async function doUpload() {
-      if (!currentEmail) {
-        setStatus("You are not logged in. Please log in again.", "err");
         return;
       }
+      currentEmail = data.user.email;
+      userEmailEl.textContent = currentEmail;
+    }
 
-      const file = fileInput.files[0];
-      if (!file) {
-        setStatus("Please select a file to upload.", "err");
-        return;
-      }
+    logoutBtn.onclick = async () => {
+      await supabase.auth.signOut();
+      window.location.href="/login.html";
+    };
+
+    backBtn.onclick = () => window.location.href="/dashboard.html";
+
+    uploadBtn.onclick = async () => {
+      if (!fileInput.files[0]) return setStatus("Select a file.", "err");
+      if (!currentEmail) return setStatus("Not logged in.", "err");
 
       const form = new FormData();
-      form.append("file", file);
+      form.append("file", fileInput.files[0]);
       form.append("email", currentEmail);
-      form.append("title", titleInput.value.trim());
-      form.append("name", nameInput.value.trim());
-      form.append("age", ageInput.value ? ageInput.value : "");
+      form.append("title", titleInput.value);
+      form.append("name", nameInput.value);
+      form.append("age", ageInput.value);
       form.append("sex", sexInput.value);
 
       uploadBtn.disabled = true;
-      setStatus("Uploading to server and queuing AI…");
+      setStatus("Uploading…");
+
+      const resp = await fetch("/api/upload", { method:"POST", body:form });
+      const txt = await resp.text();
 
       try {
-        const resp = await fetch("/api/upload", {
-          method: "POST",
-          body: form,
-        });
-
-        const text = await resp.text();
-        let parsed;
-
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          parsed = null;
-        }
-
-        if (!resp.ok) {
-          const msg = parsed?.error || text || `HTTP ${resp.status}`;
-          setStatus("Server error: " + msg, "err");
-          uploadBtn.disabled = false;
-          return;
-        }
-
-        const reportId = parsed?.id || parsed?.reportId || "(unknown ID)";
-        setStatus("✅ Upload complete. AI queued for report ID: " + reportId, "ok");
-
-        // Optional: clear form
-        fileInput.value = "";
-        titleInput.value = "";
-        nameInput.value = "";
-        ageInput.value = "";
-        sexInput.value = "Unknown";
-      } catch (err) {
-        console.error("Upload crash:", err);
-        setStatus("Network error: " + String(err.message || err), "err");
-        uploadBtn.disabled = false;
+        const data = JSON.parse(txt);
+        if (data.ok || data.id) setStatus("Upload complete ✓","ok");
+        else setStatus(data.error || txt,"err");
+      } catch {
+        setStatus(txt,"err");
       }
-    }
 
-    uploadBtn.addEventListener("click", doUpload);
+      uploadBtn.disabled = false;
+    };
 
-    // Initial load
-    await loadUser();
+    loadUser();
   </script>
+
 </body>
 </html>
