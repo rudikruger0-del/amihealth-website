@@ -8,51 +8,50 @@ async function loadReport() {
     return;
   }
 
-  // 1️⃣ Fetch report data
+  // 1️⃣ GET AI REPORT + METADATA
   const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const data = await res.json();
+  const report = await res.json();
 
-  if (!data || !data.report) {
+  if (!report || report.error) {
     document.querySelector("#aiText").textContent = "Unable to load report.";
     return;
   }
 
-  const rpt = data.report;
+  // Extract
+  const status = report.status;
+  const ai_results = report.results;
+  const file_path = report.pdf_path;
 
-  // 2️⃣ Get signed PDF URL
+  // 2️⃣ GET SIGNED PDF URL
   const pdfRes = await fetch("/api/get-file-url", {
     method: "POST",
-    body: JSON.stringify({ file_path: rpt.file_path }),
-    headers: { "Content-Type": "application/json" }
+    body: JSON.stringify({ file_path })
   });
 
   const pdfJson = await pdfRes.json();
+  const pdfUrl = pdfJson.url;
 
-  if (pdfJson.url) {
-    document.querySelector("#pdfFrame").src = pdfJson.url;
-  } else {
-    alert("Failed to load PDF.");
-  }
+  document.querySelector("#pdfFrame").src = pdfUrl;
 
-  // 3️⃣ Patient Info
+  // 3️⃣ LOAD PATIENT INFO (you store these in DB)
   document.querySelector("#patientInfo").innerHTML = `
-    <b>Name:</b> ${rpt.name || "-"}<br>
-    <b>Age:</b> ${rpt.age || "-"}<br>
-    <b>Sex:</b> ${rpt.sex || "-"}<br>
-    <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
+      <b>Name:</b> ${ai_results.name || "-"}<br>
+      <b>Age:</b> ${ai_results.age || "-"}<br>
+      <b>Sex:</b> ${ai_results.sex || "-"}<br>
+      <b>Date:</b> ${new Date(ai_results.created_at).toLocaleString()}
   `;
 
-  // 4️⃣ CBC Table (optional)
-  const cbc = rpt.cbc_json || {};
+  // 4️⃣ CBC TABLE
+  const cbc = ai_results.cbc || {};
   let rows = `<tr><th>Test</th><th>Value</th></tr>`;
   for (const key in cbc) {
     rows += `<tr><td>${key}</td><td>${cbc[key]}</td></tr>`;
   }
   document.querySelector("#cbcTable").innerHTML = rows;
 
-  // 5️⃣ AI Output
+  // 5️⃣ AI TEXT
   document.querySelector("#aiText").textContent =
-    rpt.ai_results ? JSON.stringify(rpt.ai_results, null, 2) : "No AI output.";
+    ai_results?.analysis_text || "No AI output.";
 }
 
 loadReport();
