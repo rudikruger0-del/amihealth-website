@@ -10,42 +10,68 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    const id = req.query.id;
+    const { id } = req.query;
 
     if (!id) {
-      return res.status(400).json({ error: "Missing report id" });
+      return res.status(400).json({ error: "Missing id" });
     }
 
-    // Get report row
-    const { data: report, error } = await supabase
+    // Fetch report by the REAL Supabase ID (uuid)
+    const { data: rpt, error } = await supabase
       .from("reports")
       .select("*")
       .eq("id", id)
       .single();
 
-    if (error || !report) {
+    if (error || !rpt) {
       return res.status(404).json({ error: "Report not found" });
     }
 
-    // 🔥 Build consistent JSON for frontend
+    // Fix ai_results if it was stored as a STRING instead of JSON
+    let aiJson = null;
+    try {
+      if (typeof rpt.ai_results === "string") {
+        // Remove ```json formatting if present
+        const cleaned = rpt.ai_results
+          .replace(/```json/g, "")
+          .replace(/```/g, "")
+          .trim();
+
+        aiJson = JSON.parse(cleaned);
+      } else {
+        aiJson = rpt.ai_results;
+      }
+    } catch (err) {
+      aiJson = null;
+    }
+
+    // Fix CBC JSON
+    let cbcJson = null;
+    try {
+      cbcJson =
+        typeof rpt.cbc_json === "string"
+          ? JSON.parse(rpt.cbc_json)
+          : rpt.cbc_json;
+    } catch {
+      cbcJson = null;
+    }
+
     return res.status(200).json({
       ok: true,
       report: {
-        id: report.id,
-        name: report.name,
-        age: report.age,
-        sex: report.sex,
-        created_at: report.created_at,
-        file_path: report.file_path,
-        ai_status: report.ai_status,
-        ai_results: report.ai_results || null,
-        cbc_json: report.cbc_json || null
+        id: rpt.id,
+        name: rpt.name || "",
+        age: rpt.age || "",
+        sex: rpt.sex || "",
+        created_at: rpt.created_at,
+        file_path: rpt.file_path,
+        ai_status: rpt.ai_status,
+        ai_results: aiJson,
+        cbc_json: cbcJson,
       },
-      pdf_path: report.file_path
     });
-
   } catch (err) {
-    console.error("get-ai-report crash:", err);
+    console.error("get-ai-report failure:", err);
     return res.status(500).json({ error: "Server error" });
   }
 }
