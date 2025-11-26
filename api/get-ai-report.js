@@ -13,35 +13,37 @@ export default async function handler(req, res) {
     const id = req.query.id;
 
     if (!id) {
-      return res.status(400).json({ error: "Missing report ID" });
+      return res.status(400).json({ error: "Missing report id" });
     }
 
-    const { data, error } = await supabase
+    // Get report row
+    const { data: report, error } = await supabase
       .from("reports")
       .select("*")
       .eq("id", id)
       .single();
 
-    if (error || !data) {
-      console.error("get-ai-report error:", error);
+    if (error || !report) {
       return res.status(404).json({ error: "Report not found" });
     }
 
-    // Return the full report row, nicely shaped
+    // 🔥 Build consistent JSON for frontend
     return res.status(200).json({
+      ok: true,
       report: {
-        id: data.id,
-        email: data.email || null,
-        file_path: data.file_path,
-        created_at: data.created_at,
-        name: data.name || null,
-        age: data.age || null,
-        sex: data.sex || null,
-        ai_status: data.ai_status || null,
-        ai_results: data.ai_results || null,
-        cbc_json: data.cbc_json || {},   // optional column
+        id: report.id,
+        name: report.name,
+        age: report.age,
+        sex: report.sex,
+        created_at: report.created_at,
+        file_path: report.file_path,
+        ai_status: report.ai_status,
+        ai_results: report.ai_results || null,
+        cbc_json: report.cbc_json || null
       },
+      pdf_path: report.file_path
     });
+
   } catch (err) {
     console.error("get-ai-report crash:", err);
     return res.status(500).json({ error: "Server error" });
