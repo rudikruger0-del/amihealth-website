@@ -1,294 +1,288 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Upload Report — AMI Health</title>
-
+  <meta charset="utf-8" />
+  <title>AMI — Upload Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root {
-      --bg: #030414;
-      --card: #0b1020;
-      --muted: #98a0b3;
-      --accent: #00e0b8;
-      --accent-2: #00b3ff;
-      --radius: 18px;
+      --bg:#030414;
+      --card:#0b1020;
+      --muted:#98a0b3;
+      --accent:#00e0b8;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, sans-serif;
+      background:radial-gradient(circle at top,#071a33,#02030f);
+      color:#eaf6ff;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    header{
+      width:100%;
+      max-width:900px;
+      padding:16px 20px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      text-decoration:none;
+      color:inherit;
+    }
+    .brand img{height:32px;}
+    .brand-title{font-weight:800;font-size:18px;}
+    .brand-sub{font-size:11px;color:var(--muted);}
+    .nav-btn{
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.16);
+      padding:6px 12px;
+      font-size:13px;
+      color:#eaf6ff;
+      background:transparent;
+      text-decoration:none;
+      margin-left:8px;
+      cursor:pointer;
     }
 
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: radial-gradient(circle at top, #0a1234 0, #020214 55%, #02010c 100%);
-      color: #e6eef8;
-      min-height: 100vh;
-      padding: 28px 16px 40px;
-      -webkit-font-smoothing: antialiased;
+    main{
+      flex:1;
+      width:100%;
+      max-width:900px;
+      padding:0 20px 40px;
     }
-
-    .wrap {
-      max-width: 820px;
-      margin: 0 auto;
+    .card{
+      background:rgba(11,16,32,0.96);
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.08);
+      box-shadow:0 18px 50px rgba(0,0,0,0.6);
+      padding:24px 24px 28px;
+      max-width:900px;
+      margin:0 auto;
     }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 18px;
-      font-size: 14px;
-      color: var(--muted);
+    h1{margin:0 0 4px;font-size:22px;}
+    .muted{margin:0 0 16px;font-size:14px;color:var(--muted);}
+    form{margin-top:16px;display:flex;flex-direction:column;gap:14px;}
+    label{font-size:13px;color:#c5d0f5;}
+    input,select{
+      width:100%;
+      margin-top:4px;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.14);
+      background:#050a18;
+      color:#eaf6ff;
+      font-size:14px;
     }
-
-    .topbar span strong { color: #ffffff; }
-
-    .topbar button {
-      background: transparent;
-      border-radius: 999px;
-      padding: 6px 14px;
-      border: 1px solid rgba(255,255,255,0.14);
-      color: #e6eef8;
-      font-size: 13px;
-      cursor: pointer;
+    input[type="file"]{
+      padding:8px;
+      background:#050a18;
     }
-
-    .topbar button:hover {
-      border-color: rgba(255,255,255,0.3);
-      background: rgba(255,255,255,0.03);
+    .row{
+      display:flex;
+      gap:12px;
     }
-
-    .card {
-      background: radial-gradient(circle at top left, rgba(0, 224, 184, 0.07), transparent 45%),
-                  radial-gradient(circle at bottom right, rgba(0, 179, 255, 0.07), transparent 45%),
-                  rgba(6, 10, 30, 0.96);
-      padding: 28px 26px 22px;
-      border-radius: var(--radius);
-      box-shadow: 0 16px 60px rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255,255,255,0.06);
+    .row>div{flex:1;}
+    .btn-primary{
+      margin-top:10px;
+      width:100%;
+      padding:12px 16px;
+      border-radius:999px;
+      border:none;
+      background:linear-gradient(90deg,#00e0b8,#00b7ff);
+      color:#001821;
+      font-weight:700;
+      font-size:15px;
+      cursor:pointer;
+      box-shadow:0 0 18px rgba(0,255,220,0.25);
     }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: 24px;
-      font-weight: 800;
-      color: #ffffff;
+    .btn-primary[disabled]{
+      opacity:0.6;
+      cursor:default;
+      box-shadow:none;
     }
-
-    .subtitle {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 20px;
-      max-width: 520px;
+    .status{
+      margin-top:10px;
+      min-height:20px;
+      font-size:13px;
+      color:var(--muted);
+      white-space:pre-wrap;
     }
-
-    label {
-      display: block;
-      margin-top: 16px;
-      margin-bottom: 6px;
-      font-size: 13px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    input[type="file"] {
-      width: 100%;
-      padding: 10px 0;
-      font-size: 14px;
-      color: #dce7ff;
-    }
-
-    input[type="text"],
-    input[type="number"],
-    select {
-      width: 100%;
-      padding: 10px 11px;
-      border-radius: 9px;
-      border: 1px solid rgba(255,255,255,0.06);
-      background: rgba(7, 11, 30, 0.96);
-      color: #fff;
-      font-size: 14px;
-      outline: none;
-    }
-
-    .row { display: flex; gap: 12px; }
-    .row > div { flex: 1; }
-
-    button#uploadBtn {
-      margin-top: 24px;
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      border: none;
-      border-radius: 999px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      color: #001319;
-    }
-
-    .status {
-      margin-top: 16px;
-      font-size: 13px;
-      white-space: pre-wrap;
-    }
-
-    .status.ok { color: #7ef7d3; }
-    .status.err { color: #ff8f9b; }
-
-    @media (max-width: 640px) {
-      .card { padding: 22px 18px; }
-      .row { flex-direction: column; }
+    .status.ok{color:#7dffc5;}
+    .status.err{color:#ffb3b3;}
+    .signed-in{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:4px;
     }
   </style>
 </head>
-
 <body>
 
-  <div class="wrap">
-
-    <div class="topbar">
-      <span>Signed in as: <strong id="userEmail">Checking…</strong></span>
-
-      <div style="display:flex; gap:10px;">
-        <button id="backBtn" type="button">← Back to Dashboard</button>
-        <button id="logoutBtn" type="button">Logout</button>
-      </div>
+<header>
+  <a class="brand" href="/dashboard.html">
+    <img src="/logo.png" alt="AMI logo">
+    <div>
+      <div class="brand-title">AMI Health</div>
+      <div class="brand-sub">Artificial Medical Intelligence</div>
     </div>
+  </a>
+  <div>
+    <a class="nav-btn" href="/dashboard.html">Back to Dashboard</a>
+    <button class="nav-btn" id="logoutBtn">Logout</button>
+  </div>
+</header>
 
-    <div class="card">
-      <h1>Upload Report</h1>
-      <div class="subtitle">
-        Upload a PDF or image report. AMI will extract CBC values and run AI interpretation.
+<main>
+  <div class="card">
+    <h1>Upload Report</h1>
+    <p class="muted">
+      Upload a PDF or image report. AMI will extract CBC values and run AI interpretation in the background.
+    </p>
+    <div class="signed-in" id="signedInText">Signed in as: …</div>
+
+    <form id="uploadForm">
+      <div>
+        <label>
+          File
+          <input type="file" name="file" id="fileInput" accept=".pdf,image/*" required>
+        </label>
       </div>
 
-      <label>File</label>
-      <input type="file" id="fileInput" accept=".pdf,image/*" />
+      <div>
+        <label>
+          Title
+          <input type="text" name="title" placeholder="e.g. CBC — Z. Taljaard">
+        </label>
+      </div>
 
-      <label>Title</label>
-      <input id="reportTitle" type="text" placeholder="e.g. CBC — Z. Taljaard" />
-
-      <label>Patient Name</label>
-      <input id="patientName" type="text" />
+      <div>
+        <label>
+          Patient Name
+          <input type="text" name="name" placeholder="Patient name (optional)">
+        </label>
+      </div>
 
       <div class="row">
         <div>
-          <label>Age</label>
-          <input id="ageInput" type="number" />
+          <label>
+            Age
+            <input type="number" name="age" min="0" max="120" placeholder="e.g. 42">
+          </label>
         </div>
         <div>
-          <label>Sex</label>
-          <select id="sexInput">
-            <option value="Unknown" selected>Unknown</option>
-            <option value="Female">Female</option>
-            <option value="Male">Male</option>
-          </select>
+          <label>
+            Sex
+            <select name="sex">
+              <option value="Unknown">Unknown</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </label>
         </div>
       </div>
 
-      <button id="uploadBtn">Upload & Queue AI</button>
+      <button type="submit" class="btn-primary" id="submitBtn">
+        Upload & Queue AI
+      </button>
 
-      <div id="status" class="status"></div>
-    </div>
+      <div class="status" id="statusText"></div>
+    </form>
   </div>
+</main>
 
-  <script type="module">
-    import { supabase } from "./lib/supabaseClient.js";
+<script type="module">
+  import { supabase } from "./lib/supabaseClient.js";
 
-    const userEmailEl = document.getElementById("userEmail");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const backBtn = document.getElementById("backBtn");
-    const uploadBtn = document.getElementById("uploadBtn");
-    const statusEl = document.getElementById("status");
+  const uploadForm = document.getElementById("uploadForm");
+  const statusText = document.getElementById("statusText");
+  const submitBtn = document.getElementById("submitBtn");
+  const fileInput = document.getElementById("fileInput");
+  const signedInText = document.getElementById("signedInText");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-    const fileInput = document.getElementById("fileInput");
-    const titleInput = document.getElementById("reportTitle");
-    const nameInput = document.getElementById("patientName");
-    const ageInput = document.getElementById("ageInput");
-    const sexInput = document.getElementById("sexInput");
+  let currentEmail = null;
 
-    let currentEmail = null;
+  async function loadUser() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = "/login.html";
+      return;
+    }
+    currentEmail = session.user.email;
+    signedInText.textContent = "Signed in as: " + currentEmail;
+  }
 
-    function setStatus(msg, type="") {
-      statusEl.textContent = msg;
-      statusEl.className = "status " + (type || "");
+  loadUser();
+
+  logoutBtn.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login.html";
+  });
+
+  uploadForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    statusText.textContent = "";
+    statusText.className = "status";
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+      statusText.textContent = "Please select a file.";
+      statusText.classList.add("err");
+      return;
+    }
+    if (!currentEmail) {
+      statusText.textContent = "No user session. Please log in again.";
+      statusText.classList.add("err");
+      return;
     }
 
-    async function loadUser() {
-      const { data } = await supabase.auth.getUser();
-      if (!data?.user) {
-        userEmailEl.textContent = "Not logged in";
-        uploadBtn.disabled = true;
-        return;
-      }
-      currentEmail = data.user.email;
-      userEmailEl.textContent = currentEmail;
-    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Uploading…";
 
-    logoutBtn.onclick = async () => {
-      await supabase.auth.signOut();
-      window.location.href="/login.html";
-    };
+    try {
+      const formData = new FormData(uploadForm);
+      formData.append("email", currentEmail);
 
-    backBtn.onclick = () => window.location.href="/dashboard.html";
-
-    uploadBtn.onclick = async () => {
-      if (!fileInput.files[0])
-        return setStatus("Select a file.", "err");
-
-      if (!currentEmail)
-        return setStatus("Not logged in.", "err");
-
-      const form = new FormData();
-      form.append("file", fileInput.files[0]);
-      form.append("email", currentEmail);
-      form.append("title", titleInput.value);
-      form.append("name", nameInput.value);
-      form.append("age", ageInput.value);
-      form.append("sex", sexInput.value);
-
-      uploadBtn.disabled = true;
-      setStatus("Uploading…");
-
-      const resp = await fetch("/api/upload", {
-        method:"POST",
-        body:form
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
       });
 
-      const txt = await resp.text();
+      const json = await res.json();
 
-      let data;
-      try { data = JSON.parse(txt); } catch { data = null; }
+      if (!res.ok || !json.ok) {
+        console.error("Upload error:", json);
+        statusText.textContent =
+          json.error || "Upload failed. Please try again.";
+        statusText.classList.add("err");
+      } else {
+        statusText.textContent =
+          "Upload complete ✓\nAI is analysing this report in the background.\n" +
+          "Open the Dashboard and refresh after a few seconds to see the AI result.";
+        statusText.classList.add("ok");
 
-      if (!resp.ok || !data?.report_id) {
-        setStatus("Upload error:\n" + (data?.error || txt), "err");
-        uploadBtn.disabled = false;
-        return;
+        // Optional: small nudge to refresh dashboard list
+        localStorage.setItem("reports_updated", "1");
+        uploadForm.reset();
       }
-
-      const reportId = data.report_id;
-
-      setStatus("Upload complete ✓\nAI analysing this report…", "ok");
-
-      // 🔥 Auto-trigger AI in background
-      fetch("/api/run-ai", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({ id: reportId })
-      }).catch(err => console.error("AI error:", err));
-
-      // Reset form
-      fileInput.value = "";
-      titleInput.value = "";
-      nameInput.value = "";
-      ageInput.value = "";
-      sexInput.value = "Unknown";
-
-      uploadBtn.disabled = false;
-    };
-
-    loadUser();
-  </script>
+    } catch (err) {
+      console.error("UPLOAD JS ERROR:", err);
+      statusText.textContent =
+        "Unexpected error while uploading. Please try again.";
+      statusText.classList.add("err");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Upload & Queue AI";
+    }
+  });
+</script>
 
 </body>
 </html>
