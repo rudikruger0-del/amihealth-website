@@ -9,7 +9,7 @@ export async function runAI(pdfBase64, extractedText) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",   // we keep this, but change HOW we prompt it
+        model: "gpt-4o-mini",
 
         response_format: { type: "json" },
 
@@ -17,22 +17,22 @@ export async function runAI(pdfBase64, extractedText) {
           {
             role: "system",
             content: `
-You are **AMI**, a clinical laboratory interpretation AI.
+You are AMI, a clinical laboratory interpretation AI.
 
 Your task:
 - Extract CBC values (WBC, RBC, HGB, HCT, MCV, MCH, MCHC, PLT, NEU%, LYM%, MONO%, etc.)
 - Detect infection markers (high WBC, neutrophilia, elevated inflammatory patterns)
 - Generate a structured JSON report:
-    {
-      "summary": [],
-      "trend": [],
-      "flagged_results": [],
-      "interpretation": [],
-      "risk_level": "",
-      "recommendations": [],
-      "cbc_values": {},
-      "disclaimer": "This is not a medical diagnosis..."
-    }
+{
+  "summary": [],
+  "trend": [],
+  "flagged_results": [],
+  "interpretation": [],
+  "risk_level": "",
+  "recommendations": [],
+  "cbc_values": {},
+  "disclaimer": "This is not a medical diagnosis..."
+}
 
 Rules:
 - NEVER hallucinate values.
@@ -40,7 +40,6 @@ Rules:
 - If CBC missing → set "cbc_values": {} and explain.
 `
           },
-
           {
             role: "user",
             content: `
@@ -58,10 +57,16 @@ Generate JSON only.
     });
 
     const data = await response.json();
-    return data.output ? data.output[0].content[0].text : data;
 
+    // OpenAI "responses" API usually wraps content under output[0].content[0].text/json
+    const raw =
+      data.output?.[0]?.content?.[0]?.text ??
+      data.output?.[0]?.content?.[0]?.json ??
+      data;
+
+    return raw;
   } catch (err) {
     console.error("AI RUN ERROR:", err);
-    return { error: err.message };
+    return { error: String(err.message || err) };
   }
 }
