@@ -1,77 +1,123 @@
-export const config = { runtime: "nodejs" };
+"use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+export default function UploadPage() {
+  const router = useRouter();
 
-export default async function handler(req, res) {
-  try {
-    const { id } = req.query;
+  const [file, setFile] = useState(null);
+  const [title, setTitle] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [sex, setSex] = useState("Unknown");
+  const [userEmail, setUserEmail] = useState("");
+  const [status, setStatus] = useState("");
 
-    console.log("Incoming GET id:", id);
+  const handleUpload = async (e) => {
+    e.preventDefault();
 
-    if (!id) {
-      return res.status(400).json({ error: "Missing id" });
+    if (!file) {
+      setStatus("Please select a file.");
+      return;
     }
 
-    const { data: rpt, error } = await supabase
-      .from("reports")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("email", userEmail);
+    formData.append("title", title);
+    formData.append("name", name);
+    formData.append("age", age);
+    formData.append("sex", sex);
 
-    if (error || !rpt) {
-      console.log("Supabase lookup error:", error);
-      return res.status(404).json({ error: "Report not found" });
-    }
+    setStatus("Uploading…");
 
-    // Clean AI JSON
-    let ai = null;
-    try {
-      if (typeof rpt.ai_results === "string") {
-        ai = JSON.parse(
-          rpt.ai_results
-            .replace(/```json/g, "")
-            .replace(/```/g, "")
-            .trim()
-        );
-      } else {
-        ai = rpt.ai_results;
-      }
-    } catch {
-      ai = null;
-    }
-
-    // Clean CBC JSON
-    let cbc = null;
-    try {
-      cbc = typeof rpt.cbc_json === "string"
-        ? JSON.parse(rpt.cbc_json)
-        : rpt.cbc_json;
-    } catch {
-      cbc = null;
-    }
-
-    return res.status(200).json({
-      ok: true,
-      report: {
-        id: rpt.id,
-        name: rpt.name || "",
-        age: rpt.age || "",
-        sex: rpt.sex || "",
-        created_at: rpt.created_at,
-        file_path: rpt.file_path,
-        ai_status: rpt.ai_status,
-        ai_results: ai,
-        cbc_json: cbc,
-      },
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
     });
 
-  } catch (err) {
-    console.error("get-ai-report error:", err);
-    return res.status(500).json({ error: "Server error" });
-  }
+    const data = await res.json();
+
+    if (!data.ok) {
+      setStatus("Upload failed ❌");
+      return;
+    }
+
+    setStatus("Upload complete ✓");
+    setStatus("AI analysing this report…");
+
+    // ❌ DO NOT CALL run-ai manually
+    // Worker handles everything.
+
+    // router.push(`/report?id=${data.report_id}`);
+  };
+
+  return (
+    <main className="flex flex-col gap-4 p-6">
+      <h1 className="text-2xl">Upload Report</h1>
+
+      <form onSubmit={handleUpload} className="flex flex-col gap-4">
+
+        <input
+          type="email"
+          className="border p-2"
+          placeholder="Your email"
+          value={userEmail}
+          onChange={(e) => setUserEmail(e.target.value)}
+          required
+        />
+
+        <input
+          type="file"
+          className="border p-2"
+          onChange={(e) => setFile(e.target.files[0])}
+          required
+        />
+
+        <input
+          type="text"
+          className="border p-2"
+          placeholder="Report Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <input
+          type="text"
+          className="border p-2"
+          placeholder="Patient Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <input
+          type="number"
+          className="border p-2"
+          placeholder="Age"
+          value={age}
+          onChange={(e) => setAge(e.target.value)}
+        />
+
+        <select
+          className="border p-2"
+          value={sex}
+          onChange={(e) => setSex(e.target.value)}
+        >
+          <option>Unknown</option>
+          <option>Male</option>
+          <option>Female</option>
+        </select>
+
+        <button
+          type="submit"
+          className="bg-blue-600 text-white p-2 rounded"
+        >
+          Upload & Queue AI
+        </button>
+      </form>
+
+      <p>{status}</p>
+    </main>
+  );
 }
