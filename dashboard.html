@@ -195,9 +195,7 @@
 
       <div style="margin-top:14px;display:flex;gap:10px;">
         <a class="btn" href="/upload.html">Upload new report</a>
-        <button class="btn" id="logoutBtn" style="background:#222;color:#fff;">
-          Logout
-        </button>
+        <button class="btn" id="logoutBtn" style="background:#222;color:#fff;">Logout</button>
       </div>
     </section>
 
@@ -248,13 +246,21 @@ let fullList = [];
 async function loadUser() {
   const { data:{ session }} = await supabase.auth.getSession();
   if (!session) return window.location.href="/login.html";
+
   userEmailText.textContent = session.user.email;
+
   loadReports(session.user.email);
+
+  // Detect upload-page trigger
+  if (localStorage.getItem("reports_updated")) {
+    loadReports(session.user.email);
+    localStorage.removeItem("reports_updated");
+  }
 }
 
 /* FETCH REPORTS */
 async function loadReports(email) {
-  const res = await fetch(`/api/get-reports?email=${email}`);
+  const res = await fetch(`/api/get-reports?email=${encodeURIComponent(email)}`);
   const data = await res.json();
   fullList = data.reports || [];
   render(fullList);
@@ -278,7 +284,7 @@ function render(list) {
   `).join("");
 
   document.querySelectorAll(".pdfOpen").forEach(el => {
-    el.onclick = (e) => {
+    el.onclick = async (e) => {
       e.preventDefault();
       openPDF(el.dataset.path);
     };
@@ -295,7 +301,7 @@ searchBox.oninput = () => {
   render(s);
 };
 
-/* PDF VIEWER — NOW USING SIGNED URL */
+/* PDF VIEWER */
 const pdfModal=document.getElementById("pdfModal");
 const pdfFrame=document.getElementById("pdfFrame");
 
@@ -320,7 +326,7 @@ async function doLogout() {
   window.location.href="/login.html";
 }
 
-/* AUTO REFRESH EVERY 6s */
+/* AUTO REFRESH every 6s */
 setInterval(()=>{
   const email=userEmailText.textContent;
   if (email.includes("@")) loadReports(email);
