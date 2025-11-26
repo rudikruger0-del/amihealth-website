@@ -8,50 +8,48 @@ async function loadReport() {
     return;
   }
 
-  // 1️⃣ GET AI REPORT + METADATA
+  // 1) LOAD REPORT DATA
   const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const report = await res.json();
+  const data = await res.json();
 
-  if (!report || report.error) {
+  if (!data || !data.report) {
     document.querySelector("#aiText").textContent = "Unable to load report.";
     return;
   }
 
-  // Extract
-  const status = report.status;
-  const ai_results = report.results;
-  const file_path = report.pdf_path;
+  const rpt = data.report;
 
-  // 2️⃣ GET SIGNED PDF URL
+  // 2) LOAD PDF SIGNED URL
   const pdfRes = await fetch("/api/get-file-url", {
     method: "POST",
-    body: JSON.stringify({ file_path })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_path: rpt.file_path }),
   });
 
   const pdfJson = await pdfRes.json();
-  const pdfUrl = pdfJson.url;
+  document.querySelector("#pdfFrame").src = pdfJson.url;
 
-  document.querySelector("#pdfFrame").src = pdfUrl;
-
-  // 3️⃣ LOAD PATIENT INFO (you store these in DB)
+  // 3) PATIENT INFO
   document.querySelector("#patientInfo").innerHTML = `
-      <b>Name:</b> ${ai_results.name || "-"}<br>
-      <b>Age:</b> ${ai_results.age || "-"}<br>
-      <b>Sex:</b> ${ai_results.sex || "-"}<br>
-      <b>Date:</b> ${new Date(ai_results.created_at).toLocaleString()}
+    <b>Name:</b> ${rpt.name || "-"}<br>
+    <b>Age:</b> ${rpt.age || "-"}<br>
+    <b>Sex:</b> ${rpt.sex || "-"}<br>
+    <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
   `;
 
-  // 4️⃣ CBC TABLE
-  const cbc = ai_results.cbc || {};
+  // 4) CBC RESULTS
+  const cbc = rpt.cbc_json || {};
   let rows = `<tr><th>Test</th><th>Value</th></tr>`;
   for (const key in cbc) {
     rows += `<tr><td>${key}</td><td>${cbc[key]}</td></tr>`;
   }
   document.querySelector("#cbcTable").innerHTML = rows;
 
-  // 5️⃣ AI TEXT
+  // 5) AI TEXT
   document.querySelector("#aiText").textContent =
-    ai_results?.analysis_text || "No AI output.";
+    typeof rpt.ai_results === "string"
+      ? rpt.ai_results
+      : JSON.stringify(rpt.ai_results, null, 2);
 }
 
 loadReport();
