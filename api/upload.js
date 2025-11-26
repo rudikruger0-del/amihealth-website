@@ -25,6 +25,18 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Form parsing failed" });
       }
 
+      // 🔥 FIX 1: Always convert array → string
+      const cleanEmail =
+        Array.isArray(fields.email) ? fields.email[0] : fields.email;
+      const cleanTitle =
+        Array.isArray(fields.title) ? fields.title[0] : fields.title;
+      const cleanName =
+        Array.isArray(fields.name) ? fields.name[0] : fields.name;
+      const cleanAge =
+        Array.isArray(fields.age) ? fields.age[0] : fields.age;
+      const cleanSex =
+        Array.isArray(fields.sex) ? fields.sex[0] : fields.sex;
+
       const file = files.file?.[0];
       if (!file) return res.status(400).json({ error: "Missing file" });
 
@@ -44,15 +56,15 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Storage upload failed" });
       }
 
-      // Insert database record
+      // Insert DB record
       const { data, error: dbErr } = await supabase
         .from("reports")
         .insert({
-          email: fields.email || null,
-          title: fields.title || null,
-          name: fields.name || null,
-          age: fields.age ? Number(fields.age) : null,
-          sex: fields.sex || null,
+          email: cleanEmail,     // 🔥 FIXED
+          title: cleanTitle,
+          name: cleanName,
+          age: cleanAge ? Number(cleanAge) : null,
+          sex: cleanSex,
           file_path: filePath,
           ai_status: "processing",
         })
