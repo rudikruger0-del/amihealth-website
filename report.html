@@ -24,7 +24,10 @@
     color: var(--text);
   }
 
-  header {
+  /* ------------------------------
+      HEADER (new improved header)
+  ------------------------------ */
+  .topHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -36,14 +39,30 @@
     z-index: 100;
   }
 
-  header a {
+  .topHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .headerLogo {
+    width: 48px;
+    height: auto;
+  }
+
+  .headerTitle {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .topHeader a {
     color: #00d4ff;
     text-decoration: none;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
   }
 
-  .printBtn {
+  .downloadBtn {
     padding: 10px 20px;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     border: none;
@@ -54,19 +73,19 @@
     font-size: 14px;
   }
 
+  /* ------------------------------
+      Layout
+  ------------------------------ */
   .wrapper {
     display: flex;
-    height: calc(100vh - 65px);
+    height: calc(100vh - 70px);
     overflow: hidden;
   }
 
-  /* Left: PDF Viewer */
   .left {
     flex: 1;
-    min-width: 55%;
     background: #000;
     border-right: 1px solid rgba(255,255,255,0.08);
-    overflow: hidden;
   }
 
   #pdfFrame {
@@ -75,7 +94,6 @@
     border: none;
   }
 
-  /* Right: Info Panel */
   .right {
     width: 45%;
     overflow-y: auto;
@@ -83,13 +101,15 @@
     background: var(--card);
   }
 
-  .logo {
+  .logoSide {
     width: 110px;
-    height: auto;
     opacity: 0.9;
     margin-bottom: 14px;
   }
 
+  /* ------------------------------
+      Sections
+  ------------------------------ */
   .section {
     background: var(--card2);
     padding: 18px;
@@ -98,25 +118,15 @@
     border: 1px solid rgba(255,255,255,0.08);
   }
 
-  .section h2, .section h3 {
-    margin: 0 0 12px 0;
-  }
-
   table {
     width: 100%;
-    border-collapse: collapse;
     font-size: 14px;
+    border-collapse: collapse;
   }
 
   th, td {
     padding: 6px 4px;
     border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-
-  th {
-    color: var(--muted);
-    font-weight: 600;
-    text-align: left;
   }
 
   .badge-risk {
@@ -147,47 +157,77 @@
     text-align: center;
   }
 
+  /* ------------------------------
+      PRINT WATERMARK
+  ------------------------------ */
   @media print {
-    header, .left {
+
+    /* Hide UI elements */
+    .topHeader, .left {
       display: none !important;
     }
+
     .right {
       width: 100%;
-      background: #fff;
+      background: #ffffff;
       color: #000;
-      padding: 25px;
+      padding: 30px;
+      position: relative;
     }
+
+    /* watermark */
+    .right::before {
+      content: "";
+      position: fixed;
+      top: 25%;
+      left: 50%;
+      width: 400px;
+      height: 400px;
+      background: url('/logo.png') no-repeat center center;
+      background-size: 350px;
+      opacity: 0.07;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
     .section {
       background: #fff;
+      color: #000;
       border: none;
-      box-shadow: none;
       page-break-inside: avoid;
     }
+
     table, th, td {
       color: #000;
       border-color: #ccc;
     }
   }
+
 </style>
 </head>
 
 <body>
 
-<header>
-  <a href="/dashboard.html">← Back</a>
-  <button class="printBtn" onclick="window.print()">Print / Download PDF</button>
-</header>
+<!-- HEADER -->
+<div class="topHeader">
+  <div class="topHeaderLeft">
+    <a href="/dashboard.html">← Back</a>
+    <img src="/logo.png" class="headerLogo" alt="AMI Logo">
+    <span class="headerTitle">AMI Laboratory Report</span>
+  </div>
+
+  <button class="downloadBtn" onclick="downloadPDF()">Print / Download PDF</button>
+</div>
 
 <div class="wrapper">
-  <!-- PDF -->
+
   <div class="left">
     <iframe id="pdfFrame"></iframe>
   </div>
 
-  <!-- AI + CBC Panel -->
   <div class="right">
 
-    <img src="/logo.png" class="logo" alt="AMI Health Logo">
+    <img src="/logo.png" class="logoSide">
 
     <div class="section">
       <h2>Patient Info</h2>
@@ -215,6 +255,8 @@
 </div>
 
 <script>
+let REPORT_DATA = null;
+
 async function loadReport() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
@@ -227,11 +269,9 @@ async function loadReport() {
     return;
   }
 
-  const rpt = data.results;
+  REPORT_DATA = data;
 
-  // ------------------------------------
-  // PDF SIGNED URL
-  // ------------------------------------
+  // Signed URL for PDF
   const pdfRes = await fetch("/api/get-file-url", {
     method: "POST",
     body: JSON.stringify({ file_path: data.pdf_path }),
@@ -240,9 +280,8 @@ async function loadReport() {
   const pdfJson = await pdfRes.json();
   document.querySelector("#pdfFrame").src = pdfJson.url;
 
-  // ------------------------------------
-  // PATIENT INFO
-  // ------------------------------------
+  // Patient info
+  const rpt = data.results;
   document.querySelector("#patientInfo").innerHTML = `
     <b>Name:</b> ${rpt.name || "-"}<br>
     <b>Age:</b> ${rpt.age || "-"}<br>
@@ -250,9 +289,7 @@ async function loadReport() {
     <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
   `;
 
-  // ------------------------------------
-  // CBC TABLE
-  // ------------------------------------
+  // CBC
   const cbc = rpt.cbc_json || {};
   let rows = `<tr><th>Test</th><th>Value</th></tr>`;
   for (const key in cbc) {
@@ -260,13 +297,10 @@ async function loadReport() {
   }
   document.querySelector("#cbcTable").innerHTML = rows;
 
-  // ------------------------------------
-  // AI DATA
-  // ------------------------------------
+  // AI interpretation
   const ai = rpt.ai_results?.json || {};
-
-  // Risk badge
   let risk = ai?.risk_assessment?.overall_risk || "unknown";
+
   let riskClass =
     risk === "high" ? "risk-high" :
     risk === "moderate" ? "risk-medium" :
@@ -278,9 +312,25 @@ async function loadReport() {
     </span>
   `;
 
-  // AI text summary
   let text = rpt.ai_results?.doctor_report || "No AI output.";
   document.querySelector("#aiText").textContent = text;
+}
+
+async function downloadPDF() {
+  if (!REPORT_DATA) return alert("Report not loaded yet.");
+
+  const res = await fetch("/api/export-pdf", {
+    method: "POST",
+    body: JSON.stringify(REPORT_DATA),
+  });
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "AMI_Report.pdf";
+  a.click();
 }
 
 loadReport();
