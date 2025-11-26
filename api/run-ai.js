@@ -1,84 +1,59 @@
 import { createClient } from "@supabase/supabase-js";
-import fetch from "node-fetch";
+
+export const config = {
+  runtime: "nodejs",
+};
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Poll every 10s
-setInterval(checkReports, 10000);
+export default async function handler(req, res) {
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Method not allowed" });
 
-async function checkReports() {
   try {
-    // 1️⃣ Get next report waiting for AI
-    const { data: jobs, error } = await supabase
-      .from("reports")
-      .select("*")
-      .eq("ai_status", "processing")
-      .order("created_at", { ascending: true })
-      .limit(1);
+    const { report_id, file_path } = req.body;
+    if (!report_id || !file_path)
+      return res.status(400).json({ error: "Missing params" });
 
-    if (error) {
-      console.error("Supabase query error:", error);
-      return;
+    // Build public PDF URL
+    const pdf_url =
+      `${process.env.SUPABASE_URL}/storage/v1/object/public/reports/${file_path}`;
+
+    // Call your AI engine on Railway
+    const aiResp = await fetch(
+      "https://ami-blood-ai-docker-production.up.railway.app/run",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pdf_url,
+          report_id,
+        }),
+      }
+    );
+
+    const aiData = await aiResp.json();
+
+    if (!aiResp.ok) {
+      console.error("AI ERROR:", aiData);
+      return res.status(500).json({ error: "AI service failed" });
     }
 
-    if (!jobs || jobs.length === 0) {
-      console.log("No jobs waiting");
-      return;
-    }
-
-    const job = jobs[0];
-    console.log("🔥 Processing report:", job.id, job.file_path);
-
-    // 2️⃣ Create signed URL
-    const { data: signed, error: signErr } = await supabase.storage
-      .from("reports")
-      .createSignedUrl(job.file_path, 1800);
-
-    if (signErr || !signed?.signedUrl) {
-      console.error("Signed URL error:", signErr);
-      await fail(job.id, "Cannot create signed URL");
-      return;
-    }
-
-    const fileUrl = signed.signedUrl;
-
-    // 3️⃣ Send to HuggingFace model
-    const resp = await fetch("https://amihealth-ami-blood-ai.hf.space/run/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pdf_url: fileUrl })
-    });
-
-    const text = await resp.text();
-    let aiJson;
-
-    try {
-      aiJson = JSON.parse(text);
-    } catch {
-      aiJson = { error: "AI returned non-JSON", raw: text };
-    }
-
-    // 4️⃣ Save to Supabase
-    const finalState = aiJson.error ? "failed" : "completed";
-
+    // Update Supabase with AI results
     await supabase
       .from("reports")
-      .update({ ai_status: finalState, ai_results: aiJson })
-      .eq("id", job.id);
+      .update({
+        ai_status: "done",
+        ai_results: aiData.ai_results || {}
+      })
+      .eq("id", report_id);
 
-    console.log("✅ AI updated:", job.id, finalState);
-
+    return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error("Worker crash:", err);
+    console.error("RUN-AI CRASH:", err);
+    return res.status(500).json({ error: "SERVER CRASH" });
   }
-}
-
-async function fail(id, msg) {
-  await supabase
-    .from("reports")
-    .update({ ai_status: "failed", ai_results: { error: msg } })
-    .eq("id", id);
 }
