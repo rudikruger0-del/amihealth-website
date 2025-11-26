@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     const { id } = req.query;
 
-    console.log("Incoming ID:", id);
+    console.log("Incoming GET id:", id);
 
     if (!id) {
       return res.status(400).json({ error: "Missing id" });
@@ -24,10 +24,11 @@ export default async function handler(req, res) {
       .single();
 
     if (error || !rpt) {
+      console.log("Supabase lookup error:", error);
       return res.status(404).json({ error: "Report not found" });
     }
 
-    // CLEAN AI JSON
+    // Clean AI JSON
     let ai = null;
     try {
       if (typeof rpt.ai_results === "string") {
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
       ai = null;
     }
 
-    // CLEAN CBC JSON
+    // Clean CBC JSON
     let cbc = null;
     try {
       cbc = typeof rpt.cbc_json === "string"
