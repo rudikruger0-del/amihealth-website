@@ -6,6 +6,7 @@ export const config = {
   api: { bodyParser: false }
 };
 
+// Supabase Admin Client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -25,26 +26,21 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Form parsing failed" });
       }
 
-      // 🔥 FIX 1: Always convert array → string
-      const cleanEmail =
-        Array.isArray(fields.email) ? fields.email[0] : fields.email;
-      const cleanTitle =
-        Array.isArray(fields.title) ? fields.title[0] : fields.title;
-      const cleanName =
-        Array.isArray(fields.name) ? fields.name[0] : fields.name;
-      const cleanAge =
-        Array.isArray(fields.age) ? fields.age[0] : fields.age;
-      const cleanSex =
-        Array.isArray(fields.sex) ? fields.sex[0] : fields.sex;
+      // 🔥 FIX: Convert arrays → single string values
+      const cleanEmail = Array.isArray(fields.email) ? fields.email[0] : fields.email;
+      const cleanTitle = Array.isArray(fields.title) ? fields.title[0] : fields.title;
+      const cleanName = Array.isArray(fields.name) ? fields.name[0] : fields.name;
+      const cleanAge = Array.isArray(fields.age) ? fields.age[0] : fields.age;
+      const cleanSex = Array.isArray(fields.sex) ? fields.sex[0] : fields.sex;
 
       const file = files.file?.[0];
       if (!file) return res.status(400).json({ error: "Missing file" });
 
       const buffer = fs.readFileSync(file.filepath);
       const filename = `${Date.now()}-${file.originalFilename}`;
-      const filePath = filename.replace(/\s+/g, "_");
+      const filePath = filename.replace(/\s+/g, "_"); // Safe filename
 
-      // Upload to Supabase storage
+      // 1️⃣ Upload file to Supabase Storage
       const { error: uploadErr } = await supabase.storage
         .from("reports")
         .upload(filePath, buffer, {
@@ -56,17 +52,17 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Storage upload failed" });
       }
 
-      // Insert DB record
+      // 2️⃣ Insert DB row
       const { data, error: dbErr } = await supabase
         .from("reports")
         .insert({
-          email: cleanEmail,     // 🔥 FIXED
-          title: cleanTitle,
-          name: cleanName,
+          email: cleanEmail,
+          title: cleanTitle || "",
+          name: cleanName || "",
           age: cleanAge ? Number(cleanAge) : null,
-          sex: cleanSex,
+          sex: cleanSex || "Unknown",
           file_path: filePath,
-          ai_status: "processing",
+          ai_status: "processing"
         })
         .select()
         .single();
@@ -76,11 +72,29 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "DB insert failed" });
       }
 
+      const reportId = data.id;
+
+      // 3️⃣ TRIGGER AI ENGINE ON RAILWAY
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/run-ai`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            report_id: reportId,
+            file_path: filePath
+          })
+        });
+      } catch (aiErr) {
+        console.error("AI trigger failed:", aiErr);
+      }
+
+      // 4️⃣ Return success to frontend
       return res.status(200).json({
         ok: true,
-        report_id: data.id
+        report_id: reportId
       });
     });
+
   } catch (e) {
     console.error("CRASH:", e);
     return res.status(500).json({ error: "SERVER_CRASH" });
