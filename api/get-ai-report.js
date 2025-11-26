@@ -10,13 +10,15 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    const { id } = req.query;
+    // ❗ FIX: Vercel Node functions do NOT support req.query
+    const url = new URL(req.url, "http://localhost");
+    const id = url.searchParams.get("id");
 
     if (!id) {
       return res.status(400).json({ error: "Missing id" });
     }
 
-    // Fetch report by the REAL Supabase ID (uuid)
+    // Fetch report by Supabase UUID
     const { data: rpt, error } = await supabase
       .from("reports")
       .select("*")
@@ -27,25 +29,23 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Report not found" });
     }
 
-    // Fix ai_results if it was stored as a STRING instead of JSON
+    // ---- Parse AI results safely ----
     let aiJson = null;
     try {
       if (typeof rpt.ai_results === "string") {
-        // Remove ```json formatting if present
         const cleaned = rpt.ai_results
           .replace(/```json/g, "")
           .replace(/```/g, "")
           .trim();
-
         aiJson = JSON.parse(cleaned);
       } else {
         aiJson = rpt.ai_results;
       }
-    } catch (err) {
+    } catch {
       aiJson = null;
     }
 
-    // Fix CBC JSON
+    // ---- Parse CBC JSON safely ----
     let cbcJson = null;
     try {
       cbcJson =
@@ -56,10 +56,12 @@ export default async function handler(req, res) {
       cbcJson = null;
     }
 
+    // ---- Return final structured report ----
     return res.status(200).json({
       ok: true,
       report: {
         id: rpt.id,
+        title: rpt.title || "",
         name: rpt.name || "",
         age: rpt.age || "",
         sex: rpt.sex || "",
