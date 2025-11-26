@@ -1,7 +1,8 @@
+// /api/run-ai.js
 import { createClient } from "@supabase/supabase-js";
 
 export const config = {
-  runtime: "nodejs",
+  runtime: "nodejs"
 };
 
 const supabase = createClient(
@@ -9,51 +10,90 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// 🔥 Your Railway AI endpoint (change if needed)
+const AI_API_URL = "https://ami-blood-ai-docker-production.up.railway.app/run";
+
 export default async function handler(req, res) {
-  if (req.method !== "POST")
+  if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
 
   try {
-    const { report_id, file_path } = req.body;
-    if (!report_id || !file_path)
-      return res.status(400).json({ error: "Missing params" });
+    const { report_id, file_path } = await req.body
+      ? req.body
+      : new Promise((resolve) => {
+          let body = "";
+          req.on("data", (chunk) => (body += chunk));
+          req.on("end", () => resolve(JSON.parse(body)));
+        });
 
-    // Build public PDF URL
-    const pdf_url =
-      `${process.env.SUPABASE_URL}/storage/v1/object/public/reports/${file_path}`;
-
-    // Call your AI engine on Railway
-    const aiResp = await fetch(
-      "https://ami-blood-ai-docker-production.up.railway.app/run",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pdf_url,
-          report_id,
-        }),
-      }
-    );
-
-    const aiData = await aiResp.json();
-
-    if (!aiResp.ok) {
-      console.error("AI ERROR:", aiData);
-      return res.status(500).json({ error: "AI service failed" });
+    if (!report_id || !file_path) {
+      return res.status(400).json({ error: "Missing report_id or file_path" });
     }
 
-    // Update Supabase with AI results
+    // ------------------------------------------
+    // 1️⃣ Get a signed URL for the PDF
+    // ------------------------------------------
+    const { data: signed, error: signedErr } = await supabase.storage
+      .from("reports")
+      .createSignedUrl(file_path, 60 * 10); // valid 10 minutes
+
+    if (signedErr || !signed) {
+      console.error("Signed URL error:", signedErr);
+      return res.status(500).json({ error: "Failed to sign PDF URL" });
+    }
+
+    const signedUrl = signed.signedUrl;
+
+    // Mark status = running
+    await supabase
+      .from("reports")
+      .update({ ai_status: "running" })
+      .eq("id", report_id);
+
+    // ------------------------------------------
+    // 2️⃣ Send PDF to your AI engine on Railway
+    // ------------------------------------------
+    const aiResponse = await fetch(AI_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        report_id,
+        pdf_url: signedUrl,
+      }),
+    });
+
+    const aiJson = await aiResponse.json();
+    console.log("AI Response:", aiJson);
+
+    // If AI failed
+    if (!aiResponse.ok || aiJson.error) {
+      await supabase
+        .from("reports")
+        .update({
+          ai_status: "failed",
+          ai_results: { error: aiJson.error || "AI failed" },
+        })
+        .eq("id", report_id);
+
+      return res.status(500).json({ error: "AI processing failed" });
+    }
+
+    // ------------------------------------------
+    // 3️⃣ Save AI results back into Supabase
+    // ------------------------------------------
     await supabase
       .from("reports")
       .update({
-        ai_status: "done",
-        ai_results: aiData.ai_results || {}
+        ai_status: "complete",
+        ai_results: aiJson.results || aiJson,
       })
       .eq("id", report_id);
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, results: aiJson });
+
   } catch (err) {
-    console.error("RUN-AI CRASH:", err);
-    return res.status(500).json({ error: "SERVER CRASH" });
+    console.error("run-ai.js crash:", err);
+    return res.status(500).json({ error: "Server crash", details: String(err) });
   }
 }
