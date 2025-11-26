@@ -1,7 +1,14 @@
+<script>
 async function loadReport() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
 
+  if (!id) {
+    document.querySelector("#aiText").textContent = "Missing report ID.";
+    return;
+  }
+
+  // 1️⃣ Fetch report data
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const data = await res.json();
 
@@ -12,16 +19,22 @@ async function loadReport() {
 
   const rpt = data.report;
 
-  // PDF via signed URL
+  // 2️⃣ Get signed PDF URL
   const pdfRes = await fetch("/api/get-file-url", {
     method: "POST",
     body: JSON.stringify({ file_path: rpt.file_path }),
+    headers: { "Content-Type": "application/json" }
   });
 
   const pdfJson = await pdfRes.json();
-  document.querySelector("#pdfFrame").src = pdfJson.url;
 
-  // Patient Info
+  if (pdfJson.url) {
+    document.querySelector("#pdfFrame").src = pdfJson.url;
+  } else {
+    alert("Failed to load PDF.");
+  }
+
+  // 3️⃣ Patient Info
   document.querySelector("#patientInfo").innerHTML = `
     <b>Name:</b> ${rpt.name || "-"}<br>
     <b>Age:</b> ${rpt.age || "-"}<br>
@@ -29,8 +42,18 @@ async function loadReport() {
     <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
   `;
 
-  // AI text
+  // 4️⃣ CBC Table (optional)
+  const cbc = rpt.cbc_json || {};
+  let rows = `<tr><th>Test</th><th>Value</th></tr>`;
+  for (const key in cbc) {
+    rows += `<tr><td>${key}</td><td>${cbc[key]}</td></tr>`;
+  }
+  document.querySelector("#cbcTable").innerHTML = rows;
+
+  // 5️⃣ AI Output
   document.querySelector("#aiText").textContent =
-    rpt.ai_results || "No AI output.";
+    rpt.ai_results ? JSON.stringify(rpt.ai_results, null, 2) : "No AI output.";
 }
+
 loadReport();
+</script>
