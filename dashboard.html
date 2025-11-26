@@ -42,26 +42,11 @@
       color:inherit;
     }
 
-    .brand img {
-      height:32px;
-      width:auto;
-    }
+    .brand img { height:32px; }
+    .brand-title { font-weight:800; font-size:18px; }
+    .brand-sub { font-size:11px; color:var(--muted); }
 
-    .brand-title {
-      font-weight:800;
-      font-size:18px;
-    }
-    .brand-sub {
-      font-size:11px;
-      color:var(--muted);
-    }
-
-    nav {
-      display:flex;
-      gap:12px;
-      align-items:center;
-      font-size:14px;
-    }
+    nav { display:flex; gap:12px; }
 
     nav a {
       color:var(--muted);
@@ -71,38 +56,29 @@
     }
 
     nav a.active {
-      background:rgba(0,224,184,0.12);
-      color:#fff;
+      background:rgba(0,224,184,0.12); color:#fff;
     }
 
     .login-pill {
       border:1px solid rgba(255,255,255,0.15);
       padding:6px 12px;
       border-radius:999px;
-      text-decoration:none;
       color:#eaf6ff;
-      font-size:13px;
     }
 
     main {
       flex:1;
       display:flex;
       justify-content:center;
-      align-items:flex-start;
-      padding:10px 16px 30px;
+      padding:20px;
     }
 
     .container {
       width:100%;
       max-width:1100px;
-      margin-top:10px;
       display:grid;
       grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
       gap:18px;
-    }
-
-    @media (max-width:950px){
-      .container{grid-template-columns:1fr}
     }
 
     .panel {
@@ -110,50 +86,115 @@
       border-radius:16px;
       border:1px solid rgba(255,255,255,0.08);
       box-shadow:0 18px 50px rgba(0,0,0,0.6);
-      padding:20px 22px;
+      padding:22px;
     }
 
-    h1 {
-      margin:0 0 8px;
-      font-size:22px;
-    }
+    h1 { margin:0 0 10px; font-size:22px; }
+    h2 { margin:0 0 10px; font-size:18px; }
 
-    .muted {
-      color:var(--muted);
-      font-size:14px;
-      margin:0 0 16px;
-    }
+    .muted { color:var(--muted); font-size:14px; }
 
     .btn {
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
       padding:10px 16px;
       border-radius:999px;
       border:none;
       background:linear-gradient(90deg,#00e0b8,#00b7ff);
       color:#001821;
       font-weight:700;
-      font-size:14px;
       cursor:pointer;
-      box-shadow:0 0 18px rgba(0,255,220,0.3);
       text-decoration:none;
     }
 
-    .btn.secondary {
-      background:transparent;
+    /* Reports Table */
+    .search-box {
+      width:100%;
+      padding:10px;
+      margin-bottom:12px;
+      border-radius:10px;
+      background:#0b152d;
+      border:1px solid rgba(255,255,255,0.1);
       color:#eaf6ff;
-      border:1px solid rgba(255,255,255,0.18);
-      box-shadow:none;
     }
 
-    .status {
-      margin-top:10px;
-      min-height:20px;
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+
+    th {
+      text-align:left;
+      padding:8px;
+      color:var(--muted);
+      font-weight:600;
+      border-bottom:1px solid rgba(255,255,255,0.1);
+    }
+
+    td {
+      padding:8px;
+      border-bottom:1px solid rgba(255,255,255,0.05);
+      color:#fff;
+    }
+
+    a.tbl {
+      color:#00d4ff;
+      text-decoration:none;
       font-size:13px;
-      color:#ffb3b3;
-      white-space:pre-wrap;
+    }
+
+    /* PDF Viewer Modal */
+    #pdfModal {
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.75);
+      backdrop-filter:blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      z-index:9999;
+    }
+
+    #pdfBox {
+      background:#0b1020;
+      width:90%;
+      height:90%;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.15);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+
+    #pdfFrame {
+      width:100%;
+      height:100%;
+      border:none;
+      background:#000;
+    }
+
+    .modal-header {
+      padding:10px;
+      display:flex;
+      justify-content:space-between;
+      background:#020614;
+      border-bottom:1px solid rgba(255,255,255,0.1);
+    }
+
+    .modal-header button {
+      padding:6px 14px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:600;
+    }
+
+    .btn-close {
+      background:#ff4e6a; color:#fff;
+    }
+
+    .btn-print {
+      background:#00e0b8; color:#001821;
     }
   </style>
 </head>
@@ -161,7 +202,7 @@
 <body>
 
 <header>
-  <a class="brand" href="/index.html">
+  <a class="brand" href="/dashboard.html">
     <img src="/logo.png" alt="AMI Logo" />
     <div>
       <div class="brand-title">AMI Health</div>
@@ -179,145 +220,151 @@
 <main>
   <div class="container">
 
-    <!-- LEFT CARD -->
+    <!-- LEFT PANEL -->
     <section class="panel">
       <h1>AMI Dashboard</h1>
       <p class="muted">
         Welcome back, <span id="userEmailText">Loading…</span>.
-        From here you can upload lab or scan reports for AI-assisted interpretation.
       </p>
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+      <div style="margin-top:14px; display:flex; gap:10px;">
         <a class="btn" href="/upload.html">Upload new report</a>
-        <button class="btn secondary" id="logoutBtn">Logout</button>
+        <button class="btn" id="logoutBtn" style="background:#222;color:#fff;">
+          Logout
+        </button>
       </div>
-
-      <div class="status" id="statusArea"></div>
     </section>
 
-    <!-- RIGHT CARD — REPORT TABLE -->
+    <!-- RIGHT PANEL — REPORTS LIST -->
     <section class="panel">
-      <h2 style="margin:0 0 8px;font-size:18px">Your Reports</h2>
+      <h2>Your Reports</h2>
+      <input class="search-box" placeholder="Search reports…" id="searchBox" />
 
-      <input id="searchBox" placeholder="Search reports…"
-        style="width:100%;padding:10px;border-radius:8px;
-        background:#0f1529;border:1px solid rgba(255,255,255,0.1);
-        color:white;font-size:14px;margin:10px 0 16px" />
-
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <table>
         <thead>
-          <tr style="color:#98a0b3;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <th style="padding:6px">Title</th>
-            <th style="padding:6px">Patient</th>
-            <th style="padding:6px">Date</th>
-            <th style="padding:6px">AI</th>
-            <th style="padding:6px">PDF</th>
+          <tr>
+            <th>Title</th>
+            <th>Patient</th>
+            <th>Date</th>
+            <th>AI</th>
+            <th>PDF</th>
           </tr>
         </thead>
-        <tbody id="reportRows"></tbody>
+        <tbody id="reportsTable">
+          <tr><td colspan="5">Loading…</td></tr>
+        </tbody>
       </table>
     </section>
 
   </div>
 </main>
 
-<!-- AUTH + REPORT LOADER -->
+<!-- PDF MODAL -->
+<div id="pdfModal">
+  <div id="pdfBox">
+    <div class="modal-header">
+      <button class="btn-print">Print</button>
+      <button class="btn-close">Close</button>
+    </div>
+    <iframe id="pdfFrame"></iframe>
+  </div>
+</div>
+
+<!-- LOGIC -->
 <script type="module">
   import { supabase } from "./lib/supabaseClient.js";
 
   const userEmailText = document.getElementById("userEmailText");
   const logoutBtn = document.getElementById("logoutBtn");
   const logoutLink = document.getElementById("logoutLink");
+  const reportsTable = document.getElementById("reportsTable");
+  const searchBox = document.getElementById("searchBox");
 
-  const rowsEl = document.getElementById("reportRows");
-  const searchEl = document.getElementById("searchBox");
+  let fullReportList = [];
 
-  let ALL_REPORTS = [];
-
-  // --------------------------
-  // AUTH CHECK
-  // --------------------------
+  /* AUTH CHECK */
   async function loadUser() {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return window.location.href = "/login.html";
-
+    if (!session) return (window.location.href = "/login.html");
     userEmailText.textContent = session.user.email;
-
     loadReports(session.user.email);
   }
 
-  // --------------------------
-  // LOAD REPORTS
-  // --------------------------
+  /* FETCH REPORTS */
   async function loadReports(email) {
-    rowsEl.innerHTML = `<tr><td colspan="5" style="padding:10px;color:#98a0b3">Loading…</td></tr>`;
+    const res = await fetch(`/api/get-reports?email=${email}`);
+    const json = await res.json();
 
-    const resp = await fetch(`/api/get-reports?email=${encodeURIComponent(email)}`);
-    const json = await resp.json();
-
-    ALL_REPORTS = json.reports || [];
-    renderTable(ALL_REPORTS);
+    fullReportList = json.reports || [];
+    renderReports(fullReportList);
   }
 
-  // --------------------------
-  // RENDER TABLE
-  // --------------------------
-  function renderTable(list) {
-    rowsEl.innerHTML = "";
-
+  /* RENDER REPORT TABLE */
+  function renderReports(list) {
     if (!list.length) {
-      rowsEl.innerHTML =
-        `<tr><td colspan="5" style="padding:10px;color:#98a0b3">No reports found.</td></tr>`;
+      reportsTable.innerHTML = `<tr><td colspan="5">No reports found.</td></tr>`;
       return;
     }
 
-    list.forEach((r) => {
-      const tr = document.createElement("tr");
+    reportsTable.innerHTML = list.map(r => `
+      <tr>
+        <td>${r.title || "-"}</td>
+        <td>${r.name || "-"}</td>
+        <td>${new Date(r.created_at).toLocaleString()}</td>
+        <td><a class="tbl" href="/api/get-ai-report?id=${r.id}" target="_blank">View AI</a></td>
+        <td><a class="tbl pdfOpen" data-path="${r.file_path}" href="#">Open PDF</a></td>
+      </tr>
+    `).join("");
 
-      const pdfUrl =
-        `https://tbyttsfztuudygbkrbnm.supabase.co/storage/v1/object/public/reports/${r.file_path}`;
-
-      tr.innerHTML = `
-        <td style="padding:8px">${r.title || "-"}</td>
-        <td style="padding:8px">${r.name || "-"}</td>
-        <td style="padding:8px">${new Date(r.created_at).toLocaleString()}</td>
-        <td style="padding:8px">
-          <a href="/ai-report.html?id=${r.id}" style="color:#00e0b8">View AI</a>
-        </td>
-        <td style="padding:8px">
-          <a href="${pdfUrl}" target="_blank" style="color:#00b7ff">Open PDF</a>
-        </td>
-      `;
-
-      tr.style.borderBottom = "1px solid rgba(255,255,255,0.06)";
-      rowsEl.appendChild(tr);
+    // Attach PDF open events
+    document.querySelectorAll(".pdfOpen").forEach(el => {
+      el.addEventListener("click", e => {
+        e.preventDefault();
+        openPDF(el.dataset.path);
+      });
     });
   }
 
-  // --------------------------
-  // SEARCH
-  // --------------------------
-  searchEl.addEventListener("input", () => {
-    const q = searchEl.value.toLowerCase();
-    const filtered = ALL_REPORTS.filter((r) =>
-      JSON.stringify(r).toLowerCase().includes(q)
+  /* SEARCH FILTER */
+  searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase();
+    const filtered = fullReportList.filter(r =>
+      (r.title || "").toLowerCase().includes(q) ||
+      (r.name || "").toLowerCase().includes(q)
     );
-    renderTable(filtered);
+    renderReports(filtered);
   });
 
-  // --------------------------
-  // LOGOUT
-  // --------------------------
-  async function doLogout(e) {
-    e.preventDefault();
+  /* PDF VIEWER */
+  const pdfModal = document.getElementById("pdfModal");
+  const pdfFrame = document.getElementById("pdfFrame");
+
+  function openPDF(path) {
+    pdfFrame.src = `https://tybttsfztuudygbkrbnm.supabase.co/storage/v1/object/public/reports/${path}`;
+    pdfModal.style.display = "flex";
+  }
+
+  document.querySelector(".btn-close").onclick = () =>
+    (pdfModal.style.display = "none");
+
+  document.querySelector(".btn-print").onclick = () =>
+    pdfFrame.contentWindow.print();
+
+  /* LOGOUT */
+  async function doLogout() {
     await supabase.auth.signOut();
     window.location.href = "/login.html";
   }
-
-  logoutBtn.addEventListener("click", doLogout);
-  logoutLink.addEventListener("click", doLogout);
+  logoutBtn.onclick = doLogout;
+  logoutLink.onclick = doLogout;
 
   loadUser();
+
+  /* AUTO-REFRESH EVERY 8 SECONDS */
+  setInterval(() => {
+    const email = userEmailText.textContent;
+    if (email && email.includes("@")) loadReports(email);
+  }, 8000);
 </script>
 
 </body>
