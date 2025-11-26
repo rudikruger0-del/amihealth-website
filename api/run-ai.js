@@ -1,18 +1,15 @@
 // /api/run-ai.js
 import { createClient } from "@supabase/supabase-js";
 
-export const config = {
-  runtime: "nodejs"
-};
+export const config = { runtime: "nodejs" };
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// IMPORTANT: Your Railway AI endpoint DOES NOT have /run
-// It accepts POST at the root ("/")
-const AI_API_URL = "https://ami-blood-ai-docker-production.up.railway.app/";
+// 🔥 Correct endpoint based on your logs:
+const AI_API_URL = "https://ami-blood-ai-docker-production.up.railway.app/run/predict-upload";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -20,11 +17,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = req.body || await new Promise((resolve) => {
-      let raw = "";
-      req.on("data", (c) => (raw += c));
-      req.on("end", () => resolve(JSON.parse(raw)));
-    });
+    const body =
+      req.body ||
+      (await new Promise((resolve) => {
+        let raw = "";
+        req.on("data", (c) => (raw += c));
+        req.on("end", () => resolve(JSON.parse(raw)));
+      }));
 
     const { report_id, file_path } = body;
 
@@ -32,12 +31,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing report_id or file_path" });
     }
 
-    // ------------------------------------------
-    // 1️⃣ Create a signed Supabase URL for the PDF
-    // ------------------------------------------
+    // 1️⃣ Create signed URL for PDF
     const { data: signed, error: signedErr } = await supabase.storage
       .from("reports")
-      .createSignedUrl(file_path, 600); // 10 min
+      .createSignedUrl(file_path, 600);
 
     if (signedErr || !signed) {
       console.error("Signed URL error:", signedErr);
@@ -47,38 +44,31 @@ export default async function handler(req, res) {
     const signedUrl = signed.signedUrl;
 
     // Mark as running
-    await supabase
-      .from("reports")
-      .update({ ai_status: "running" })
-      .eq("id", report_id);
+    await supabase.from("reports").update({
+      ai_status: "running"
+    }).eq("id", report_id);
 
-    // ------------------------------------------
-    // 2️⃣ Send PDF URL to the Railway Flask AI server
-    // ------------------------------------------
+    // 2️⃣ Send PDF to your AI
     const aiResponse = await fetch(AI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         report_id,
         pdf_url: signedUrl,
-      })
-    }).catch((e) => {
-      throw new Error("Railway fetch failed: " + e);
+      }),
     });
 
     let aiJson;
     try {
       aiJson = await aiResponse.json();
-    } catch (e) {
-      console.error("AI JSON parse error:", e);
-      throw new Error("AI returned non-JSON response");
+    } catch (err) {
+      console.error("AI returned non-JSON:", err);
+      throw new Error("Invalid AI response");
     }
 
-    console.log("AI Response received:", aiJson);
+    console.log("AI Response:", aiJson);
 
-    // ------------------------------------------
-    // 3️⃣ If AI responded with error
-    // ------------------------------------------
+    // AI error?
     if (!aiResponse.ok || aiJson.error) {
       await supabase
         .from("reports")
@@ -91,9 +81,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "AI failed", details: aiJson });
     }
 
-    // ------------------------------------------
-    // 4️⃣ Save results
-    // ------------------------------------------
+    // 3️⃣ Save AI results
     await supabase
       .from("reports")
       .update({
@@ -103,10 +91,8 @@ export default async function handler(req, res) {
       .eq("id", report_id);
 
     return res.status(200).json({ ok: true, results: aiJson });
-
   } catch (err) {
     console.error("run-ai.js crash:", err);
-
     return res.status(500).json({
       error: "Server crash in run-ai",
       details: String(err),
