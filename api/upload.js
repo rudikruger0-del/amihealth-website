@@ -1,12 +1,10 @@
+export const config = {
+  api: { bodyParser: false },
+};
+
 import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
 import fs from "fs";
-
-export const config = {
-  api: {
-    bodyParser: false, // required
-  },
-};
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -18,53 +16,62 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const form = formidable({ multiples: false });
+  const form = formidable({ multiples: false });
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("Form error:", err);
-        return res.status(500).json({ error: "Parsing failed" });
-      }
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error("Form parse error:", err);
+      return res.status(500).json({ error: "FORMIDABLE_PARSE_FAILED" });
+    }
 
-      const file = files.file?.[0];
-      if (!file) {
-        return res.status(400).json({ error: "No file provided" });
-      }
+    try {
+      const file = files.file;
+      if (!file) return res.status(400).json({ error: "Missing file" });
 
+      // Read file
       const fileBuffer = fs.readFileSync(file.filepath);
-      const filePath = `${Date.now()}-${file.originalFilename}`;
+      const filename = `${Date.now()}-${file.originalFilename}`;
 
+      // Upload to Supabase storage
       const { error: uploadErr } = await supabase.storage
         .from("reports")
-        .upload(filePath, fileBuffer, {
-          contentType: file.mimetype,
+        .upload(filename, fileBuffer, {
+          contentType: file.mimetype || "application/pdf",
         });
 
       if (uploadErr) {
-        console.error("Upload error:", uploadErr);
-        return res.status(500).json({ error: "Supabase upload failed" });
+        console.error("UPLOAD ERROR:", uploadErr);
+        return res.status(500).json({ error: "UPLOAD_FAILED" });
       }
 
-      const { error: dbErr } = await supabase.from("reports").insert({
-        email: fields.email?.[0] || null,
-        title: fields.title?.[0] || null,
-        name: fields.name?.[0] || null,
-        age: fields.age?.[0] ? parseInt(fields.age[0]) : null,
-        sex: fields.sex?.[0] || null,
-        file_path: filePath,
-        ai_status: "processing",
-      });
+      // Insert DB record
+      const { data: insertData, error: dbErr } = await supabase
+        .from("reports")
+        .insert({
+          email: fields.email,
+          title: fields.title || null,
+          name: fields.name || null,
+          age: fields.age ? parseInt(fields.age) : null,
+          sex: fields.sex || null,
+          file_path: filename,
+          ai_status: "queued",
+        })
+        .select()
+        .single(); // IMPORTANT — returns inserted row including id
 
       if (dbErr) {
-        console.error("DB error:", dbErr);
-        return res.status(500).json({ error: "DB insert failed" });
+        console.error("DB INSERT ERROR:", dbErr);
+        return res.status(500).json({ error: "DB_INSERT_FAILED" });
       }
 
-      res.status(200).json({ ok: true, file: filePath });
-    });
-  } catch (e) {
-    console.error("Crash:", e);
-    res.status(500).json({ error: "Server crash" });
-  }
+      // Return correct report ID
+      return res.status(200).json({
+        ok: true,
+        report_id: insertData.id,
+      });
+    } catch (e) {
+      console.error("SERVER CRASH:", e);
+      return res.status(500).json({ error: "SERVER_CRASH" });
+    }
+  });
 }
