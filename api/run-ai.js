@@ -10,8 +10,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// 🔥 Your Railway AI endpoint (change if needed)
-const AI_API_URL = "https://ami-blood-ai-docker-production.up.railway.app/run";
+// IMPORTANT: Your Railway AI endpoint DOES NOT have /run
+// It accepts POST at the root ("/")
+const AI_API_URL = "https://ami-blood-ai-docker-production.up.railway.app/";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -19,24 +20,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { report_id, file_path } = await req.body
-      ? req.body
-      : new Promise((resolve) => {
-          let body = "";
-          req.on("data", (chunk) => (body += chunk));
-          req.on("end", () => resolve(JSON.parse(body)));
-        });
+    const body = req.body || await new Promise((resolve) => {
+      let raw = "";
+      req.on("data", (c) => (raw += c));
+      req.on("end", () => resolve(JSON.parse(raw)));
+    });
+
+    const { report_id, file_path } = body;
 
     if (!report_id || !file_path) {
       return res.status(400).json({ error: "Missing report_id or file_path" });
     }
 
     // ------------------------------------------
-    // 1️⃣ Get a signed URL for the PDF
+    // 1️⃣ Create a signed Supabase URL for the PDF
     // ------------------------------------------
     const { data: signed, error: signedErr } = await supabase.storage
       .from("reports")
-      .createSignedUrl(file_path, 60 * 10); // valid 10 minutes
+      .createSignedUrl(file_path, 600); // 10 min
 
     if (signedErr || !signed) {
       console.error("Signed URL error:", signedErr);
@@ -45,14 +46,14 @@ export default async function handler(req, res) {
 
     const signedUrl = signed.signedUrl;
 
-    // Mark status = running
+    // Mark as running
     await supabase
       .from("reports")
       .update({ ai_status: "running" })
       .eq("id", report_id);
 
     // ------------------------------------------
-    // 2️⃣ Send PDF to your AI engine on Railway
+    // 2️⃣ Send PDF URL to the Railway Flask AI server
     // ------------------------------------------
     const aiResponse = await fetch(AI_API_URL, {
       method: "POST",
@@ -60,13 +61,24 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         report_id,
         pdf_url: signedUrl,
-      }),
+      })
+    }).catch((e) => {
+      throw new Error("Railway fetch failed: " + e);
     });
 
-    const aiJson = await aiResponse.json();
-    console.log("AI Response:", aiJson);
+    let aiJson;
+    try {
+      aiJson = await aiResponse.json();
+    } catch (e) {
+      console.error("AI JSON parse error:", e);
+      throw new Error("AI returned non-JSON response");
+    }
 
-    // If AI failed
+    console.log("AI Response received:", aiJson);
+
+    // ------------------------------------------
+    // 3️⃣ If AI responded with error
+    // ------------------------------------------
     if (!aiResponse.ok || aiJson.error) {
       await supabase
         .from("reports")
@@ -76,11 +88,11 @@ export default async function handler(req, res) {
         })
         .eq("id", report_id);
 
-      return res.status(500).json({ error: "AI processing failed" });
+      return res.status(500).json({ error: "AI failed", details: aiJson });
     }
 
     // ------------------------------------------
-    // 3️⃣ Save AI results back into Supabase
+    // 4️⃣ Save results
     // ------------------------------------------
     await supabase
       .from("reports")
@@ -94,6 +106,10 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("run-ai.js crash:", err);
-    return res.status(500).json({ error: "Server crash", details: String(err) });
+
+    return res.status(500).json({
+      error: "Server crash in run-ai",
+      details: String(err),
+    });
   }
 }
