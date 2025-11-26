@@ -1,3 +1,5 @@
+// runAI.js — FINAL VERSION (MEDICAL-GRADE)
+
 export async function runAI(pdfBase64, extractedText) {
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -7,33 +9,59 @@ export async function runAI(pdfBase64, extractedText) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o-mini",   // we keep this, but change HOW we prompt it
+
+        response_format: { type: "json" },
+
         input: [
           {
             role: "system",
-            content: "You are AMI, a powerful diagnostic assistant for lab blood reports."
+            content: `
+You are **AMI**, a clinical laboratory interpretation AI.
+
+Your task:
+- Extract CBC values (WBC, RBC, HGB, HCT, MCV, MCH, MCHC, PLT, NEU%, LYM%, MONO%, etc.)
+- Detect infection markers (high WBC, neutrophilia, elevated inflammatory patterns)
+- Generate a structured JSON report:
+    {
+      "summary": [],
+      "trend": [],
+      "flagged_results": [],
+      "interpretation": [],
+      "risk_level": "",
+      "recommendations": [],
+      "cbc_values": {},
+      "disclaimer": "This is not a medical diagnosis..."
+    }
+
+Rules:
+- NEVER hallucinate values.
+- Only include numbers that appear in the text.
+- If CBC missing → set "cbc_values": {} and explain.
+`
           },
+
           {
             role: "user",
             content: `
-              Extracted Blood Report Text:
-              ${extractedText}
+Extracted Text From Report:
+${extractedText}
 
-              Attached PDF (base64):
-              ${pdfBase64}
+Base64 PDF (ignore unless text missing):
+${pdfBase64}
 
-              Generate a clear, professional medical summary + explanations.
-            `
+Generate JSON only.
+`
           }
         ]
       })
     });
 
     const data = await response.json();
-    return data;
+    return data.output ? data.output[0].content[0].text : data;
 
   } catch (err) {
-    console.error("AI Request Error:", err);
+    console.error("AI RUN ERROR:", err);
     return { error: err.message };
   }
 }
