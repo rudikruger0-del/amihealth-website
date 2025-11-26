@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AMI — Report Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+  :root {
+    --bg:#030414;
+    --card:#0b1020;
+    --muted:#98a0b3;
+    --accent:#00e0b8;
+  }
+
+  * { box-sizing:border-box; }
+
+  body {
+    margin:0;
+    font-family:Inter, system-ui, sans-serif;
+    background:#02030f;
+    color:#eaf6ff;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+  }
+
+  header {
+    padding:14px 24px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#050919;
+    border-bottom:1px solid rgba(255,255,255,0.1);
+  }
+
+  header a {
+    color:#00d4ff;
+    text-decoration:none;
+    font-weight:600;
+  }
+
+  .wrapper {
+    display:flex;
+    flex:1;
+    overflow:hidden;
+  }
+
+  /* PDF side */
+  .left {
+    flex:1;
+    min-width:55%;
+    background:#000;
+    border-right:1px solid rgba(255,255,255,0.1);
+  }
+
+  #pdfFrame {
+    width:100%;
+    height:100%;
+    border:none;
+  }
+
+  /* AI/CBC side */
+  .right {
+    width:45%;
+    padding:20px;
+    overflow-y:auto;
+    background:#0b1020;
+  }
+
+  .section {
+    background:#0f162d;
+    padding:16px;
+    border-radius:10px;
+    margin-bottom:16px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+
+  h2, h3 {
+    margin:0 0 12px;
+  }
+
+  table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+    margin-top:8px;
+  }
+
+  th, td {
+    padding:6px 4px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+
+  th {
+    color:var(--muted);
+    text-align:left;
+  }
+
+  .ai-text {
+    white-space:pre-wrap;
+    font-size:14px;
+    line-height:1.45;
+  }
+
+  .printBtn {
+    padding:12px 22px;
+    background:linear-gradient(90deg,#00e0b8,#00b7ff);
+    border:none;
+    border-radius:999px;
+    font-weight:700;
+    cursor:pointer;
+    color:#001821;
+  }
+
+  /* Print mode */
+  @media print {
+    header, .left { display:none !important; }
+
+    .right {
+      width:100%;
+      background:white;
+      color:black;
+    }
+
+    .section {
+      background:white;
+      border:none;
+      page-break-inside:avoid;
+    }
+
+    table, th, td {
+      color:black;
+      border-color:#ccc;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <a href="/dashboard.html">← Back to Dashboard</a>
+  <button class="printBtn" onclick="window.print()">Print Report</button>
+</header>
+
+<div class="wrapper">
+
+  <!-- Left: PDF -->
+  <div class="left">
+    <iframe id="pdfFrame"></iframe>
+  </div>
+
+  <!-- Right: CBC + AI -->
+  <div class="right">
+
+    <div class="section">
+      <h2>Patient Info</h2>
+      <div id="patientInfo">Loading…</div>
+    </div>
+
+    <div class="section">
+      <h3>CBC Results</h3>
+      <table id="cbcTable"></table>
+    </div>
+
+    <div class="section">
+      <h3>AI Interpretation</h3>
+      <div class="ai-text" id="aiText">Loading…</div>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+async function loadReport() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+
+  if (!id) {
+    document.querySelector("#aiText").textContent = "Missing report ID.";
+    return;
+  }
+
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
+  const data = await res.json();
+
+  if (!data || !data.report) {
+    document.querySelector("#aiText").textContent = "Unable to load report.";
+    return;
+  }
+
+  const rpt = data.report;
+
+  // PDF viewer
+  const pdfUrl = 
+    `https://tybttsfztuudygbkrbnm.supabase.co/storage/v1/object/public/reports/${rpt.file_path}`;
+  document.querySelector("#pdfFrame").src = pdfUrl;
+
+  // Patient Info
+  document.querySelector("#patientInfo").innerHTML = `
+    <b>Name:</b> ${rpt.name || "-"}<br>
+    <b>Age:</b> ${rpt.age || "-"}<br>
+    <b>Sex:</b> ${rpt.sex || "-"}<br>
+    <b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}
+  `;
+
+  // CBC table
+  const cbc = rpt.cbc_json || {};
+  let rows = `<tr><th>Test</th><th>Value</th></tr>`;
+  for (const key in cbc) {
+    rows += `<tr><td>${key}</td><td>${cbc[key]}</td></tr>`;
+  }
+  document.querySelector("#cbcTable").innerHTML = rows;
+
+  // AI text
+  document.querySelector("#aiText").textContent = rpt.ai_text || "No AI output.";
+}
+
+loadReport();
+</script>
+
+</body>
+</html>
