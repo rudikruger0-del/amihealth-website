@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .eq("user_email", email)
+      .eq("email", email)  // ✅ FIXED — correct column name
       .order("created_at", { ascending: false });
 
     if (error) {
