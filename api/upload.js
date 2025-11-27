@@ -21,7 +21,6 @@ export default async function handler(req, res) {
   try {
     const form = formidable({ multiples: false });
 
-    // Wrap formidable in a Promise so we can use async/await
     const { fields, files } = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) return reject(err);
@@ -29,7 +28,6 @@ export default async function handler(req, res) {
       });
     });
 
-    // --- Normalise fields to plain strings ---
     const clean = (v) => (Array.isArray(v) ? v[0] : v);
 
     const email = clean(fields.email);
@@ -42,25 +40,43 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing email" });
     }
 
-    // --- Get the uploaded file ---
     let file = files.file;
     if (Array.isArray(file)) file = file[0];
+    if (!file) return res.status(400).json({ error: "Missing file" });
 
-    if (!file) {
-      return res.status(400).json({ error: "Missing file" });
+    // ------------------------------------
+    // 1️⃣ First create empty DB row
+    // ------------------------------------
+    const { data: newRow, error: rowErr } = await supabase
+      .from("reports")
+      .insert({
+        email,
+        title,
+        name,
+        age: ageRaw ? Number(ageRaw) : null,
+        sex,
+        ai_status: "queued",
+      })
+      .select()
+      .single();
+
+    if (rowErr) {
+      console.error("DB insert failed:", rowErr);
+      return res.status(500).json({ error: "DB insert failed" });
     }
 
-    // ------------------------------
-    // 1️⃣ Upload file to Supabase storage
-    // ------------------------------
+    const reportId = newRow.id;
     const buffer = fs.readFileSync(file.filepath);
-    const safeName = file.originalFilename.replace(/\s+/g, "_");
-    const filename = `${Date.now()}_${safeName}`;
-    const filePath = filename; // no folders, just flat in "reports" bucket
+
+    // ------------------------------------
+    // 2️⃣ Upload the PDF as <report_id>.pdf
+    // ------------------------------------
+    const storagePath = `${reportId}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
       .from("reports")
-      .upload(filePath, buffer, {
+      .upload(storagePath, buffer, {
+        upsert: true,
         contentType: file.mimetype || "application/pdf",
       });
 
@@ -69,47 +85,18 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Storage upload failed" });
     }
 
-    // ------------------------------
-    // 2️⃣ Insert DB record in reports table
-    // ------------------------------
-    const age =
-      ageRaw && `${ageRaw}`.trim() !== ""
-        ? Number(`${ageRaw}`.trim())
-        : null;
-
-    const { data, error: dbErr } = await supabase
+    // ------------------------------------
+    // 3️⃣ Update DB row with final file_path
+    // ------------------------------------
+    await supabase
       .from("reports")
-      .insert({
-        email,
-        title,
-        name,
-        age,
-        sex,
-        file_path: filePath,
-        ai_status: "queued", // Python worker will process this
-      })
-      .select()
-      .single();
-
-    if (dbErr) {
-      console.error("DB insert failed:", dbErr);
-      return res.status(500).json({ error: "DB insert failed" });
-    }
-
-    const reportId = data.id;
-
-    // ⚠️ IMPORTANT:
-    // No more /api/run-ai call here.
-    // The Railway worker polls for ai_status = 'queued' and does:
-    //  - download PDF
-    //  - extract text with PyMuPDF
-    //  - call OpenAI
-    //  - update ai_results + cbc_json + ai_status = 'completed' / 'failed'
+      .update({ file_path: storagePath })
+      .eq("id", reportId);
 
     return res.status(200).json({
       ok: true,
       report_id: reportId,
-      file_path: filePath,
+      file_path: storagePath,
       message: "Report uploaded and queued for AI.",
     });
   } catch (e) {
