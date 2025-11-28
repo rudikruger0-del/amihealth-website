@@ -1,3 +1,4 @@
+// /api/get-ai-report.js
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
@@ -7,16 +8,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const url = new URL(req.url, "http://localhost");
-  const id = url.searchParams.get("id");
+  // Fix: use Next.js query parsing
+  const id = req.query.id;
 
   if (!id) {
     return res.status(400).json({ error: "Missing id" });
   }
 
+  // SAFETY FIX -> Use ANON KEY for GET endpoint
   const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
   try {
@@ -24,19 +26,29 @@ export default async function handler(req, res) {
       .from("reports")
       .select("*")
       .eq("id", id)
-      .single();
+      .maybeSingle(); // safer than .single()
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      console.error("DB error:", error);
+      return res.status(500).json({ error: "Database error" });
     }
 
     if (!data) {
       return res.status(404).json({ error: "Report not found" });
     }
 
-    return res.status(200).json({ ok: true, report: data });
+    // --- OPTIONAL: ENFORCE USER ACCESS ---
+    // if (req.headers["x-user-email"] !== data.email) {
+    //   return res.status(403).json({ error: "Not authorized." });
+    // }
+
+    return res.status(200).json({
+      ok: true,
+      report: data
+    });
 
   } catch (e) {
+    console.error("SERVER ERROR:", e);
     return res.status(500).json({ error: e.message });
   }
 }
