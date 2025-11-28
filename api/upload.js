@@ -18,7 +18,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const form = formidable({ multiples: false });
+    // IMPORTANT FIX — needed for Vercel:
+    const form = formidable({
+      multiples: false,
+      keepExtensions: true,
+      maxFileSize: 30 * 1024 * 1024,
+      uploadDir: "/tmp",          // ← FIX (Vercel-compatible temp dir)
+      filename: (name, ext, part) => {
+        return Date.now() + "_" + part.originalFilename;
+      }
+    });
 
     const { fields, files } = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
@@ -41,9 +50,11 @@ export default async function handler(req, res) {
 
     let file = files.file;
     if (Array.isArray(file)) file = file[0];
-    if (!file) return res.status(400).json({ error: "Missing file" });
+    if (!file) {
+      return res.status(400).json({ error: "Missing file" });
+    }
 
-    // 1️⃣ Create new DB row
+    // 1️⃣ Create DB row
     const { data: newRow, error: rowErr } = await supabase
       .from("reports")
       .insert({
@@ -63,17 +74,18 @@ export default async function handler(req, res) {
     }
 
     const reportId = newRow.id;
+
+    // Read uploaded file
     const buffer = fs.readFileSync(file.filepath);
 
-    // 🔥 IMPORTANT — correct path (DO NOT PREPEND "reports/")
-    const storagePath = `${reportId}.pdf`;
+    // 2️⃣ SAVE FILE INTO PRIVATE BUCKET (correct path)
+    const storagePath = `reports/${reportId}.pdf`;
 
-    // 2️⃣ Upload file to the "reports" bucket
     const { error: uploadErr } = await supabase.storage
       .from("reports")
       .upload(storagePath, buffer, {
-        contentType: file.mimetype || "application/pdf",
         upsert: true,
+        contentType: file.mimetype || "application/pdf",
       });
 
     if (uploadErr) {
@@ -81,20 +93,21 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Storage upload failed" });
     }
 
-    // 3️⃣ Save file_path
+    // 3️⃣ Update DB row with file_path
     await supabase
       .from("reports")
       .update({ file_path: storagePath })
       .eq("id", reportId);
 
-    return res.status(200).json({
+    res.status(200).json({
       ok: true,
       report_id: reportId,
       file_path: storagePath,
       message: "Report uploaded and queued for AI.",
     });
+
   } catch (e) {
     console.error("UPLOAD SERVER_CRASH:", e);
-    return res.status(500).json({ error: "SERVER_CRASH" });
+    return res.status(500).json({ error: "SERVER_CRASH", detail: e.message });
   }
 }
