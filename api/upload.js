@@ -5,9 +5,10 @@ import fs from "fs";
 
 export const config = { api: { bodyParser: false } };
 
+// MUST USE SERVICE ROLE KEY (server-side only)
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // must be SERVICE ROLE
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
@@ -16,7 +17,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Parse form data
     const form = formidable({ multiples: false });
 
     const { fields, files } = await new Promise((resolve, reject) => {
@@ -34,17 +34,14 @@ export default async function handler(req, res) {
     const ageRaw = clean(fields.age);
     const sex = clean(fields.sex) || "Unknown";
 
-    if (!email) {
-      return res.status(400).json({ error: "Missing email" });
-    }
+    if (!email) return res.status(400).json({ error: "Missing email" });
 
+    // Validate file
     let file = files.file;
     if (Array.isArray(file)) file = file[0];
-    if (!file) {
-      return res.status(400).json({ error: "Missing file" });
-    }
+    if (!file) return res.status(400).json({ error: "Missing file" });
 
-    // 1) Create the report row
+    // --- 1) Create DB row with correct ai_status for worker ---
     const { data: row, error: rowErr } = await supabase
       .from("reports")
       .insert({
@@ -53,7 +50,7 @@ export default async function handler(req, res) {
         name,
         age: ageRaw ? Number(ageRaw) : null,
         sex,
-        ai_status: "queued"
+        ai_status: "pending" // <-- FIXED (worker listens for this)
       })
       .select()
       .single();
@@ -65,9 +62,8 @@ export default async function handler(req, res) {
 
     const reportId = row.id;
 
-    // 2) Upload PDF to Supabase Storage
+    // --- 2) Upload PDF ---
     const buffer = fs.readFileSync(file.filepath);
-
     const storagePath = `${reportId}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
@@ -82,7 +78,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Upload failed" });
     }
 
-    // 3) SAVE FILE_PATH IN DB — THIS FIXES YOUR WORKER
+    // --- 3) Save file_path (required for worker) ---
     const { error: pathErr } = await supabase
       .from("reports")
       .update({ file_path: storagePath })
@@ -97,7 +93,7 @@ export default async function handler(req, res) {
       ok: true,
       report_id: reportId,
       file_path: storagePath,
-      message: "Report uploaded & queued."
+      message: "Report uploaded & queued for AI."
     });
 
   } catch (err) {
