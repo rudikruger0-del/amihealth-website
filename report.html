@@ -180,7 +180,7 @@ async function loadReport() {
   const pdfJson = await pdfRes.json();
   document.getElementById("pdfFrame").src = pdfJson.url;
 
-  // CBC Results (NEW)
+  // CBC Results
   const cbc = rpt.ai_results?.cbc;
   const cbcBox = document.getElementById("cbcContent");
 
@@ -204,10 +204,28 @@ async function loadReport() {
 
 function renderAI(ai) {
   const box = document.getElementById("aiContent");
+
   if (!ai) {
     box.textContent = "No AI data.";
     return;
   }
+
+  // --- Normalize fields so .map never breaks ---
+  const summary = Array.isArray(ai.summary)
+    ? ai.summary
+    : ai.summary
+    ? [ai.summary]
+    : [];
+
+  const flagged = Array.isArray(ai.flagged_results)
+    ? ai.flagged_results
+    : [];
+
+  const recommendations = Array.isArray(ai.recommendations)
+    ? ai.recommendations
+    : ai.recommendations
+    ? [ai.recommendations]
+    : [];
 
   const risk = ai.risk_assessment?.overall_risk || "low";
   const badgeClass =
@@ -217,20 +235,20 @@ function renderAI(ai) {
     <div class="risk-badge ${badgeClass}">${risk.toUpperCase()} RISK</div>
 
     <div class="section-title">Summary</div>
-    <div>${(ai.summary || []).map((s) => `• ${s}`).join("<br>")}</div>
+    <div>${summary.map(s => `• ${s}`).join("<br>") || "None"}</div>
 
     <div class="section-title">Flagged Results</div>
     <div>${
-      (ai.flagged_results || [])
+      flagged
         .map(
-          (f) =>
+          f =>
             `<b>${f.analyte}</b>: ${f.value} (${f.status}) — Ref: ${f.reference_low}-${f.reference_high}`
         )
         .join("<br>") || "None"
     }</div>
 
     <div class="section-title">Recommendations</div>
-    <div>${(ai.recommendations || []).map((s) => `• ${s}`).join("<br>")}</div>
+    <div>${recommendations.map(r => `• ${r}`).join("<br>") || "None"}</div>
   `;
 }
 
