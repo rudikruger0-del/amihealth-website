@@ -39,10 +39,9 @@
       display:flex;
       align-items:center;
       gap:10px;
-      color:inherit;
       text-decoration:none;
+      color:#eaf6ff;
     }
-
     .brand img { height:34px; }
     .brand-title { font-size:18px; font-weight:800; }
     .brand-sub { color:var(--muted); font-size:11px; }
@@ -54,15 +53,15 @@
       padding:6px 12px;
       border-radius:999px;
     }
-    nav a.active { background:rgba(0,224,184,0.12); color:#fff; }
-    nav a.login-pill { border:1px solid rgba(255,255,255,0.2); }
-
-    main {
-      flex:1;
-      display:flex;
-      justify-content:center;
-      padding:20px;
+    nav a.active {
+      background:rgba(0,224,184,0.15);
+      color:#fff;
     }
+    nav a.login-pill {
+      border:1px solid rgba(255,255,255,0.2);
+    }
+
+    main { flex:1; display:flex; justify-content:center; padding:20px; }
 
     .panel {
       background:var(--card);
@@ -85,7 +84,6 @@
       background:#0b152d;
       color:#fff;
       margin-bottom:16px;
-      font-size:15px;
     }
 
     .btn {
@@ -152,7 +150,7 @@
 import { supabase } from "./lib/supabaseClient.js";
 
 /**************************************
- * 🔐 AUTH GUARD — protects the page
+ * 🔐 REQUIRE LOGIN
  **************************************/
 async function requireAuth() {
   const { data: { session }, error } = await supabase.auth.getSession();
@@ -167,20 +165,20 @@ async function requireAuth() {
 
 const session = await requireAuth();
 if (!session) {
-  // redirect already handled
+  // already redirected
 }
 
-/*************
- * LOGOUT
- *************/
+/**************************************
+ * 🔐 LOGOUT HANDLER
+ **************************************/
 document.getElementById("logoutLink").onclick = async () => {
   await supabase.auth.signOut();
   window.location.href = "/login.html";
 };
 
-/************************************
- * 📤 UPLOAD HANDLER (SECURE)
- ************************************/
+/**************************************
+ * 📤 SECURE UPLOAD
+ **************************************/
 const uploadBtn = document.getElementById("uploadBtn");
 const statusText = document.getElementById("statusText");
 
@@ -199,6 +197,10 @@ uploadBtn.onclick = async () => {
   statusText.style.color = "#96a0b8";
   statusText.textContent = "Uploading… Please wait.";
 
+  // ⭐ THE FIX — include token!
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session.access_token;
+
   const formData = new FormData();
   formData.append("name", name);
   formData.append("age", age);
@@ -208,6 +210,9 @@ uploadBtn.onclick = async () => {
 
   const res = await fetch("/api/upload", {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
     body: formData
   });
 
