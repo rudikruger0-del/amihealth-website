@@ -62,7 +62,6 @@
       overflow:hidden;
       height:85vh;
     }
-
     iframe { width:100%; height:100%; border:none;}
 
     .panel {
@@ -152,6 +151,9 @@
 </div>
 
 <script>
+/** ---------------------------------------------
+ *  LOAD REPORT DATA
+ * --------------------------------------------- */
 async function loadReport() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
@@ -165,37 +167,34 @@ async function loadReport() {
   }
 
   const rpt = data.report;
+  window.__AMI_REPORT__ = rpt; // stored for printing
 
-  // Patient Info
   document.getElementById("name").textContent = rpt.name || "Unknown";
   document.getElementById("age").textContent = rpt.age || "-";
   document.getElementById("sex").textContent = rpt.sex || "-";
   document.getElementById("date").textContent =
     new Date(rpt.created_at).toLocaleString();
 
-  // PDF Preview
+  // Load PDF
   const pdfRes = await fetch(
     `/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`
   );
   const pdfJson = await pdfRes.json();
   document.getElementById("pdfFrame").src = pdfJson.url;
 
-  // CBC Results
-  const cbc = rpt.ai_results?.cbc;
+  // CBC
+  const cbc = rpt.ai_results?.cbc || [];
   const cbcBox = document.getElementById("cbcContent");
 
-  if (!cbc || cbc.length === 0) {
+  if (cbc.length === 0) {
     cbcBox.textContent = "No CBC data.";
   } else {
-    cbcBox.innerHTML = cbc
-      .map(
-        (c) => `
-        <div class="row">
-          <b>${c.analyte}:</b> ${c.value} ${c.units}  
-          <span style="opacity:0.7">(ref: ${c.reference_low}–${c.reference_high})</span>
-        </div>`
-      )
-      .join("");
+    cbcBox.innerHTML = cbc.map(c => `
+      <div class="row">
+        <b>${c.analyte}:</b> ${c.value} ${c.units}
+        <span style="opacity:0.7">(ref: ${c.reference_low}–${c.reference_high})</span>
+      </div>
+    `).join("");
   }
 
   // AI Interpretation
@@ -204,28 +203,7 @@ async function loadReport() {
 
 function renderAI(ai) {
   const box = document.getElementById("aiContent");
-
-  if (!ai) {
-    box.textContent = "No AI data.";
-    return;
-  }
-
-  // --- Normalize fields so .map never breaks ---
-  const summary = Array.isArray(ai.summary)
-    ? ai.summary
-    : ai.summary
-    ? [ai.summary]
-    : [];
-
-  const flagged = Array.isArray(ai.flagged_results)
-    ? ai.flagged_results
-    : [];
-
-  const recommendations = Array.isArray(ai.recommendations)
-    ? ai.recommendations
-    : ai.recommendations
-    ? [ai.recommendations]
-    : [];
+  if (!ai) return (box.textContent = "No AI data.");
 
   const risk = ai.risk_assessment?.overall_risk || "low";
   const badgeClass =
@@ -235,24 +213,108 @@ function renderAI(ai) {
     <div class="risk-badge ${badgeClass}">${risk.toUpperCase()} RISK</div>
 
     <div class="section-title">Summary</div>
-    <div>${summary.map(s => `• ${s}`).join("<br>") || "None"}</div>
+    <div>${(ai.summary || []).join("<br>")}</div>
 
     <div class="section-title">Flagged Results</div>
     <div>${
-      flagged
-        .map(
-          f =>
-            `<b>${f.analyte}</b>: ${f.value} (${f.status}) — Ref: ${f.reference_low}-${f.reference_high}`
+      (ai.flagged_results || [])
+        .map(f =>
+          `<b>${f.analyte}</b>: ${f.value} (${f.status}) — Ref: ${f.reference_low}-${f.reference_high}`
         )
         .join("<br>") || "None"
     }</div>
 
     <div class="section-title">Recommendations</div>
-    <div>${recommendations.map(r => `• ${r}`).join("<br>") || "None"}</div>
+    <div>${(ai.recommendations || []).join("<br>") || "None"}</div>
   `;
 }
 
-document.getElementById("pdfBtn").onclick = () => window.print();
+/** ---------------------------------------------
+ *  PRINT CLEAN REPORT (WHITE PAGE)
+ * --------------------------------------------- */
+function printCleanReport() {
+  const rpt = window.__AMI_REPORT__;
+  if (!rpt) return alert("Report missing");
+
+  const ai = rpt.ai_results || {};
+  const cbc = ai.cbc || [];
+
+  const win = window.open("", "_blank");
+
+  win.document.write(`
+    <html>
+    <head>
+      <title>AMI Medical Report</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; color:#000; }
+        .header { text-align:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:20px; }
+        .header img { height:60px; }
+
+        .section-title { font-size:18px; font-weight:bold; margin-top:25px; margin-bottom:8px; }
+        .row { margin:4px 0; font-size:14px; }
+
+        table { width:100%; border-collapse:collapse; margin-top:10px; margin-bottom:20px; }
+        th, td { border:1px solid #666; padding:6px; font-size:14px; }
+
+        .disclaimer { margin-top:40px; font-size:10px; text-align:center; color:#444; }
+      </style>
+    </head>
+
+    <body>
+      <div class="header">
+        <img src="/logo.png" />
+        <h2>AMI Health — Medical AI Report</h2>
+      </div>
+
+      <div class="section-title">Patient Information</div>
+      <div class="row"><b>Name:</b> ${rpt.name}</div>
+      <div class="row"><b>Age:</b> ${rpt.age}</div>
+      <div class="row"><b>Sex:</b> ${rpt.sex}</div>
+      <div class="row"><b>Date:</b> ${new Date(rpt.created_at).toLocaleString()}</div>
+
+      <div class="section-title">CBC Results</div>
+      <table>
+        <tr><th>Analyte</th><th>Value</th><th>Units</th><th>Reference Range</th></tr>
+        ${cbc.map(c => `
+          <tr>
+            <td>${c.analyte}</td>
+            <td>${c.value}</td>
+            <td>${c.units}</td>
+            <td>${c.reference_low} – ${c.reference_high}</td>
+          </tr>
+        `).join("")}
+      </table>
+
+      <div class="section-title">AI Interpretation</div>
+      <div class="row"><b>Risk Level:</b> ${ai.risk_assessment?.overall_risk || "low"}</div>
+
+      <div class="section-title">Summary</div>
+      <div>${(ai.summary || []).join("<br>")}</div>
+
+      <div class="section-title">Flagged Results</div>
+      <div>${
+        (ai.flagged_results || [])
+          .map(f => `${f.analyte}: ${f.value} (${f.status})`)
+          .join("<br>") || "None"
+      }</div>
+
+      <div class="section-title">Recommendations</div>
+      <div>${(ai.recommendations || []).join("<br>") || "None"}</div>
+
+      <div class="disclaimer">
+        This AI interpretation is assistive and not a medical diagnosis.<br>
+        Always consult a licensed medical professional for clinical decisions.
+      </div>
+    </body>
+    </html>
+  `);
+
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
+document.getElementById("pdfBtn").onclick = printCleanReport;
 
 loadReport();
 </script>
