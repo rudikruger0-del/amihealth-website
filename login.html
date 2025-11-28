@@ -173,7 +173,6 @@
     </div>
   </div>
 
-  <!-- ONLY ONE LOGIN SCRIPT — CLEAN -->
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
@@ -186,6 +185,14 @@
       statusEl.textContent = msg;
       statusEl.className = "status " + type;
     }
+
+    // 🔐 If already logged in, go straight to dashboard
+    (async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (session && !error) {
+        window.location.href = "/dashboard.html";
+      }
+    })();
 
     async function signIn() {
       const email = emailInput.value.trim();
