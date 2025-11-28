@@ -4,7 +4,7 @@ import formidable from "formidable";
 import fs from "fs";
 
 export const config = {
-  api: { bodyParser: false },
+  api: { bodyParser: false }, // required
 };
 
 const supabase = createClient(
@@ -18,16 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // IMPORTANT FIX — needed for Vercel:
-    const form = formidable({
-      multiples: false,
-      keepExtensions: true,
-      maxFileSize: 30 * 1024 * 1024,
-      uploadDir: "/tmp",          // ← FIX (Vercel-compatible temp dir)
-      filename: (name, ext, part) => {
-        return Date.now() + "_" + part.originalFilename;
-      }
-    });
+    const form = formidable({ multiples: false });
 
     const { fields, files } = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
@@ -50,11 +41,11 @@ export default async function handler(req, res) {
 
     let file = files.file;
     if (Array.isArray(file)) file = file[0];
-    if (!file) {
-      return res.status(400).json({ error: "Missing file" });
-    }
+    if (!file) return res.status(400).json({ error: "Missing file" });
 
-    // 1️⃣ Create DB row
+    // ----------------------------
+    // 1) Create row first
+    // ----------------------------
     const { data: newRow, error: rowErr } = await supabase
       .from("reports")
       .insert({
@@ -69,45 +60,49 @@ export default async function handler(req, res) {
       .single();
 
     if (rowErr) {
-      console.error("DB insert failed:", rowErr);
+      console.error(rowErr);
       return res.status(500).json({ error: "DB insert failed" });
     }
 
     const reportId = newRow.id;
 
-    // Read uploaded file
+    // ----------------------------
+    // 2) Convert PDF → Blob (WORKS)
+    // ----------------------------
     const buffer = fs.readFileSync(file.filepath);
+    const blob = new Blob([buffer], { type: file.mimetype });
 
-    // 2️⃣ SAVE FILE INTO PRIVATE BUCKET (correct path)
-    const storagePath = `reports/${reportId}.pdf`;
+    // ----------------------------
+    // 3) Upload using BLOB (the correct method)
+    // ----------------------------
+    const storagePath = `${reportId}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
       .from("reports")
-      .upload(storagePath, buffer, {
-        upsert: true,
-        contentType: file.mimetype || "application/pdf",
-      });
+      .upload(storagePath, blob, { upsert: true });
 
     if (uploadErr) {
-      console.error("Storage upload failed:", uploadErr);
+      console.error(uploadErr);
       return res.status(500).json({ error: "Storage upload failed" });
     }
 
-    // 3️⃣ Update DB row with file_path
+    // ----------------------------
+    // 4) Save file_path
+    // ----------------------------
     await supabase
       .from("reports")
       .update({ file_path: storagePath })
       .eq("id", reportId);
 
-    res.status(200).json({
+    return res.status(200).json({
       ok: true,
       report_id: reportId,
       file_path: storagePath,
-      message: "Report uploaded and queued for AI.",
+      message: "Report uploaded & queued.",
     });
 
   } catch (e) {
-    console.error("UPLOAD SERVER_CRASH:", e);
-    return res.status(500).json({ error: "SERVER_CRASH", detail: e.message });
+    console.error("SERVER ERROR:", e);
+    return res.status(500).json({ error: "SERVER_CRASH" });
   }
 }
