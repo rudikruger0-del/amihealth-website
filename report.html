@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>AMI — Report</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <style>
     body {
@@ -13,15 +13,14 @@
       color:#eaf6ff;
     }
 
-    /* ---- MAIN PAGE LAYOUT ---- */
     header {
-      padding:18px 24px;
       display:flex;
       align-items:center;
       justify-content:space-between;
+      padding:18px 24px;
     }
 
-    #pdfBtn {
+    #pdfBtn, #downloadBtn {
       padding:10px 18px;
       border-radius:999px;
       background:linear-gradient(90deg,#00e0b8,#00b7ff);
@@ -29,6 +28,7 @@
       font-weight:700;
       border:none;
       cursor:pointer;
+      margin-left:10px;
     }
 
     .container {
@@ -40,38 +40,76 @@
       gap:20px;
     }
 
-    iframe {
-      width:100%;
-      height:85vh;
-      border:none;
-      background:#000;
-    }
+    .left-viewer { background:#000; border-radius:12px; overflow:hidden; height:85vh; }
+    iframe { width:100%; height:100%; border:none; }
 
     .panel {
       background:#0b1020;
-      padding:20px;
       border-radius:12px;
-      border:1px solid rgba(255,255,255,0.07);
+      padding:20px;
+      border:1px solid rgba(255,255,255,0.1);
       margin-bottom:18px;
     }
 
-    h2 { margin-top:0; font-size:20px; font-weight:700; }
-
-    .section-title { margin:10px 0 4px; font-weight:600; opacity:0.9; }
+    h2 { margin:0 0 10px; font-size:20px; font-weight:700; }
+    .row { margin:4px 0; font-size:14px; }
 
     .disclaimer {
+      margin-top:20px;
       text-align:center;
       font-size:12px;
-      color:#96a0b8;
-      padding:10px;
-      margin-top:20px;
+      opacity:0.7;
     }
 
-    /* ---------------- PRINT STYLES ---------------- */
+    /* ---------------- PRINT PAGE STYLES ---------------- */
     @media print {
       body { background:white; color:black; }
 
       .no-print { display:none !important; }
+
+      .print-page {
+        page-break-after: always;
+        padding:40px;
+        font-family: Inter, sans-serif;
+        color:#111;
+      }
+
+      .header-line {
+        border-bottom:2px solid #00b7ff;
+        margin-top:10px;
+        margin-bottom:20px;
+        padding-bottom:8px;
+      }
+
+      .print-title {
+        font-size:22px;
+        font-weight:700;
+        margin-bottom:4px;
+      }
+
+      .print-sub {
+        font-size:13px;
+        opacity:0.8;
+      }
+
+      .pdf-wrapper embed {
+        width:100%;
+        height:1050px;
+        border:none;
+      }
+
+      .page-number {
+        text-align:right;
+        font-size:12px;
+        margin-top:20px;
+        opacity:0.6;
+      }
+
+      .signature-line {
+        margin-top:40px;
+        border-top:1px solid black;
+        width:260px;
+      }
     }
   </style>
 </head>
@@ -79,9 +117,11 @@
 <body>
 
 <header class="no-print">
-  <a id="backBtn" href="/dashboard.html" style="color:#00d4ff;">← Back</a>
-  <img src="/logo.png" style="height:40px;"/>
-  <button id="pdfBtn">Print Report</button>
+  <a id="backBtn" href="/dashboard.html" style="color:#00d4ff;text-decoration:none;">← Back</a>
+  <div>
+    <button id="downloadBtn">Download PDF</button>
+    <button id="pdfBtn">Print Report</button>
+  </div>
 </header>
 
 <div class="container no-print">
@@ -90,12 +130,13 @@
   </div>
 
   <div>
+
     <div class="panel">
       <h2>Patient Info</h2>
-      <div><b>Name:</b> <span id="name">Loading…</span></div>
-      <div><b>Age:</b> <span id="age">-</span></div>
-      <div><b>Sex:</b> <span id="sex">-</span></div>
-      <div><b>Date:</b> <span id="date">-</span></div>
+      <div class="row"><b>Name:</b> <span id="p_name">Loading…</span></div>
+      <div class="row"><b>Age:</b> <span id="p_age">-</span></div>
+      <div class="row"><b>Sex:</b> <span id="p_sex">-</span></div>
+      <div class="row"><b>Date:</b> <span id="p_date">-</span></div>
     </div>
 
     <div class="panel">
@@ -109,169 +150,123 @@
     </div>
 
     <div class="disclaimer">
-      This AI-generated interpretation is designed to assist clinical judgement and does not replace a medical diagnosis.  
-      Final diagnostic and treatment decisions must always be made by a licensed medical professional.
+      This AI-generated interpretation assists clinical judgment and is not a diagnosis.
+      Final decisions must be made by a licensed medical professional.
     </div>
   </div>
 </div>
 
+<!-- ---------- PRINT TEMPLATE (hidden until printing) ---------- -->
+<div id="printArea" style="display:none;">
+
+  <!-- PAGE 1 — ORIGINAL LAB REPORT -->
+  <div class="print-page">
+    <div class="pdf-wrapper">
+      <embed id="pdfEmbed" type="application/pdf" />
+    </div>
+
+    <div class="page-number">Page 1 of 2</div>
+  </div>
+
+  <!-- PAGE 2 — AI INTERPRETATION -->
+  <div class="print-page">
+    <img src="/logo.png" style="height:40px;" />
+    <div class="header-line"></div>
+
+    <div class="print-title">AMI Health — AI Interpretation Report</div>
+    <div class="print-sub">Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za</div>
+
+    <h3>Patient</h3>
+    <div id="pp_name"></div>
+    <div id="pp_age"></div>
+    <div id="pp_sex"></div>
+    <div id="pp_date"></div>
+
+    <h3>CBC Overview</h3>
+    <div id="pp_cbc"></div>
+
+    <h3>AI Summary</h3>
+    <div id="pp_summary"></div>
+
+    <h3>Verification</h3>
+    <div>Scan to verify this report:</div>
+    <img id="qrImage" style="width:120px;margin-top:10px;" />
+
+    <h3 style="margin-top:40px;">Signed by: Dr ___________________________</h3>
+
+    <div class="page-number">Page 2 of 2</div>
+  </div>
+
+</div>
+
 <script>
-/* ---------------------------------------
-   LOAD DATA FROM API
-----------------------------------------*/
 async function loadReport() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
-  window.currentReportId = id;
 
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const data = await res.json();
 
-  if (!data.ok) return;
-
   const rpt = data.report;
 
-  // Fill patient panel
-  document.getElementById("name").textContent = rpt.name || "Unknown";
-  document.getElementById("age").textContent = rpt.age || "-";
-  document.getElementById("sex").textContent = rpt.sex || "-";
-  document.getElementById("date").textContent =
-    new Date(rpt.created_at).toLocaleString();
+  // Fill patient fields
+  document.getElementById("p_name").textContent = rpt.name;
+  document.getElementById("p_age").textContent = rpt.age;
+  document.getElementById("p_sex").textContent = rpt.sex;
+  document.getElementById("p_date").textContent = new Date(rpt.created_at).toLocaleString();
 
-  // Load PDF preview
+  // Download PDF URL
   const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
   const pdfJson = await pdfRes.json();
+
   document.getElementById("pdfFrame").src = pdfJson.url;
+  document.getElementById("pdfEmbed").src = pdfJson.url;
+  document.getElementById("downloadBtn").onclick = () => window.location = pdfJson.url;
 
   // CBC
-  const cbcBox = document.getElementById("cbcContent");
   const cbc = rpt.ai_results?.cbc || [];
-  if (!cbc.length) cbcBox.textContent = "No CBC data.";
-  else {
-    cbcBox.innerHTML = cbc.map(c => `
-      <div><b>${c.analyte}:</b> ${c.value} ${c.units}
-      <span style="opacity:0.7">(ref: ${c.reference_low}–${c.reference_high})</span></div>
-    `).join("");
-  }
+  document.getElementById("cbcContent").innerHTML =
+    cbc.map(c => `<div>${c.analyte}: ${c.value} ${c.units} (ref: ${c.reference_low}-${c.reference_high})</div>`).join("");
 
-  // AI Interpretation
-  renderAI(rpt.ai_results);
+  document.getElementById("pp_cbc").innerHTML =
+    cbc.map(c => `${c.analyte}: ${c.value} ${c.units} (ref: ${c.reference_low}-${c.reference_high})`).join("<br>");
+
+  // AI summary
+  const summary = rpt.ai_results?.summary?.impression || "No summary.";
+  document.getElementById("aiContent").innerHTML = `<b>Summary:</b><br>${summary}`;
+  document.getElementById("pp_summary").innerHTML = summary;
+
+  // Print page patient info
+  document.getElementById("pp_name").innerHTML = `Name: ${rpt.name}`;
+  document.getElementById("pp_age").innerHTML = `Age: ${rpt.age}`;
+  document.getElementById("pp_sex").innerHTML = `Sex: ${rpt.sex}`;
+  document.getElementById("pp_date").innerHTML = `Date: ${new Date(rpt.created_at).toLocaleString()}`;
+
+  // QR code
+  document.getElementById("qrImage").src =
+    `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://amihealth.co.za/verify?id=${id}`;
 }
 
-/* ---------------------------------------
-   RENDER AI SUMMARY
-----------------------------------------*/
-function renderAI(ai) {
-  const box = document.getElementById("aiContent");
-
-  if (!ai) {
-    box.textContent = "No AI data.";
-    return;
-  }
-
-  box.innerHTML = `
-    <div class="section-title">Summary:</div>
-    <div>• ${ai.summary?.impression || "No summary available"} </div>
-  `;
-}
-
-/* ---------------------------------------
-   PRINT CLEAN REPORT (2 pages)
-----------------------------------------*/
-async function printReport() {
-  const id = window.currentReportId;
-
-  const qrURL = `https://www.amihealth.co.za/verify?id=${id}`;
-  const logo = `${window.location.origin}/logo.png`;
-
+function printClean() {
+  const printContents = document.getElementById("printArea").innerHTML;
   const win = window.open("", "_blank");
 
   win.document.write(`
     <html>
-    <head>
-      <title>AMI Report</title>
-      <style>
-        body { font-family: Inter, sans-serif; margin:40px; }
-
-        header {
-          display:flex; justify-content:space-between; align-items:center;
-          border-bottom:2px solid #0a84ff; padding-bottom:10px; margin-bottom:20px;
-        }
-
-        h1 { font-size:22px; margin:0; }
-        h2 { margin:20px 0 10px; }
-
-        .watermark {
-          position:fixed; top:40%; left:20%;
-          opacity:0.06; font-size:80px; transform:rotate(-30deg);
-          color:#0040ff; z-index:-1;
-        }
-
-        footer {
-          margin-top:40px; font-size:12px; text-align:center; opacity:0.7;
-        }
-
-        .signature {
-          margin-top:40px; font-size:14px;
-        }
-
-        .pagebreak { page-break-before: always; }
-      </style>
-    </head>
-    <body>
-
-    <div class="watermark">AMI Health — Confidential</div>
-
-    <!-- PAGE 1: Original PDF -->
-    <header>
-      <img src="${logo}" style="height:50px;">
-      <div>
-        <strong>Artificial Medical Intelligence (Pty) Ltd</strong><br>
-        info@amihealth.co.za • www.amihealth.co.za
-      </div>
-    </header>
-
-    <h1>AMI Health — Original Lab Report</h1>
-    <iframe src="${document.getElementById("pdfFrame").src}"
-            style="width:100%; height:900px; border:none;"></iframe>
-
-    <footer>Page 1 of 2</footer>
-
-    <!-- PAGE 2: AI INTERPRETATION -->
-    <div class="pagebreak"></div>
-
-    <header>
-      <img src="${logo}" style="height:50px;">
-      <div>
-        <strong>Artificial Medical Intelligence (Pty) Ltd</strong><br>
-        info@amihealth.co.za • www.amihealth.co.za
-      </div>
-    </header>
-
-    <h1>AMI Health — AI Interpretation Report</h1>
-
-    <h2>AI Summary</h2>
-    <p>${document.getElementById("aiContent").innerText}</p>
-
-    <h2>Verification</h2>
-    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrURL}">
-    <p>Scan to verify this report.</p>
-
-    <div class="signature">
-      <strong>Signed by:</strong> Dr _________________________________
-    </div>
-
-    <footer>Page 2 of 2</footer>
-
-    </body>
+      <head>
+        <title>AMI Health — Report</title>
+        <style>${document.querySelector("style").innerHTML}</style>
+      </head>
+      <body>${printContents}</body>
     </html>
   `);
 
   win.document.close();
-  win.print();
+  win.focus();
+  setTimeout(() => { win.print(); win.close(); }, 500);
 }
 
-document.getElementById("pdfBtn").addEventListener("click", printReport);
+document.getElementById("pdfBtn").addEventListener("click", printClean);
 
 loadReport();
 </script>
