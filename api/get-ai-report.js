@@ -9,24 +9,30 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    // Read ID safely
+    // Get report ID
     const id = req.query.id;
     if (!id) {
       return res.status(400).json({ error: "Missing id" });
     }
 
-    // Check env
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // --- IMPORTANT ---
+    // When RLS is enabled, ANON cannot read ANY rows.
+    // Service role can bypass RLS securely.
+    const SUPABASE_URL =
+      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    if (!url || !anon) {
+    const SERVICE_ROLE =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!SUPABASE_URL || !SERVICE_ROLE) {
       console.error("❌ Missing Supabase environment variables");
-      return res.status(500).json({ error: "Server env error" });
+      return res.status(500).json({ error: "Server misconfiguration" });
     }
 
-    const supabase = createClient(url, anon);
+    // Create Supabase client WITH SERVICE ROLE KEY (bypasses RLS)
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    // Fetch row
+    // Fetch report by ID
     const { data, error } = await supabase
       .from("reports")
       .select("*")
@@ -34,7 +40,7 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (error) {
-      console.error("❌ Supabase GET error:", error);
+      console.error("❌ Supabase error:", error);
       return res.status(500).json({ error: "Database error" });
     }
 
@@ -42,11 +48,13 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Report not found" });
     }
 
-    return res.status(200).json({ ok: true, report: data });
+    return res.status(200).json({
+      ok: true,
+      report: data,
+    });
 
   } catch (err) {
-    console.error("❌ API Crash:", err);
+    console.error("❌ API crashed:", err);
     return res.status(500).json({ error: "Server crashed" });
   }
 }
-
