@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     if (Array.isArray(file)) file = file[0];
     if (!file) return res.status(400).json({ error: "Missing file" });
 
-    // 1️⃣ Create empty row
+    // 1️⃣ Insert empty DB row (POPIA-safe)
     const { data: newRow, error: rowErr } = await supabase
       .from("reports")
       .insert({
@@ -65,8 +65,8 @@ export default async function handler(req, res) {
     const reportId = newRow.id;
     const buffer = fs.readFileSync(file.filepath);
 
-    // 2️⃣ CORRECT — save file inside bucket "reports"
-    const storagePath = `${reportId}.pdf`;
+    // 2️⃣ CORRECT — store inside bucket folder "reports/"
+    const storagePath = `reports/${reportId}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
       .from("reports")
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Storage upload failed" });
     }
 
-    // 3️⃣ Save file_path for worker
+    // 3️⃣ Save storage path (POPIA-safe, no public URL)
     await supabase
       .from("reports")
       .update({ file_path: storagePath })
