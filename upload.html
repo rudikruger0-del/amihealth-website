@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>AMI — Upload Report</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
       --bg:#030414;
@@ -14,7 +14,7 @@
     *{box-sizing:border-box;}
     body{
       margin:0;
-      font-family:Inter, system-ui, sans-serif;
+      font-family:Inter,system-ui,sans-serif;
       background:radial-gradient(circle at top,#071a33,#02030f);
       color:#eaf6ff;
       min-height:100vh;
@@ -32,7 +32,6 @@
     }
     .brand{
       display:flex;
-      align-items:center;
       gap:10px;
       text-decoration:none;
       color:inherit;
@@ -51,7 +50,6 @@
       margin-left:8px;
       cursor:pointer;
     }
-
     main{
       flex:1;
       width:100%;
@@ -69,8 +67,12 @@
     }
     h1{margin:0 0 4px;font-size:22px;}
     .muted{margin:0 0 16px;font-size:14px;color:var(--muted);}
-    form{margin-top:16px;display:flex;flex-direction:column;gap:14px;}
-    label{font-size:13px;color:#c5d0f5;}
+    form{
+      margin-top:16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
     input,select{
       width:100%;
       margin-top:4px;
@@ -81,15 +83,12 @@
       color:#eaf6ff;
       font-size:14px;
     }
-    input[type="file"]{
-      padding:8px;
-      background:#050a18;
-    }
+    input[type="file"]{padding:8px;}
     .row{
       display:flex;
       gap:12px;
     }
-    .row>div{flex:1;}
+    .row > div { flex:1; }
     .btn-primary{
       margin-top:10px;
       width:100%;
@@ -103,32 +102,22 @@
       cursor:pointer;
       box-shadow:0 0 18px rgba(0,255,220,0.25);
     }
-    .btn-primary[disabled]{
-      opacity:0.6;
-      cursor:default;
-      box-shadow:none;
-    }
     .status{
       margin-top:10px;
-      min-height:20px;
+      min-height:18px;
       font-size:13px;
       color:var(--muted);
       white-space:pre-wrap;
     }
     .status.ok{color:#7dffc5;}
     .status.err{color:#ffb3b3;}
-    .signed-in{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:4px;
-    }
   </style>
 </head>
 <body>
 
 <header>
   <a class="brand" href="/dashboard.html">
-    <img src="/logo.png" alt="AMI logo">
+    <img src="/logo.png" />
     <div>
       <div class="brand-title">AMI Health</div>
       <div class="brand-sub">Artificial Medical Intelligence</div>
@@ -144,42 +133,32 @@
   <div class="card">
     <h1>Upload Report</h1>
     <p class="muted">
-      Upload a PDF or image report. AMI will extract CBC values and run AI interpretation in the background.
+      Upload a PDF or image report. AMI will extract CBC values and run AI interpretation.
     </p>
-    <div class="signed-in" id="signedInText">Signed in as: …</div>
+    <div id="signedInText" class="muted"></div>
 
-    <form id="uploadForm">
-      <div>
-        <label>
-          File
-          <input type="file" name="file" id="fileInput" accept=".pdf,image/*" required>
-        </label>
-      </div>
+    <form id="uploadForm" autocomplete="off" enctype="multipart/form-data">
 
-      <div>
-        <label>
-          Title
-          <input type="text" name="title" placeholder="e.g. CBC — Z. Taljaard">
-        </label>
-      </div>
+      <label>File
+        <input id="fileInput" name="file" type="file" accept=".pdf,image/*" required>
+      </label>
 
-      <div>
-        <label>
-          Patient Name
-          <input type="text" name="name" placeholder="Patient name (optional)">
-        </label>
-      </div>
+      <label>Title
+        <input name="title" type="text" placeholder="CBC result" />
+      </label>
+
+      <label>Patient Name
+        <input name="name" type="text" placeholder="John Doe" />
+      </label>
 
       <div class="row">
         <div>
-          <label>
-            Age
-            <input type="number" name="age" min="0" max="120" placeholder="e.g. 42">
+          <label>Age
+            <input name="age" type="number" min="0" max="120">
           </label>
         </div>
         <div>
-          <label>
-            Sex
+          <label>Sex
             <select name="sex">
               <option value="Unknown">Unknown</option>
               <option value="Male">Male</option>
@@ -189,100 +168,78 @@
         </div>
       </div>
 
-      <button type="submit" class="btn-primary" id="submitBtn">
-        Upload & Queue AI
-      </button>
-
-      <div class="status" id="statusText"></div>
+      <button id="submitBtn" class="btn-primary">Upload & Queue AI</button>
+      <div id="statusText" class="status"></div>
     </form>
   </div>
 </main>
 
 <script type="module">
-  import { supabase } from "./lib/supabaseClient.js";
+import { supabase } from "./lib/supabaseClient.js";
 
-  const uploadForm = document.getElementById("uploadForm");
-  const statusText = document.getElementById("statusText");
-  const submitBtn = document.getElementById("submitBtn");
-  const fileInput = document.getElementById("fileInput");
-  const signedInText = document.getElementById("signedInText");
-  const logoutBtn = document.getElementById("logoutBtn");
+const fileInput = document.getElementById("fileInput");
+const uploadForm = document.getElementById("uploadForm");
+const statusText = document.getElementById("statusText");
+const submitBtn = document.getElementById("submitBtn");
+const signedInText = document.getElementById("signedInText");
+const logoutBtn = document.getElementById("logoutBtn");
 
-  let currentEmail = null;
+let currentEmail = null;
 
-  async function loadUser() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.href = "/login.html";
-      return;
-    }
-    currentEmail = session.user.email;
-    signedInText.textContent = "Signed in as: " + currentEmail;
+async function loadUser() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) window.location.href = "/login.html";
+  currentEmail = session.user.email;
+  signedInText.textContent = "Signed in as: " + currentEmail;
+}
+loadUser();
+
+logoutBtn.onclick = async () => {
+  await supabase.auth.signOut();
+  window.location.href = "/login.html";
+};
+
+uploadForm.onsubmit = async (e) => {
+  e.preventDefault();
+  statusText.textContent = "";
+
+  if (!fileInput.files.length) {
+    statusText.textContent = "Please select a file.";
+    statusText.className = "status err";
+    return;
   }
 
-  loadUser();
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Uploading…";
 
-  logoutBtn.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/login.html";
-  });
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  formData.append("email", currentEmail);
+  formData.append("title", uploadForm.title.value);
+  formData.append("name", uploadForm.name.value);
+  formData.append("age", uploadForm.age.value);
+  formData.append("sex", uploadForm.sex.value);
 
-  uploadForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    statusText.textContent = "";
-    statusText.className = "status";
+  try {
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const json = await res.json();
 
-    if (!fileInput.files || fileInput.files.length === 0) {
-      statusText.textContent = "Please select a file.";
-      statusText.classList.add("err");
-      return;
+    if (!json.ok) {
+      statusText.textContent = json.error || "Upload failed.";
+      statusText.className = "status err";
+    } else {
+      statusText.textContent = "Uploaded ✓ AI is analysing the report.";
+      statusText.className = "status ok";
+      uploadForm.reset();
     }
-    if (!currentEmail) {
-      statusText.textContent = "No user session. Please log in again.";
-      statusText.classList.add("err");
-      return;
-    }
+  } catch (err) {
+    statusText.textContent = "Unexpected error.";
+    statusText.className = "status err";
+  }
 
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Uploading…";
-
-    try {
-      const formData = new FormData(uploadForm);
-      formData.append("email", currentEmail);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const json = await res.json();
-
-      if (!res.ok || !json.ok) {
-        console.error("Upload error:", json);
-        statusText.textContent =
-          json.error || "Upload failed. Please try again.";
-        statusText.classList.add("err");
-      } else {
-        statusText.textContent =
-          "Upload complete ✓\nAI is analysing this report in the background.\n" +
-          "Open the Dashboard and refresh after a few seconds to see the AI result.";
-        statusText.classList.add("ok");
-
-        // Optional: small nudge to refresh dashboard list
-        localStorage.setItem("reports_updated", "1");
-        uploadForm.reset();
-      }
-    } catch (err) {
-      console.error("UPLOAD JS ERROR:", err);
-      statusText.textContent =
-        "Unexpected error while uploading. Please try again.";
-      statusText.classList.add("err");
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Upload & Queue AI";
-    }
-  });
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Upload & Queue AI";
+};
 </script>
-
 </body>
 </html>
