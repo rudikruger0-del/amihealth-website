@@ -5,26 +5,19 @@
   <title>AMI — Report</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- QRCode library (global QRCode object) -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-
   <style>
     :root {
       --bg:#030414;
       --card:#0b1020;
       --muted:#96a0b8;
       --accent:#00e0b8;
-      --accent-soft:#00a8ff;
-      --border:#e0e5f2;
-      --text:#111827;
-      --tiny:#6b7280;
     }
 
     * { box-sizing:border-box; }
 
     body {
       margin:0;
-      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:#02040e;
       color:#eaf6ff;
     }
@@ -38,7 +31,11 @@
       border-bottom:1px solid rgba(255,255,255,0.08);
     }
 
-    header img { height:40px; }
+    .header-left {
+      display:flex;
+      align-items:center;
+      gap:16px;
+    }
 
     #backBtn {
       color:#00d4ff;
@@ -46,21 +43,34 @@
       font-size:14px;
     }
 
-    #pdfBtn, #downloadBtn {
-      padding:10px 18px;
-      border-radius:999px;
-      background:linear-gradient(90deg,#00e0b8,#00b7ff);
-      color:#001821;
-      font-weight:700;
-      border:none;
-      cursor:pointer;
-      margin-left:10px;
+    header img { height:40px; }
+
+    .header-actions {
+      display:flex;
+      gap:10px;
     }
 
-    #downloadBtn {
-      background:#222;
-      color:#fff;
-      border:1px solid rgba(255,255,255,0.15);
+    .btn {
+      padding:10px 18px;
+      border-radius:999px;
+      border:none;
+      cursor:pointer;
+      font-size:14px;
+      font-weight:600;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .btn.primary {
+      background:linear-gradient(90deg,#00e0b8,#00b7ff);
+      color:#001821;
+    }
+
+    .btn.secondary {
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.28);
+      color:#eaf6ff;
     }
 
     .container {
@@ -72,21 +82,24 @@
       gap:20px;
     }
 
+    @media (max-width:900px){
+      .container {
+        grid-template-columns:1fr;
+      }
+      .left-viewer {
+        height:60vh;
+      }
+    }
+
     .left-viewer {
       background:#000;
       border-radius:12px;
       overflow:hidden;
       height:85vh;
-      display:flex;
-      align-items:stretch;
+      border:1px solid rgba(255,255,255,0.08);
     }
 
-    iframe {
-      width:100%;
-      height:100%;
-      border:none;
-      background:#111;
-    }
+    iframe { width:100%; height:100%; border:none;}
 
     .panel {
       background:var(--card);
@@ -102,211 +115,27 @@
       font-weight:700;
     }
 
-    .row { margin:4px 0; font-size:14px; }
+    .row {
+      margin:4px 0;
+      font-size:14px;
+    }
+
+    .cbc-row-flag-high { color:#ff8080; }
+    .cbc-row-flag-low  { color:#ffb347; }
+    .cbc-row-flag-normal { color:#eaf6ff; }
+
+    .disclaimer {
+      margin-top:20px;
+      text-align:center;
+      font-size:12px;
+      color:var(--muted);
+      padding:10px;
+    }
 
     .ai-section-title {
       margin-top:10px;
       font-weight:600;
       font-size:14px;
-    }
-
-    .disclaimer {
-      margin-top:12px;
-      text-align:center;
-      font-size:11px;
-      color:var(--muted);
-      padding:10px;
-    }
-
-    /* ---------- PRINT LAYOUT (NEW WINDOW) ---------- */
-
-    .print-page {
-      width:210mm;
-      min-height:297mm;
-      margin:0 auto;
-      padding:18mm 20mm;
-      box-sizing:border-box;
-      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      color:var(--text);
-      background:#fff;
-    }
-
-    .print-header {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      border-bottom:2px solid var(--accent-soft);
-      padding-bottom:6px;
-      margin-bottom:10px;
-      font-size:11px;
-      color:#374151;
-    }
-
-    .print-header-left {
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-
-    .print-header-left img {
-      height:26px;
-    }
-
-    .print-header-title {
-      font-weight:700;
-      font-size:13px;
-      color:#111827;
-    }
-
-    .print-header-sub {
-      font-size:10px;
-      color:#4b5563;
-    }
-
-    .print-header-right {
-      text-align:right;
-      font-size:10px;
-      color:#6b7280;
-    }
-
-    .print-main-title {
-      margin:8px 0 2px;
-      font-weight:700;
-      font-size:13px;
-      color:#111827;
-    }
-
-    .print-subtitle {
-      font-size:9px;
-      color:#6b7280;
-      margin-bottom:8px;
-    }
-
-    .print-patient-line {
-      font-size:10px;
-      margin:8px 0 6px;
-    }
-
-    .print-patient-line b {
-      font-weight:600;
-    }
-
-    .print-cbc-table {
-      width:100%;
-      border-collapse:collapse;
-      margin:8px 0 10px;
-      font-size:9.5px;
-    }
-
-    .print-cbc-table th,
-    .print-cbc-table td {
-      border:1px solid #d1d5db;
-      padding:3px 4px;
-      text-align:left;
-      white-space:nowrap;
-    }
-
-    .print-cbc-table th {
-      background:#f3f4f6;
-      font-weight:600;
-    }
-
-    .print-section-title {
-      font-weight:600;
-      font-size:10px;
-      margin-top:8px;
-      margin-bottom:2px;
-    }
-
-    .print-text {
-      font-size:9.5px;
-      line-height:1.4;
-      margin:0 0 4px;
-    }
-
-    .print-list {
-      font-size:9.5px;
-      margin:2px 0 6px 14px;
-      padding:0;
-    }
-
-    .print-list li {
-      margin:0 0 2px;
-    }
-
-    .print-flagged-table {
-      width:100%;
-      border-collapse:collapse;
-      margin:4px 0 8px;
-      font-size:9.5px;
-    }
-
-    .print-flagged-table th,
-    .print-flagged-table td {
-      border:1px solid #e5e7eb;
-      padding:3px 4px;
-      text-align:left;
-    }
-
-    .print-flagged-table th {
-      background:#f9fafb;
-    }
-
-    .print-footer {
-      font-size:8.5px;
-      color:#6b7280;
-      border-top:1px solid #e5e7eb;
-      padding-top:4px;
-      margin-top:18px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-
-    .sig-line {
-      margin-top:12px;
-      font-size:9.5px;
-    }
-
-    .sig-line span {
-      display:inline-block;
-      min-width:160px;
-      border-bottom:1px solid #9ca3af;
-      margin-left:4px;
-    }
-
-    .verify-block {
-      margin-top:8px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-      font-size:9px;
-    }
-
-    .verify-block img {
-      width:56px;
-      height:56px;
-      border:1px solid #e5e7eb;
-      padding:2px;
-    }
-
-    .verify-block-text {
-      max-width:240px;
-    }
-
-    .print-disclaimer {
-      font-size:8.5px;
-      color:#6b7280;
-      margin-top:10px;
-    }
-
-    @media (max-width:900px){
-      .container{
-        grid-template-columns:1fr;
-      }
-      .left-viewer{
-        height:60vh;
-      }
     }
   </style>
 </head>
@@ -314,11 +143,16 @@
 <body>
 
 <header>
-  <a id="backBtn" href="/dashboard.html">← Back</a>
-  <img src="/logo.png" alt="AMI Logo" />
-  <div>
-    <button id="pdfBtn">Print Report</button>
-    <button id="downloadBtn" disabled>Download Original PDF</button>
+  <div class="header-left">
+    <a id="backBtn" href="/dashboard.html">← Back</a>
+    <img src="/logo.png" alt="AMI Health Logo" />
+  </div>
+
+  <div class="header-actions">
+    <button id="printAiBtn" class="btn primary">Print / Save AI Report</button>
+    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">
+      Download Original PDF
+    </a>
   </div>
 </header>
 
@@ -348,104 +182,104 @@
     </div>
 
     <div class="disclaimer">
-      This AI-generated interpretation is intended to support clinical judgement and does not
-      replace a medical diagnosis. Final diagnostic and treatment decisions must always be
-      made by a licensed medical professional.
+      This AI-generated interpretation is intended to support clinical judgement and does not replace
+      a medical diagnosis. Final diagnostic and treatment decisions must always be made by a licensed
+      medical professional.
     </div>
 
   </div>
 </div>
 
 <script>
-  let reportData = null;
-  let pdfUrl = "";
-  let aiResults = null;
+  let REPORT_DATA = null;
+  let PDF_URL = null;
 
   async function loadReport() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const id = params.get("id");
-      if (!id) {
-        alert("Missing report id in URL.");
-        return;
-      }
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
 
-      // Fetch report row
-      const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
-      const json = await res.json();
-
-      if (!json.ok) {
-        document.getElementById("aiContent").textContent = "Report not found.";
-        return;
-      }
-
-      const rpt = json.report;
-      reportData = rpt;
-      aiResults = rpt.ai_results || rpt.ai_json || null;
-
-      // Patient panel
-      document.getElementById("name").textContent = rpt.name || "Unknown";
-      document.getElementById("age").textContent = rpt.age || "-";
-      document.getElementById("sex").textContent = rpt.sex || "-";
-      if (rpt.created_at) {
-        document.getElementById("date").textContent =
-          new Date(rpt.created_at).toLocaleString();
-      }
-
-      // PDF URL
-      if (rpt.file_path) {
-        const pdfRes = await fetch(
-          `/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`
-        );
-        const pdfJson = await pdfRes.json();
-        pdfUrl = pdfJson.url;
-        document.getElementById("pdfFrame").src = pdfUrl;
-
-        const downloadBtn = document.getElementById("downloadBtn");
-        downloadBtn.disabled = false;
-        downloadBtn.onclick = () => {
-          const a = document.createElement("a");
-          a.href = pdfUrl;
-          a.download = "ami-original-report.pdf";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-        };
-      }
-
-      renderCBC(aiResults);
-      renderAI(aiResults);
-
-    } catch (err) {
-      console.error("loadReport error:", err);
-      document.getElementById("aiContent").textContent =
-        "Error loading report.";
+    if (!id) {
+      alert("Missing report id");
+      return;
     }
+
+    // 1) Fetch report from our API
+    const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
+    const data = await res.json();
+
+    if (!data.ok) {
+      document.getElementById("aiContent").textContent = "Report not found.";
+      return;
+    }
+
+    const rpt = data.report;
+    REPORT_DATA = rpt;
+
+    // 2) Patient info
+    document.getElementById("name").textContent = rpt.name || rpt.ai_results?.patient?.name || "Unknown";
+    document.getElementById("age").textContent =
+      rpt.age != null
+        ? rpt.age
+        : (rpt.ai_results?.patient?.age != null ? rpt.ai_results.patient.age : "-");
+    document.getElementById("sex").textContent =
+      rpt.sex || rpt.ai_results?.patient?.sex || "-";
+    document.getElementById("date").textContent =
+      rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
+
+    // 3) Load original PDF into viewer + download link
+    if (rpt.file_path) {
+      const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+      const pdfJson = await pdfRes.json();
+      if (pdfJson.url) {
+        PDF_URL = pdfJson.url;
+        document.getElementById("pdfFrame").src = pdfJson.url;
+        const dl = document.getElementById("downloadOriginalBtn");
+        dl.href = pdfJson.url;
+        dl.download = "original-lab-report.pdf";
+      }
+    } else {
+      document.getElementById("pdfFrame").src = "";
+    }
+
+    // 4) CBC block (from ai_results.cbc where available)
+    renderCBC(rpt.ai_results);
+    renderAI(rpt.ai_results);
   }
 
   function renderCBC(ai) {
     const box = document.getElementById("cbcContent");
-    if (!ai || !ai.cbc || !Array.isArray(ai.cbc) || ai.cbc.length === 0) {
-      box.textContent = "No structured CBC data from AI.";
+    if (!ai) {
+      box.textContent = "No AI CBC data.";
       return;
     }
 
-    const rows = ai.cbc.map(c => {
-      const analyte = c.analyte || c.name || "";
-      const value = c.value ?? "";
-      const units = c.units || "";
-      const low = c.reference_low ?? "";
-      const high = c.reference_high ?? "";
-      const flag = c.flag || c.status || "";
+    let parsed = ai;
+    if (typeof ai === "string") {
+      try { parsed = JSON.parse(ai); } catch { parsed = {}; }
+    }
+
+    const cbc = parsed.cbc || [];
+    if (!Array.isArray(cbc) || cbc.length === 0) {
+      box.textContent = "No CBC data.";
+      return;
+    }
+
+    const rows = cbc.map(item => {
+      const flagClass =
+        item.flag === "high" ? "cbc-row-flag-high" :
+        item.flag === "low"  ? "cbc-row-flag-low"  :
+        "cbc-row-flag-normal";
+
+      const refLow = item.reference_low != null ? item.reference_low : "";
+      const refHigh = item.reference_high != null ? item.reference_high : "";
+      const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+
       return `
-        <div class="row">
-          <b>${analyte}:</b>
-          ${value} ${units}
-          <span style="opacity:0.7">
-            (ref: ${low}–${high}${
-              flag ? `, ${flag}` : ""
-            })
-          </span>
+        <div class="row ${flagClass}">
+          <b>${item.analyte || ""}:</b>
+          ${item.value != null ? item.value : ""} ${item.units || ""}
+          ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ""}
+          ${item.flag && item.flag !== "normal" ? ` — <i>${item.flag}</i>` : ""}
         </div>
       `;
     }).join("");
@@ -453,153 +287,192 @@
     box.innerHTML = rows;
   }
 
-  function safeSummaryLines(ai) {
-    if (!ai || !ai.summary) return [];
-
-    // summary might be string, object, or array
-    if (typeof ai.summary === "string") return [ai.summary];
-
-    if (Array.isArray(ai.summary)) return ai.summary;
-
-    const lines = [];
-    if (ai.summary.impression) lines.push(ai.summary.impression);
-    if (ai.summary.suggested_follow_up) lines.push(ai.summary.suggested_follow_up);
-    if (ai.summary.additional_notes) lines.push(ai.summary.additional_notes);
-    return lines;
-  }
-
   function renderAI(ai) {
     const box = document.getElementById("aiContent");
     if (!ai) {
-      box.textContent = "No AI data available.";
+      box.textContent = "No AI data.";
       return;
     }
 
-    const summaryLines = safeSummaryLines(ai);
-    const impression = (ai.summary && ai.summary.impression) || "";
-    const followUp = (ai.summary && ai.summary.suggested_follow_up) || "";
-
-    const flagged = Array.isArray(ai.flagged_results) ? ai.flagged_results : [];
-    const rec = ai.recommendations || {};
-    const recList = Array.isArray(rec)
-      ? rec
-      : (rec.clinical_actions || rec.follow_up_tests || []);
-
-    let html = "";
-
-    if (impression) {
-      html += `<div class="ai-section-title">Impression</div>
-               <div class="row">${impression}</div>`;
+    let parsed = ai;
+    if (typeof ai === "string") {
+      try { parsed = JSON.parse(ai); } catch { parsed = {}; }
     }
 
-    if (followUp) {
-      html += `<div class="ai-section-title">Suggested follow-up</div>
-               <div class="row">${followUp}</div>`;
-    }
+    const summary = parsed.summary || {};
+    const impression = summary.impression || "No overall impression provided.";
+    const followUp = summary.suggested_follow_up || "No specific follow-up recommendations.";
 
-    if (flagged.length) {
-      html += `<div class="ai-section-title">Flagged Results</div>`;
-      html += flagged.map(f => {
-        const analyte = f.analyte || f.test || "";
-        const value = f.value ?? "";
-        const status = f.status || f.flag || "";
-        const low = f.reference_low ?? "";
-        const high = f.reference_high ?? "";
-        return `<div class="row">
-          <b>${analyte}:</b> ${value} (ref: ${low}–${high}) — ${status}
-        </div>`;
-      }).join("");
-    }
+    box.innerHTML = `
+      <div class="ai-section-title">Summary</div>
+      <div>${impression}</div>
 
-    if (recList && recList.length) {
-      html += `<div class="ai-section-title">Recommendations</div>`;
-      html += recList.map(r => `<div class="row">• ${r}</div>`).join("");
-    }
-
-    if (!html) {
-      html = "AI summary is available in the printable report.";
-    }
-
-    box.innerHTML = html;
+      <div class="ai-section-title">Suggested follow-up</div>
+      <div>${followUp}</div>
+    `;
   }
 
-  // ---------- PRINT LOGIC (2 PAGES) ----------
-
-  async function printReport() {
-    if (!reportData || !pdfUrl) {
-      alert("Report not fully loaded yet.");
+  function printAiReport() {
+    if (!REPORT_DATA) {
+      alert("Report data not loaded yet.");
       return;
     }
 
-    const id = reportData.id || reportData.uuid || "";
-    let qrDataUrl = "";
-    try {
-      if (window.QRCode && typeof QRCode.toDataURL === "function") {
-        qrDataUrl = await QRCode.toDataURL(
-          `https://amihealth.co.za/verify?id=${encodeURIComponent(id)}`,
-          { margin: 1, width: 80 }
-        );
-      }
-    } catch (e) {
-      console.error("QR generation error:", e);
+    let ai = REPORT_DATA.ai_results || {};
+    if (typeof ai === "string") {
+      try { ai = JSON.parse(ai); } catch { ai = {}; }
     }
 
-    const ai = aiResults || {};
-    const patient = ai.patient || {
-      name: reportData.name || "Unknown",
-      age: reportData.age || "",
-      sex: reportData.sex || ""
-    };
-
-    const summaryLines = safeSummaryLines(ai);
-    const impression = (ai.summary && ai.summary.impression) || "";
-    const followUp = (ai.summary && ai.summary.suggested_follow_up) || "";
-    const flagged = Array.isArray(ai.flagged_results) ? ai.flagged_results : [];
-    const rec = ai.recommendations || {};
-    const recList = Array.isArray(rec)
-      ? rec
-      : (rec.clinical_actions || rec.follow_up_tests || []);
+    const patient = ai.patient || {};
     const cbc = Array.isArray(ai.cbc) ? ai.cbc : [];
+    const summary = ai.summary || {};
 
-    const now = new Date();
-    const niceDate = now.toLocaleDateString("en-GB");
-    const niceTime = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute:"2-digit" });
+    const name = patient.name || REPORT_DATA.name || "Unknown";
+    const age  = patient.age != null ? patient.age : (REPORT_DATA.age != null ? REPORT_DATA.age : "–");
+    const sex  = patient.sex || REPORT_DATA.sex || "–";
 
-    const page1 = `
-      <div class="print-page">
-        <div class="print-header">
-          <div class="print-header-left">
-            <img src="/logo.png" alt="AMI Logo" />
-            <div>
-              <div class="print-header-title">Artificial Medical Intelligence (Pty) Ltd</div>
-              <div class="print-header-sub">info@amihealth.co.za • www.amihealth.co.za</div>
-            </div>
-          </div>
-          <div class="print-header-right">
-            <div>AMI Report</div>
-            <div>${niceDate} ${niceTime}</div>
-          </div>
-        </div>
+    const impression = summary.impression || "No overall impression provided.";
+    const followUp   = summary.suggested_follow_up || "No specific follow-up recommendations.";
+    const createdAt  = REPORT_DATA.created_at ? new Date(REPORT_DATA.created_at).toLocaleString() : "";
 
-        <div class="print-main-title">AMI Health — Original Lab Report</div>
-        <div class="print-subtitle">Page 1 of 2 · Original lab document supplied by patient/clinic.</div>
+    const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(REPORT_DATA.id)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 
-        <iframe
-          src="${pdfUrl}"
-          style="width:100%;height:220mm;border:1px solid #d1d5db;border-radius:4px;"
-        ></iframe>
+    const cbcTableRows = cbc.map((item, idx) => {
+      const refLow  = item.reference_low  != null ? item.reference_low  : "";
+      const refHigh = item.reference_high != null ? item.reference_high : "";
+      const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${item.analyte || ""}</td>
+          <td>${item.value != null ? item.value : ""}</td>
+          <td>${item.units || ""}</td>
+          <td>${refRange}</td>
+          <td>${item.flag || "normal"}</td>
+        </tr>
+      `;
+    }).join("");
 
-        <div class="print-footer">
-          <div>Artificial Medical Intelligence (Pty) Ltd</div>
-          <div>Page 1 of 2</div>
+    const win = window.open("", "_blank");
+
+    win.document.write(`
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AMI Health — AI Interpretation Report</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      margin: 40px;
+      color: #111827;
+      font-size: 13px;
+    }
+    .header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      border-bottom:2px solid #00a2ff;
+      padding-bottom:10px;
+      margin-bottom:16px;
+    }
+    .header-left {
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .header-left img {
+      height:32px;
+    }
+    .header-title {
+      font-size:18px;
+      font-weight:700;
+    }
+    .header-sub {
+      font-size:11px;
+      color:#4b5563;
+    }
+    .header-right {
+      text-align:right;
+      font-size:11px;
+      color:#4b5563;
+    }
+    h2 {
+      font-size:16px;
+      margin:18px 0 6px;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:6px;
+      font-size:12px;
+    }
+    th, td {
+      border:1px solid #d1d5db;
+      padding:4px 6px;
+      text-align:left;
+    }
+    th {
+      background:#f3f4f6;
+    }
+    .section-label {
+      font-weight:600;
+      margin-top:8px;
+    }
+    .footer {
+      margin-top:18px;
+      font-size:10px;
+      color:#6b7280;
+      border-top:1px solid #e5e7eb;
+      padding-top:6px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .signature-block {
+      margin-top:20px;
+      font-size:12px;
+    }
+    .signature-line {
+      margin-top:24px;
+      border-bottom:1px solid #111827;
+      width:260px;
+    }
+    .qr-block {
+      text-align:right;
+      font-size:10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <img src="https://amihealth.co.za/logo.png" alt="AMI Logo" />
+      <div>
+        <div class="header-title">AMI Health — AI Interpretation Report</div>
+        <div class="header-sub">
+          Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za
         </div>
       </div>
-    `;
+    </div>
+    <div class="header-right">
+      <div>AMI Report</div>
+      <div>${createdAt}</div>
+    </div>
+  </div>
 
-    const cbcTable = cbc.length ? `
-      <table class="print-cbc-table">
+  <div style="font-size:13px;">
+    <div class="section-label">Patient</div>
+    <div>Name: <b>${name}</b> &nbsp;&nbsp; Age: <b>${age}</b> &nbsp;&nbsp; Sex: <b>${sex}</b></div>
+
+    <h2>Complete Blood Count (CBC) Overview</h2>
+    ${cbcTableRows ? `
+      <table>
         <thead>
           <tr>
+            <th>#</th>
             <th>Analyte</th>
             <th>Result</th>
             <th>Units</th>
@@ -608,161 +481,53 @@
           </tr>
         </thead>
         <tbody>
-          ${cbc.map(c => {
-            const analyte = c.analyte || c.name || "";
-            const value = c.value ?? "";
-            const units = c.units || "";
-            const low = c.reference_low ?? "";
-            const high = c.reference_high ?? "";
-            const flag = c.flag || c.status || "";
-            return `
-              <tr>
-                <td>${analyte}</td>
-                <td>${value}</td>
-                <td>${units}</td>
-                <td>${low}–${high}</td>
-                <td>${flag}</td>
-              </tr>
-            `;
-          }).join("")}
+          ${cbcTableRows}
         </tbody>
       </table>
-    ` : "";
+    ` : `<div>No structured CBC data available in this AI report.</div>`}
 
-    const flaggedTable = flagged.length ? `
-      <table class="print-flagged-table">
-        <thead>
-          <tr>
-            <th>Analyte</th>
-            <th>Result</th>
-            <th>Reference</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${flagged.map(f => {
-            const analyte = f.analyte || f.test || "";
-            const value = f.value ?? "";
-            const low = f.reference_low ?? "";
-            const high = f.reference_high ?? "";
-            const status = f.status || f.flag || "";
-            return `
-              <tr>
-                <td>${analyte}</td>
-                <td>${value}</td>
-                <td>${low}–${high}</td>
-                <td>${status}</td>
-              </tr>
-            `;
-          }).join("")}
-        </tbody>
-      </table>
-    ` : "";
+    <h2>AI Summary</h2>
+    <div class="section-label">Impression</div>
+    <div>${impression}</div>
 
-    const page2 = `
-      <div class="print-page">
-        <div class="print-header">
-          <div class="print-header-left">
-            <img src="/logo.png" alt="AMI Logo" />
-            <div>
-              <div class="print-header-title">Artificial Medical Intelligence (Pty) Ltd</div>
-              <div class="print-header-sub">info@amihealth.co.za • www.amihealth.co.za</div>
-            </div>
-          </div>
-          <div class="print-header-right">
-            <div>AMI Report</div>
-            <div>${niceDate} ${niceTime}</div>
-          </div>
-        </div>
+    <div class="section-label">Suggested follow-up</div>
+    <div>${followUp}</div>
 
-        <div class="print-main-title">AMI Health — AI Interpretation Report</div>
-        <div class="print-patient-line">
-          <b>Patient:</b> ${patient.name || "Unknown"}
-          &nbsp;&nbsp; <b>Age:</b> ${patient.age || "-"}
-          &nbsp;&nbsp; <b>Sex:</b> ${patient.sex || "-"}
-        </div>
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Signed by: Dr ________________________________</div>
+    </div>
 
-        ${cbcTable}
-
-        <div class="print-section-title">AI Summary</div>
-        ${
-          summaryLines.length
-            ? `<ul class="print-list">
-                 ${summaryLines.map(s => `<li>${s}</li>`).join("")}
-               </ul>`
-            : `<p class="print-text">Summary not available.</p>`
-        }
-
-        ${flaggedTable}
-
-        ${
-          recList && recList.length
-            ? `
-              <div class="print-section-title">AI Recommendations</div>
-              <ul class="print-list">
-                ${recList.map(r => `<li>${r}</li>`).join("")}
-              </ul>
-            `
-            : ""
-        }
-
-        <div class="print-section-title">Verification</div>
-        <div class="verify-block">
-          ${
-            qrDataUrl
-              ? `<img src="${qrDataUrl}" alt="Verification QR" />`
-              : ""
-          }
-          <div class="verify-block-text">
-            Scan this QR code to securely view this interpretation online:
-            <br/>
-            https://amihealth.co.za/verify?id=${id || ""}
-          </div>
-        </div>
-
-        <div class="sig-line">
-          Signed by: Dr<span></span>
-        </div>
-
-        <div class="print-disclaimer">
-          This AI-generated interpretation is designed to assist clinical judgement and does
-          not replace a medical diagnosis. Final diagnostic and treatment decisions must
-          always be made by a licensed medical professional.
-        </div>
-
-        <div class="print-footer">
-          <div>Artificial Medical Intelligence (Pty) Ltd</div>
-          <div>Page 2 of 2</div>
-        </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+      <div style="font-size:10px; color:#6b7280;">
+        This AI-generated interpretation is intended to support clinical judgement and does not
+        replace a medical diagnosis. Final diagnostic and treatment decisions must always be made
+        by a licensed medical professional.
       </div>
-    `;
+      <div class="qr-block">
+        <div>Scan to verify this report</div>
+        <img src="${qrUrl}" alt="Verification QR" />
+        <div><a href="${verifyUrl}">${verifyUrl}</a></div>
+      </div>
+    </div>
+  </div>
 
-    const html = `
-      <!doctype html>
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>AMI Report — Print</title>
-        <style>${document.querySelector("style").innerHTML}</style>
-      </head>
-      <body>
-        ${page1}
-        ${page2}
-      </body>
-      </html>
-    `;
+  <div class="footer">
+    <span>AMI Health — Artificial Medical Intelligence (Pty) Ltd</span>
+    <span>Page 1 of 1</span>
+  </div>
 
-    const win = window.open("", "_blank");
-    win.document.open();
-    win.document.write(html);
+</body>
+</html>
+    `);
+
     win.document.close();
     win.focus();
     win.print();
+    // user can choose "Save as PDF" in printer dialog
   }
 
-  document.getElementById("pdfBtn").addEventListener("click", () => {
-    printReport();
-  });
+  document.getElementById("printAiBtn").addEventListener("click", printAiReport);
 
   loadReport();
 </script>
