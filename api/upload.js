@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     if (Array.isArray(file)) file = file[0];
     if (!file) return res.status(400).json({ error: "Missing file" });
 
-    // 1️⃣ Insert DB row
+    // 1️⃣ Create empty row
     const { data: newRow, error: rowErr } = await supabase
       .from("reports")
       .insert({
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     const reportId = newRow.id;
     const buffer = fs.readFileSync(file.filepath);
 
-    // 2️⃣ Correct storage path for your bucket
+    // 2️⃣ CORRECT — save file inside bucket "reports"
     const storagePath = `${reportId}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Storage upload failed" });
     }
 
-    // 3️⃣ Save file_path
+    // 3️⃣ Save file_path for worker
     await supabase
       .from("reports")
       .update({ file_path: storagePath })
