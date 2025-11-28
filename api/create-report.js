@@ -1,163 +1,96 @@
-// api/create-report.js
+// /api/create-report.js — SECURE, INTERNAL-ONLY ENDPOINT
 export const config = { runtime: "nodejs" };
 
 import { createClient } from "@supabase/supabase-js";
 
+// INTERNAL SERVER-TO-SERVER AUTH TOKEN
+const INTERNAL_KEY = process.env.INTERNAL_API_KEY;
+
+// SERVICE-ROLE Supabase client (backend only)
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: {
-      headers: {
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-    },
-  }
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
-  console.log("🔥 [create-report] HIT:", req.method);
+  console.log("🔥 [create-report] HIT");
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  // 1) BLOCK all non-POST
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-  try {
-    // ---- Read raw POST body (Vercel)
-    let raw = "";
-    await new Promise((resolve) => {
-      req.on("data", (chunk) => (raw += chunk));
-      req.on("end", resolve);
-    });
+  // 2) INTERNAL TOKEN CHECK
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token || token !== INTERNAL_KEY) {
+    console.warn("⛔ Unauthorized attempt to call create-report");
+    return res.status(401).json({ error: "Not authorized" });
+  }
 
-    let body;
-    try {
-      body = JSON.parse(raw || "{}");
-    } catch {
-      return res.status(400).json({ error: "Invalid JSON" });
-    }
+  try {
+    // 3) Parse POST body manually (Vercel)
+    let raw = "";
+    await new Promise((resolve) => {
+      req.on("data", (chunk) => (raw += chunk));
+      req.on("end", resolve);
+    });
 
-    const { email, title, files, name, age, sex } = body;
-    if (!email || !files || !files.length) {
-      return res.status(400).json({ error: "Missing fields (email/files)" });
-    }
+    let body = {};
+    try {
+      body = JSON.parse(raw || "{}");
+    } catch {
+      return res.status(400).json({ error: "Invalid JSON" });
+    }
 
-    const filePath = files[0];
+    const { user_id, file_path, title, name, age, sex } = body;
 
-    // 1️⃣ Insert DB Row
-    const { data: inserted, error: insertErr } = await supabase
-      .from("reports")
-      .insert({
-        email,
-        title: title || "Untitled Report",
-        file_path: filePath,
-        created_at: new Date().toISOString(),
-        ai_status: "processing",
-        name: name || null,
-        age: age || null,
-        sex: sex || null,
-      })
-      .select()
-      .single();
+    if (!user_id || !file_path) {
+      return res.status(400).json({ error: "Missing user_id or file_path" });
+    }
 
-    if (insertErr) {
-      console.error("❌ Supabase insert error:", insertErr);
-      return res.status(500).json({ error: "Failed to save report" });
-    }
+    // 4) Fetch the user email (secure)
+    const { data: user } = await supabase
+      .from("users")
+      .select("email")
+      .eq("id", user_id)
+      .single();
 
-    const reportId = inserted.id;
-    console.log("✅ Created report row:", reportId, "file:", filePath);
+    if (!user) {
+      return res.status(400).json({ error: "Invalid user_id" });
+    }
 
-    // 2️⃣ Create signed URL for private bucket
-    const { data: signed, error: signErr } = await supabase.storage
-      .from("reports")
-      .createSignedUrl(filePath, 1800); // 30 minutes
+    const email = user.email;
 
-    if (signErr || !signed?.signedUrl) {
-      console.error("❌ Signed URL error:", signErr);
+    // 5) Insert the report row
+    const { data: row, error: insertErr } = await supabase
+      .from("reports")
+      .insert({
+        email,
+        user_id,
+        title: title || "Untitled Report",
+        file_path,
+        name: name || null,
+        age: age || null,
+        sex: sex || null,
+        ai_status: "processing",
+      })
+      .select()
+      .single();
 
-      await supabase
-        .from("reports")
-        .update({
-          ai_status: "failed",
-          ai_results: {
-            error: "Could not create signed URL",
-            details: signErr || null,
-          },
-        })
-        .eq("id", reportId);
+    if (insertErr) {
+      console.error("❌ Supabase insert error:", insertErr);
+      return res.status(500).json({ error: "Failed to save report" });
+    }
 
-      return res.status(500).json({ error: "Failed to prepare file for AI" });
-    }
+    return res.status(200).json({
+      ok: true,
+      id: row.id,
+      email,
+      message: "Report created and queued for AI.",
+    });
 
-    const fileUrl = signed.signedUrl;
-    console.log("🔗 Signed URL:", fileUrl);
-
-    // 3️⃣ Send to Hugging Face /run/predict
-    let aiJson = null;
-
-    try {
-      const hfHeaders = {
-        "Content-Type": "application/json",
-      };
-
-      // add HF token if your space is private
-      if (process.env.HF_API_TOKEN) {
-        hfHeaders.Authorization = `Bearer ${process.env.HF_API_TOKEN}`;
-      }
-
-      const hfResp = await fetch(
-        "https://amihealth-ami-blood-ai.hf.space/run/predict",
-        {
-          method: "POST",
-          headers: hfHeaders,
-          body: JSON.stringify({ pdf_url: fileUrl }),
-        }
-      );
-
-      const text = await hfResp.text();
-
-      try {
-        aiJson = JSON.parse(text);
-      } catch {
-        aiJson = { error: "HF returned non-JSON", raw: text };
-      }
-
-      if (!hfResp.ok) {
-        aiJson.error = aiJson.error || `HF HTTP ${hfResp.status}`;
-      }
-    } catch (err) {
-      console.error("❌ HF call failed:", err);
-      aiJson = { error: "HuggingFace request failed", details: String(err) };
-    }
-
-    console.log("🤖 AI Result:", aiJson);
-
-    const finalStatus = aiJson && !aiJson.error ? "completed" : "failed";
-
-    // 4️⃣ Save AI results in Supabase
-    const { error: updateErr } = await supabase
-      .from("reports")
-      .update({
-        ai_status: finalStatus,
-        ai_results: aiJson,
-      })
-      .eq("id", reportId);
-
-    if (updateErr) {
-      console.error("❌ Supabase update error:", updateErr);
-    }
-
-    // 5️⃣ Respond
-    return res.status(200).json({
-      success: true,
-      id: reportId,
-      status: finalStatus,
-      ai: aiJson,
-    });
-  } catch (err) {
-    console.error("💥 Server crash:", err);
-    return res.status(500).json({ error: "Server-side failure" });
-  }
+  } catch (err) {
+    console.error("💥 create-report crash:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
 }
