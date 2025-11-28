@@ -190,9 +190,25 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+  import { supabase } from "./lib/supabaseClient.js";
+
   let REPORT_DATA = null;
   let PDF_URL = null;
+
+  async function requireAuth() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Auth error:", error);
+      window.location.href = "/login.html";
+      return null;
+    }
+    if (!session) {
+      window.location.href = "/login.html";
+      return null;
+    }
+    return session;
+  }
 
   async function loadReport() {
     const params = new URLSearchParams(window.location.search);
@@ -203,7 +219,6 @@
       return;
     }
 
-    // 1) Fetch report from our API
     const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
     const data = await res.json();
 
@@ -215,7 +230,7 @@
     const rpt = data.report;
     REPORT_DATA = rpt;
 
-    // 2) Patient info — OPTION A: ONLY DB VALUES
+    // Patient info — ONLY DB VALUES
     document.getElementById("name").textContent = rpt.name || "Unknown";
     document.getElementById("age").textContent =
       rpt.age != null ? rpt.age : "–";
@@ -224,7 +239,7 @@
     document.getElementById("date").textContent =
       rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
 
-    // 3) Load original PDF into viewer + download link
+    // Load original PDF
     if (rpt.file_path) {
       const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
       const pdfJson = await pdfRes.json();
@@ -239,7 +254,6 @@
       document.getElementById("pdfFrame").src = "";
     }
 
-    // 4) CBC + AI
     renderCBC(rpt.ai_results);
     renderAI(rpt.ai_results);
   }
@@ -308,11 +322,10 @@
       return;
     }
 
-    let ai = safeParseAI(REPORT_DATA.ai_results);
+    const ai = safeParseAI(REPORT_DATA.ai_results);
     const cbc = Array.isArray(ai.cbc) ? ai.cbc : [];
     const summary = ai.summary || {};
 
-    // OPTION A: ONLY DB PATIENT INFO
     const name = REPORT_DATA.name || "Unknown";
     const age  = REPORT_DATA.age != null ? REPORT_DATA.age : "–";
     const sex  = REPORT_DATA.sex || "–";
@@ -512,9 +525,13 @@
     win.print();
   }
 
-  document.getElementById("printAiBtn").addEventListener("click", printAiReport);
+  (async () => {
+    const session = await requireAuth();
+    if (!session) return;
 
-  loadReport();
+    await loadReport();
+    document.getElementById("printAiBtn").addEventListener("click", printAiReport);
+  })();
 </script>
 
 </body>
