@@ -3,13 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
 import fs from "fs";
 
-export const config = {
-  api: { bodyParser: false }, // required
-};
+export const config = { api: { bodyParser: false } };
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY // must be SERVICE ROLE
 );
 
 export default async function handler(req, res) {
@@ -18,19 +16,20 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Parse form data
     const form = formidable({ multiples: false });
 
     const { fields, files } = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
-        if (err) return reject(err);
-        resolve({ fields, files });
+        if (err) reject(err);
+        else resolve({ fields, files });
       });
     });
 
     const clean = (v) => (Array.isArray(v) ? v[0] : v);
 
     const email = clean(fields.email);
-    const title = clean(fields.title) || "Untitled report";
+    const title = clean(fields.title) || "Untitled Report";
     const name = clean(fields.name) || null;
     const ageRaw = clean(fields.age);
     const sex = clean(fields.sex) || "Unknown";
@@ -41,12 +40,12 @@ export default async function handler(req, res) {
 
     let file = files.file;
     if (Array.isArray(file)) file = file[0];
-    if (!file) return res.status(400).json({ error: "Missing file" });
+    if (!file) {
+      return res.status(400).json({ error: "Missing file" });
+    }
 
-    // ----------------------------
-    // 1) Create row first
-    // ----------------------------
-    const { data: newRow, error: rowErr } = await supabase
+    // 1) Create the report row
+    const { data: row, error: rowErr } = await supabase
       .from("reports")
       .insert({
         email,
@@ -54,55 +53,55 @@ export default async function handler(req, res) {
         name,
         age: ageRaw ? Number(ageRaw) : null,
         sex,
-        ai_status: "queued",
+        ai_status: "queued"
       })
       .select()
       .single();
 
     if (rowErr) {
-      console.error(rowErr);
+      console.error("DB insert failed:", rowErr);
       return res.status(500).json({ error: "DB insert failed" });
     }
 
-    const reportId = newRow.id;
+    const reportId = row.id;
 
-    // ----------------------------
-    // 2) Convert PDF → Blob (WORKS)
-    // ----------------------------
+    // 2) Upload PDF to Supabase Storage
     const buffer = fs.readFileSync(file.filepath);
-    const blob = new Blob([buffer], { type: file.mimetype });
 
-    // ----------------------------
-    // 3) Upload using BLOB (the correct method)
-    // ----------------------------
     const storagePath = `${reportId}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
       .from("reports")
-      .upload(storagePath, blob, { upsert: true });
+      .upload(storagePath, buffer, {
+        upsert: true,
+        contentType: file.mimetype || "application/pdf"
+      });
 
     if (uploadErr) {
-      console.error(uploadErr);
-      return res.status(500).json({ error: "Storage upload failed" });
+      console.error("Upload failed:", uploadErr);
+      return res.status(500).json({ error: "Upload failed" });
     }
 
-    // ----------------------------
-    // 4) Save file_path
-    // ----------------------------
-    await supabase
+    // 3) SAVE FILE_PATH IN DB — THIS FIXES YOUR WORKER
+    const { error: pathErr } = await supabase
       .from("reports")
       .update({ file_path: storagePath })
       .eq("id", reportId);
 
-    return res.status(200).json({
+    if (pathErr) {
+      console.error("Path update failed:", pathErr);
+      return res.status(500).json({ error: "Failed to update file_path" });
+    }
+
+    return res.json({
       ok: true,
       report_id: reportId,
       file_path: storagePath,
-      message: "Report uploaded & queued.",
+      message: "Report uploaded & queued."
     });
 
-  } catch (e) {
-    console.error("SERVER ERROR:", e);
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
     return res.status(500).json({ error: "SERVER_CRASH" });
   }
 }
