@@ -37,7 +37,7 @@
       font-size:14px;
     }
 
-    #pdfBtn {
+    #printBtn {
       padding:10px 18px;
       border-radius:999px;
       background:linear-gradient(90deg,#00e0b8,#00b7ff);
@@ -63,7 +63,7 @@
       height:85vh;
     }
 
-    iframe { width:100%; height:100%; border:none; }
+    iframe { width:100%; height:100%; border:none;}
 
     .panel {
       background:var(--card);
@@ -81,42 +81,52 @@
 
     .row { margin:4px 0; font-size:14px; }
 
-    .risk-badge {
-      display:inline-block;
-      padding:4px 10px;
-      border-radius:6px;
-      font-size:13px;
-      font-weight:700;
-      margin-bottom:10px;
-    }
+    /* PRINT LAYOUT (TWO PAGES) */
+    @media print {
 
-    .high { background:#ff4e6a33; color:#ff4e6a; }
-    .moderate { background:#ffb74d33; color:#ffb74d; }
-    .low { background:#00e0b833; color:#00e0b8; }
-
-    .section-title {
-      margin-top:14px;
-      font-weight:600;
-      opacity:0.9;
-    }
-
-    .disclaimer {
-      margin-top:20px;
-      text-align:center;
-      font-size:12px;
-      color:var(--muted);
-      padding:10px;
-    }
-
-    @media (max-width: 1000px) {
-      .container {
-        grid-template-columns: 1fr;
+      body {
+        background:white;
+        color:black;
       }
 
-      .left-viewer {
-        height:60vh;
+      header, .left-viewer, #pdfFrame, #backBtn, #printBtn {
+        display:none !important;
+      }
+
+      .print-section {
+        page-break-before:always;
+        padding:30px;
+        font-size:14px;
+      }
+
+      .print-title {
+        font-size:24px;
+        font-weight:700;
+        margin-bottom:10px;
+      }
+
+      .print-logo {
+        height:60px;
+        margin-bottom:20px;
+      }
+
+      .print-block {
+        margin-bottom:20px;
+      }
+
+      .print-block h3 {
+        margin:0 0 8px 0;
+        font-size:18px;
+      }
+
+      .disclaimer {
+        margin-top:40px;
+        font-size:11px;
+        color:#555;
+        text-align:center;
       }
     }
+
   </style>
 </head>
 
@@ -124,11 +134,12 @@
 
 <header>
   <a id="backBtn" href="/dashboard.html">← Back</a>
-  <img src="/logo.png" alt="AMI Health logo"/>
-  <button id="pdfBtn" disabled>Print / Download PDF</button>
+  <img src="/logo.png"/>
+  <button id="printBtn">Print Report</button>
 </header>
 
 <div class="container">
+
   <div class="left-viewer">
     <iframe id="pdfFrame"></iframe>
   </div>
@@ -153,434 +164,167 @@
       <div id="aiContent">Loading…</div>
     </div>
 
-    <div class="disclaimer">
-      This AI-generated interpretation is intended to support clinical decision-making and does not constitute a diagnosis.
-      Final clinical judgment should always be made by a licensed medical professional.
+    <div class="disclaimer" style="font-size:12px; padding:10px;">
+      This AI-generated interpretation is designed to support clinical decision-making and does not constitute a diagnosis.  
+      All diagnostic and treatment decisions must be made by a licensed medical professional.
     </div>
 
   </div>
 </div>
 
+<!-- PRINT-ONLY PAGE -->
+<div id="printPage" class="print-section" style="display:none;">
+  <img src="/logo.png" class="print-logo" />
+
+  <div class="print-title">AI Interpretation Report</div>
+
+  <div id="printPatient"></div>
+  <div id="printCBC"></div>
+  <div id="printAI"></div>
+
+  <div class="disclaimer">
+    This AI-generated interpretation is designed to assist clinical judgment and does not replace a medical diagnosis.
+    Final decisions must be made by a licensed medical professional.
+  </div>
+</div>
+
 <script>
-  // Global so we can reuse in print layout
-  let currentReport = null;
-  let currentAI = null;
+async function loadReport() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
 
-  function toArray(val) {
-    if (!val) return [];
-    if (Array.isArray(val)) return val;
-    // If it's an object, flatten its values
-    if (typeof val === "object") {
-      return Object.values(val).flat().filter(Boolean);
-    }
-    return [val];
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
+  const data = await res.json();
+
+  if (!data.ok) {
+    document.getElementById("aiContent").textContent = "Report not found.";
+    return;
   }
 
-  function safeJoinBullets(list) {
-    const arr = toArray(list);
-    if (!arr.length) return "None";
-    return arr.map((s) => "• " + String(s)).join("<br>");
+  const rpt = data.report;
+
+  // Patient Info
+  document.getElementById("name").textContent = rpt.name || "Unknown";
+  document.getElementById("age").textContent = rpt.age || "-";
+  document.getElementById("sex").textContent = rpt.sex || "-";
+  document.getElementById("date").textContent =
+    new Date(rpt.created_at).toLocaleString();
+
+  // Load PDF
+  const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+  const pdfJson = await pdfRes.json();
+  document.getElementById("pdfFrame").src = pdfJson.url;
+
+  // CBC
+  const cbc = rpt.ai_results?.cbc || [];
+  const cbcBox = document.getElementById("cbcContent");
+
+  cbcBox.innerHTML =
+    cbc.length === 0
+      ? "No CBC data."
+      : cbc
+          .map(
+            (c) => `
+        <div class="row">
+          <b>${c.analyte}:</b> ${c.value} ${c.units}
+          <span style="opacity:0.7">(ref: ${c.reference_low}–${c.reference_high})</span>
+        </div>`
+          )
+          .join("");
+
+  // AI Interpretation
+  renderAI(rpt.ai_results);
+
+  // Fill PRINT PAGE
+  fillPrintPage(rpt);
+}
+
+function renderAI(ai) {
+  const box = document.getElementById("aiContent");
+  if (!ai) {
+    box.textContent = "No AI data.";
+    return;
   }
 
-  async function loadReport() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
+  const risk = ai.risk_assessment?.overall_risk || "low";
+  const riskLabel = risk.toUpperCase() + " RISK";
 
-    console.log("Requesting:", `/api/get-ai-report?id=${id}`);
+  box.innerHTML = `
+    <div style="font-weight:700; margin-bottom:10px;">${riskLabel}</div>
 
-    const res = await fetch(`/api/get-ai-report?id=${id}`);
-    const data = await res.json();
+    <div><b>Summary:</b><br>${(ai.summary || []).map((s) => "• " + s).join("<br>")}</div>
 
-    if (!data.ok) {
-      document.getElementById("aiContent").textContent = "Report not found.";
-      return;
-    }
-
-    const rpt = data.report;
-    currentReport = rpt;
-    currentAI = rpt.ai_results || null;
-
-    // Patient Info
-    document.getElementById("name").textContent = rpt.name || "Unknown";
-    document.getElementById("age").textContent = rpt.age || "-";
-    document.getElementById("sex").textContent = rpt.sex || "-";
-    document.getElementById("date").textContent =
-      rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
-
-    // PDF Preview
-    if (rpt.file_path) {
-      const pdfRes = await fetch(
-        `/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`
-      );
-      const pdfJson = await pdfRes.json();
-      if (pdfJson.url) {
-        document.getElementById("pdfFrame").src = pdfJson.url;
-      }
-    }
-
-    // CBC Results from AI JSON
-    const cbc = rpt.ai_results?.cbc;
-    const cbcBox = document.getElementById("cbcContent");
-
-    if (!cbc || !Array.isArray(cbc) || cbc.length === 0) {
-      cbcBox.textContent = "No CBC data.";
-    } else {
-      cbcBox.innerHTML = cbc
+    <div style="margin-top:10px;"><b>Flagged Results:</b><br>${
+      (ai.flagged_results || [])
         .map(
-          (c) => `
-          <div class="row">
-            <b>${c.analyte || "Test"}:</b> ${c.value ?? "-"} ${c.units || ""} 
-            <span style="opacity:0.7">
-              (ref: ${c.reference_low ?? "-"}–${c.reference_high ?? "-"})
-            </span>
-          </div>`
+          (f) =>
+            `${f.analyte}: ${f.value} (${f.status}) — Ref ${f.reference_low}-${f.reference_high}`
         )
-        .join("");
-    }
+        .join("<br>") || "None"
+    }</div>
 
-    // AI Interpretation on screen
-    renderAI(currentAI);
+    <div style="margin-top:10px;"><b>Recommendations:</b><br>${
+      (ai.recommendations || []).map((s) => "• " + s).join("<br>") || "None"
+    }</div>
+  `;
+}
 
-    // Enable print once data is ready
-    document.getElementById("pdfBtn").disabled = false;
-  }
+function fillPrintPage(rpt) {
+  document.getElementById("printPatient").innerHTML = `
+    <div class="print-block">
+      <h3>Patient Information</h3>
+      Name: ${rpt.name || "Unknown"}<br>
+      Age: ${rpt.age || "-"}<br>
+      Sex: ${rpt.sex || "-"}<br>
+      Date: ${new Date(rpt.created_at).toLocaleString()}
+    </div>`;
 
-  function renderAI(ai) {
-    const box = document.getElementById("aiContent");
-    if (!ai) {
-      box.textContent = "No AI data.";
-      return;
-    }
+  const cbc = rpt.ai_results?.cbc || [];
+  document.getElementById("printCBC").innerHTML = `
+    <div class="print-block">
+      <h3>CBC Results</h3>
+      ${
+        cbc.length === 0
+          ? "No CBC data."
+          : cbc
+              .map(
+                (c) =>
+                  `${c.analyte}: ${c.value} ${c.units} (ref ${c.reference_low}–${c.reference_high})`
+              )
+              .join("<br>")
+      }
+    </div>`;
 
-    const risk = ai.risk_assessment?.overall_risk || "low";
-    const badgeClass =
-      risk === "high" ? "high" : risk === "moderate" ? "moderate" : "low";
+  const ai = rpt.ai_results;
+  document.getElementById("printAI").innerHTML = `
+    <div class="print-block">
+      <h3>AI Interpretation</h3>
+      <b>Risk:</b> ${ai?.risk_assessment?.overall_risk || "low"}<br><br>
+      <b>Summary:</b><br>${(ai?.summary || []).join("<br>") || "None"}<br><br>
+      <b>Flagged Results:</b><br>${
+        (ai?.flagged_results || [])
+          .map(
+            (f) =>
+              `${f.analyte}: ${f.value} (${f.status}) — Ref ${f.reference_low}-${f.reference_high}`
+          )
+          .join("<br>") || "None"
+      }<br><br>
+      <b>Recommendations:</b><br>${
+        (ai?.recommendations || []).join("<br>") || "None"
+      }
+    </div>`;
+}
 
-    const summaryHtml = safeJoinBullets(ai.summary);
-    const flaggedHtml = (Array.isArray(ai.flagged_results) ? ai.flagged_results : [])
-      .map((f) => {
-        const analyte = f.analyte || f.test || "Result";
-        const value = f.value ?? "-";
-        const status = f.status || f.flag || "";
-        const refLow = f.reference_low ?? "";
-        const refHigh = f.reference_high ?? "";
-        const units = f.units || "";
-        const ref =
-          refLow || refHigh
-            ? `Ref: ${refLow || "-"}–${refHigh || "-"} ${units}`
-            : "";
-        return `<b>${analyte}</b>: ${value} ${units} (${status}) ${ref ? "— " + ref : ""}`;
-      })
-      .join("<br>");
+document.getElementById("printBtn").addEventListener("click", () => {
+  const printPage = document.getElementById("printPage");
+  printPage.style.display = "block";
+  window.print();
+  setTimeout(() => {
+    printPage.style.display = "none";
+  }, 500);
+});
 
-    const recHtml = safeJoinBullets(
-      ai.recommendations ||
-        ai.recommendations?.follow_up_tests ||
-        []
-    );
-
-    box.innerHTML = `
-      <div class="risk-badge ${badgeClass}">${risk.toUpperCase()} RISK</div>
-
-      <div class="section-title">Summary</div>
-      <div>${summaryHtml}</div>
-
-      <div class="section-title">Flagged Results</div>
-      <div>${flaggedHtml || "None"}</div>
-
-      <div class="section-title">Recommendations</div>
-      <div>${recHtml}</div>
-    `;
-  }
-
-  // PRINT LAYOUT: clean white page with logo, sections & disclaimer
-  function printCleanReport() {
-    if (!currentReport) return;
-
-    const rpt = currentReport;
-    const ai = currentAI || {};
-
-    const risk = ai?.risk_assessment?.overall_risk || "low";
-    const summaryHtml = safeJoinBullets(ai?.summary);
-    const flaggedRows = (Array.isArray(ai?.flagged_results) ? ai.flagged_results : []);
-    const recommendationsHtml = safeJoinBullets(
-      ai?.recommendations || ai?.recommendations?.follow_up_tests || []
-    );
-
-    // CBC table from ai.cbc
-    const cbc = Array.isArray(ai?.cbc) ? ai.cbc : [];
-    const cbcRows = cbc
-      .map((c) => {
-        const analyte = c.analyte || "Test";
-        const value = c.value ?? "-";
-        const units = c.units || "";
-        const refLow = c.reference_low ?? "";
-        const refHigh = c.reference_high ?? "";
-        return `
-          <tr>
-            <td>${analyte}</td>
-            <td>${value}</td>
-            <td>${units}</td>
-            <td>${refLow}${refLow || refHigh ? " – " : ""}${refHigh}</td>
-          </tr>
-        `;
-      })
-      .join("");
-
-    const flaggedRowsHtml = flaggedRows
-      .map((f) => {
-        const analyte = f.analyte || f.test || "Result";
-        const value = f.value ?? "-";
-        const units = f.units || "";
-        const status = f.status || f.flag || "";
-        const refLow = f.reference_low ?? "";
-        const refHigh = f.reference_high ?? "";
-        return `
-          <tr>
-            <td>${analyte}</td>
-            <td>${value} ${units}</td>
-            <td>${status}</td>
-            <td>${refLow}${refLow || refHigh ? " – " : ""}${refHigh}</td>
-          </tr>
-        `;
-      })
-      .join("");
-
-    const win = window.open("", "_blank");
-    win.document.write(`
-      <!doctype html>
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>AMI AI Interpretation — ${rpt.name || "Patient"}</title>
-        <style>
-          @page {
-            margin: 18mm;
-          }
-          body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            color:#111827;
-            background:#ffffff;
-            margin:0;
-          }
-          .report-wrapper {
-            max-width: 800px;
-            margin: 0 auto;
-          }
-          .report-header {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            border-bottom:1px solid #e5e7eb;
-            padding-bottom:8px;
-            margin-bottom:16px;
-          }
-          .report-header-left {
-            display:flex;
-            flex-direction:column;
-            gap:2px;
-          }
-          .logo {
-            height:32px;
-          }
-          h1 {
-            font-size:18px;
-            margin:0;
-          }
-          .subtitle {
-            font-size:11px;
-            color:#6b7280;
-          }
-          .section-title {
-            font-size:14px;
-            font-weight:600;
-            margin:18px 0 8px;
-          }
-          .grid-2 {
-            display:grid;
-            grid-template-columns:1.2fr 1fr;
-            gap:12px;
-            font-size:12px;
-          }
-          table {
-            width:100%;
-            border-collapse:collapse;
-            font-size:12px;
-          }
-          th, td {
-            border:1px solid #e5e7eb;
-            padding:4px 6px;
-            text-align:left;
-          }
-          th {
-            background:#f9fafb;
-            font-weight:600;
-          }
-          .risk-badge {
-            display:inline-block;
-            padding:3px 8px;
-            border-radius:999px;
-            font-size:10px;
-            font-weight:600;
-            margin-bottom:6px;
-          }
-          .risk-high { background:#fee2e2; color:#b91c1c; }
-          .risk-moderate { background:#fef3c7; color:#92400e; }
-          .risk-low { background:#dcfce7; color:#166534; }
-          .small {
-            font-size:11px;
-            color:#4b5563;
-          }
-          .disclaimer {
-            margin-top:18px;
-            font-size:9px;
-            color:#6b7280;
-            border-top:1px solid #e5e7eb;
-            padding-top:6px;
-          }
-          .footer-row {
-            display:flex;
-            justify-content:space-between;
-            align-items:flex-end;
-            margin-top:18px;
-            font-size:10px;
-            color:#6b7280;
-          }
-          .signature-line {
-            border-top:1px solid #9ca3af;
-            width:180px;
-            margin-top:24px;
-            padding-top:2px;
-            font-size:9px;
-            color:#4b5563;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="report-wrapper">
-          <div class="report-header">
-            <div class="report-header-left">
-              <h1>AMI AI Interpretation</h1>
-              <div class="subtitle">Artificial Medical Intelligence — CBC Blood Test Interpretation</div>
-            </div>
-            <img class="logo" src="${location.origin}/logo.png" alt="AMI Health" />
-          </div>
-
-          <div class="grid-2">
-            <div>
-              <div class="section-title">Patient Details</div>
-              <div class="small">
-                <div><strong>Name:</strong> ${rpt.name || "Unknown"}</div>
-                <div><strong>Age:</strong> ${rpt.age ?? "-"}</div>
-                <div><strong>Sex:</strong> ${rpt.sex || "-"}</div>
-              </div>
-            </div>
-            <div>
-              <div class="section-title">Report Metadata</div>
-              <div class="small">
-                <div><strong>Report ID:</strong> ${rpt.id}</div>
-                <div><strong>Report Date:</strong> ${
-                  rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-"
-                }</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="section-title">CBC Summary</div>
-          ${
-            cbcRows
-              ? `<table>
-                  <thead>
-                    <tr>
-                      <th>Analyte</th>
-                      <th>Result</th>
-                      <th>Units</th>
-                      <th>Reference Range</th>
-                    </tr>
-                  </thead>
-                  <tbody>${cbcRows}</tbody>
-                </table>`
-              : '<div class="small">No CBC values extracted.</div>'
-          }
-
-          <div class="section-title">AI Interpretation</div>
-          <div class="small">
-            <div class="risk-badge ${
-              risk === "high"
-                ? "risk-high"
-                : risk === "moderate"
-                ? "risk-moderate"
-                : "risk-low"
-            }">
-              Overall Risk: ${String(risk).toUpperCase()}
-            </div>
-
-            <div style="margin-top:6px;">
-              <strong>Summary</strong><br>
-              ${summaryHtml}
-            </div>
-
-            <div style="margin-top:10px;">
-              <strong>Flagged Results</strong><br>
-              ${
-                flaggedRowsHtml
-                  ? `<table style="margin-top:4px;">
-                      <thead>
-                        <tr>
-                          <th>Analyte</th>
-                          <th>Value</th>
-                          <th>Status</th>
-                          <th>Reference</th>
-                        </tr>
-                      </thead>
-                      <tbody>${flaggedRowsHtml}</tbody>
-                    </table>`
-                  : "None"
-              }
-            </div>
-
-            <div style="margin-top:10px;">
-              <strong>Recommendations</strong><br>
-              ${recommendationsHtml}
-            </div>
-          </div>
-
-          <div class="footer-row">
-            <div>
-              <div class="signature-line">
-                Physician / Clinician Signature
-              </div>
-            </div>
-            <div style="text-align:right;">
-              <div class="small">Generated by AMI Health</div>
-              <div class="small">amihealth.co.za</div>
-            </div>
-          </div>
-
-          <div class="disclaimer">
-            This AI-generated interpretation is intended to support clinical decision-making and does not constitute a diagnosis.
-            Final clinical judgment should always be made by a licensed medical professional.
-          </div>
-        </div>
-
-        <script>
-          window.onload = function () {
-            window.print();
-            window.onafterprint = function () {
-              window.close();
-            };
-          };
-        </script>
-      </body>
-      </html>
-    `);
-
-    win.document.close();
-  }
-
-  document.getElementById("pdfBtn").addEventListener("click", printCleanReport);
-
-  loadReport();
+loadReport();
 </script>
 
 </body>
