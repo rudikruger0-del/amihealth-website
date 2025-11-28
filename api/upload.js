@@ -4,10 +4,9 @@ import formidable from "formidable";
 import fs from "fs";
 
 export const config = {
-  api: { bodyParser: false }, // required for formidable
+  api: { bodyParser: false },
 };
 
-// Supabase admin client (SERVICE ROLE KEY)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -44,9 +43,7 @@ export default async function handler(req, res) {
     if (Array.isArray(file)) file = file[0];
     if (!file) return res.status(400).json({ error: "Missing file" });
 
-    // ------------------------------------
-    // 1️⃣ First create empty DB row
-    // ------------------------------------
+    // 1️⃣ Create empty row
     const { data: newRow, error: rowErr } = await supabase
       .from("reports")
       .insert({
@@ -68,10 +65,8 @@ export default async function handler(req, res) {
     const reportId = newRow.id;
     const buffer = fs.readFileSync(file.filepath);
 
-    // ------------------------------------
-    // 2️⃣ Upload the PDF as <report_id>.pdf
-    // ------------------------------------
-    const storagePath = `${reportId}.pdf`;
+    // 2️⃣ CORRECT FIX: Save file inside a folder in the bucket
+    const storagePath = `reports/${reportId}.pdf`;
 
     const { error: uploadErr } = await supabase.storage
       .from("reports")
@@ -85,9 +80,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Storage upload failed" });
     }
 
-    // ------------------------------------
-    // 3️⃣ Update DB row with final file_path
-    // ------------------------------------
+    // 3️⃣ Save file_path for worker
     await supabase
       .from("reports")
       .update({ file_path: storagePath })
