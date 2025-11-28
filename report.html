@@ -29,9 +29,7 @@
       border-bottom:1px solid rgba(255,255,255,0.08);
     }
 
-    header img {
-      height:40px;
-    }
+    header img { height:40px; }
 
     #backBtn {
       color:#00d4ff;
@@ -81,10 +79,7 @@
       font-weight:700;
     }
 
-    .row {
-      margin:4px 0;
-      font-size:14px;
-    }
+    .row { margin:4px 0; font-size:14px; }
 
     .risk-badge {
       display:inline-block;
@@ -161,8 +156,6 @@ async function loadReport() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
 
-  console.log("Requesting:", `/api/get-ai-report?id=${id}`);
-
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const data = await res.json();
 
@@ -173,26 +166,35 @@ async function loadReport() {
 
   const rpt = data.report;
 
-  // Fill patient panel
-  document.getElementById("name").textContent = rpt.name;
-  document.getElementById("age").textContent = rpt.age;
-  document.getElementById("sex").textContent = rpt.sex;
-  document.getElementById("date").textContent = new Date(rpt.created_at).toLocaleString();
+  // Patient Info
+  document.getElementById("name").textContent = rpt.name || "Unknown";
+  document.getElementById("age").textContent = rpt.age || "-";
+  document.getElementById("sex").textContent = rpt.sex || "-";
+  document.getElementById("date").textContent =
+    new Date(rpt.created_at).toLocaleString();
 
-  // Load PDF
-  const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+  // PDF Preview
+  const pdfRes = await fetch(
+    `/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`
+  );
   const pdfJson = await pdfRes.json();
   document.getElementById("pdfFrame").src = pdfJson.url;
 
-  // CBC render
-  const cbc = rpt.cbc_json;
+  // CBC Results (NEW)
+  const cbc = rpt.ai_results?.cbc;
   const cbcBox = document.getElementById("cbcContent");
 
-  if (!cbc) {
+  if (!cbc || cbc.length === 0) {
     cbcBox.textContent = "No CBC data.";
   } else {
-    cbcBox.innerHTML = Object.entries(cbc)
-      .map(([k,v]) => `<div class="row"><b>${k}:</b> ${v}</div>`)
+    cbcBox.innerHTML = cbc
+      .map(
+        (c) => `
+        <div class="row">
+          <b>${c.analyte}:</b> ${c.value} ${c.units}  
+          <span style="opacity:0.7">(ref: ${c.reference_low}–${c.reference_high})</span>
+        </div>`
+      )
       .join("");
   }
 
@@ -207,36 +209,28 @@ function renderAI(ai) {
     return;
   }
 
-  const json = ai.json || {};
-
-  let risk = json?.risk_assessment?.overall_risk || "low";
-  let badgeClass = risk === "high" ? "high" : risk === "moderate" ? "moderate" : "low";
+  const risk = ai.risk_assessment?.overall_risk || "low";
+  const badgeClass =
+    risk === "high" ? "high" : risk === "moderate" ? "moderate" : "low";
 
   box.innerHTML = `
     <div class="risk-badge ${badgeClass}">${risk.toUpperCase()} RISK</div>
 
     <div class="section-title">Summary</div>
-    <div>${(json.summary || []).map(s => `• ${s}`).join("<br>")}</div>
-
-    <div class="section-title">Trend Summary</div>
-    <div>${(json.trend_summary || []).map(s => `• ${s}`).join("<br>")}</div>
+    <div>${(ai.summary || []).map((s) => `• ${s}`).join("<br>")}</div>
 
     <div class="section-title">Flagged Results</div>
     <div>${
-      (json.flagged_results || [])
-        .map(f => `<b>${f.test}</b>: ${f.value} (ref: ${f.reference_range}) — ${f.status}`)
-        .join("<br>")
-      || "None"
+      (ai.flagged_results || [])
+        .map(
+          (f) =>
+            `<b>${f.analyte}</b>: ${f.value} (${f.status}) — Ref: ${f.reference_low}-${f.reference_high}`
+        )
+        .join("<br>") || "None"
     }</div>
 
     <div class="section-title">Recommendations</div>
-    <div>${
-      (json.recommendations?.follow_up_tests || []).map(s => `• ${s}`).join("<br>")
-      || "None"
-    }</div>
-
-    <div class="section-title">When to Seek Urgent Care</div>
-    <div>${json.recommendations?.when_to_seek_urgent_care || "None"}</div>
+    <div>${(ai.recommendations || []).map((s) => `• ${s}`).join("<br>")}</div>
   `;
 }
 
