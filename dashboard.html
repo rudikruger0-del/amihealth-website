@@ -100,7 +100,6 @@
       text-decoration:none;
     }
 
-    /* Reports */
     .search-box {
       width:100%;
       padding:10px;
@@ -125,7 +124,6 @@
 
     a.tbl { color:#00d4ff; text-decoration:none; }
 
-    /* PDF modal */
     #pdfModal {
       position:fixed;
       inset:0;
@@ -171,7 +169,7 @@
 
 <header>
   <a class="brand" href="/dashboard.html">
-    <img src="/logo.png">
+    <img src="/logo.png" alt="AMI logo">
     <div>
       <div class="brand-title">AMI Health</div>
       <div class="brand-sub">Artificial Medical Intelligence</div>
@@ -223,7 +221,6 @@
   </div>
 </main>
 
-<!-- PDF modal -->
 <div id="pdfModal">
   <div id="pdfBox">
     <div class="modal-header">
@@ -242,18 +239,24 @@ const reportsTable = document.getElementById("reportsTable");
 const searchBox = document.getElementById("searchBox");
 let fullList = [];
 
-/* AUTH */
+/* 🔐 AUTH GUARD */
 async function loadUser() {
-  const { data:{ session }} = await supabase.auth.getSession();
-  if (!session) return window.location.href="/login.html";
+  const { data:{ session }, error } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error("Auth error:", error);
+    return window.location.href = "/login.html";
+  }
+
+  if (!session) {
+    return window.location.href = "/login.html";
+  }
 
   userEmailText.textContent = session.user.email;
+  await loadReports(session.user.email);
 
-  loadReports(session.user.email);
-
-  // Detect upload-page trigger
   if (localStorage.getItem("reports_updated")) {
-    loadReports(session.user.email);
+    await loadReports(session.user.email);
     localStorage.removeItem("reports_updated");
   }
 }
