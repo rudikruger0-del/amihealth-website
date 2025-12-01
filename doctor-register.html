@@ -133,6 +133,12 @@
     <label>Email</label>
     <input id="email" type="email" placeholder="doctor@clinic.co.za" />
 
+    <label>Password</label>
+    <input id="password" type="password" placeholder="Choose a password" />
+
+    <label>Confirm Password</label>
+    <input id="confirmPassword" type="password" placeholder="Confirm password" />
+
     <label>Practice Number (MP Number)</label>
     <input id="practice" type="text" placeholder="MP1234567" />
 
@@ -143,7 +149,6 @@
     <textarea id="clinicAddress" rows="2" placeholder="123 Example Street, City, Province"></textarea>
 
     <button id="submitBtn">Submit Request</button>
-
     <div class="status" id="status"></div>
 
     <a class="back" href="/login.html">← Back to Login</a>
@@ -154,6 +159,8 @@
 
     const fullName       = document.getElementById("fullName");
     const email          = document.getElementById("email");
+    const password       = document.getElementById("password");
+    const confirmPassword= document.getElementById("confirmPassword");
     const practice       = document.getElementById("practice");
     const clinicName     = document.getElementById("clinicName");
     const clinicAddress  = document.getElementById("clinicAddress");
@@ -165,25 +172,15 @@
       statusEl.className = "status " + type;
     }
 
-    // Very simple name parser: "Dr John Michael Smith"
-    // -> title="Dr", first_name="John Michael", last_name="Smith"
     function parseName(raw) {
       const trimmed = raw.trim();
       if (!trimmed) {
-        return {
-          title: null,
-          first_name: "Unknown",
-          last_name: "Doctor"
-        };
+        return { title: null, first_name: "Unknown", last_name: "Doctor" };
       }
 
       const parts = trimmed.split(/\s+/);
       if (parts.length === 1) {
-        return {
-          title: null,
-          first_name: parts[0],
-          last_name: "Doctor"
-        };
+        return { title: null, first_name: parts[0], last_name: "Doctor" };
       }
 
       const title = parts[0].endsWith(".") || parts[0].toLowerCase().startsWith("dr")
@@ -191,32 +188,36 @@
         : null;
 
       if (parts.length === 2) {
-        return {
-          title,
-          first_name: parts[0],
-          last_name: parts[1]
-        };
+        return { title, first_name: parts[0], last_name: parts[1] };
       }
 
       const last = parts[parts.length - 1];
       const middle = parts.slice(1, -1).join(" ");
 
-      return {
-        title,
-        first_name: middle || parts[0],
-        last_name: last
-      };
+      return { title, first_name: middle || parts[0], last_name: last };
     }
 
     btn.addEventListener("click", async () => {
       const nameVal  = fullName.value.trim();
       const emailVal = email.value.trim();
+      const passVal  = password.value.trim();
+      const pass2Val = confirmPassword.value.trim();
       const mpVal    = practice.value.trim();
       const cNameVal = clinicName.value.trim();
       const cAddrVal = clinicAddress.value.trim();
 
       if (!nameVal || !emailVal || !mpVal) {
         setStatus("Please fill in your full name, email and MP number.", "err");
+        return;
+      }
+
+      if (!passVal || passVal.length < 6) {
+        setStatus("Password must be at least 6 characters.", "err");
+        return;
+      }
+
+      if (passVal !== pass2Val) {
+        setStatus("Passwords do not match.", "err");
         return;
       }
 
@@ -230,10 +231,10 @@
         first_name:     parsed.first_name,
         last_name:      parsed.last_name,
         email:          emailVal,
-        mp_number:      mpVal,          // 🔑 matches your table column
+        password:       passVal,     // 🔥 store password temporarily
+        mp_number:      mpVal,
         clinic_name:    cNameVal,
         clinic_address: cAddrVal,
-        // status will default to 'pending' in the table
       });
 
       if (error) {
