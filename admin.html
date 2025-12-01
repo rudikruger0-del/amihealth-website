@@ -8,85 +8,101 @@
   <style>
     body {
       margin: 0;
-      font-family: Inter, sans-serif;
-      background: #0e1225;
+      font-family: Inter, system-ui, sans-serif;
+      background: #050818;
       color: #e6eef8;
-      padding: 40px;
+      padding: 24px;
     }
 
     h1 {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .sub {
+      color: #9ca3af;
       margin-bottom: 20px;
+      font-size: 14px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      background: #151b33;
+      background: #0b1020;
       border-radius: 12px;
       overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
     }
 
     th, td {
-      padding: 14px;
+      padding: 10px 12px;
       border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 13px;
+      text-align: left;
     }
 
     th {
-      background: #1c2342;
-      text-align: left;
-      font-size: 14px;
+      background: #101736;
+      font-weight: 600;
+      color: #9ca3af;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
     }
 
     button {
-      padding: 8px 16px;
+      padding: 6px 10px;
+      border-radius: 999px;
       border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 600;
+      cursor: pointer;
     }
 
-    .approve {
+    .btn-approve {
       background: #00e0b8;
       color: #001319;
     }
 
-    .reject {
-      background: #ff6b6b;
-      color: white;
-      margin-left: 8px;
+    .btn-reject {
+      background: #f97373;
+      color: #111827;
+      margin-left: 6px;
     }
 
     .status {
-      margin-top: 16px;
-      font-size: 14px;
-      min-height: 20px;
+      margin-top: 12px;
+      font-size: 13px;
+      min-height: 18px;
     }
 
-    .ok { color: #7ef7d3; }
-    .err { color: #ff8f9b; }
+    .status.ok { color:#7ef7d3; }
+    .status.err { color:#ff8f9b; }
   </style>
 </head>
 
 <body>
-
   <h1>Doctor Access Approvals</h1>
+  <div class="sub">
+    Only visible to admin. Approve a doctor to create their AMI login account.
+  </div>
 
-  <p>Only visible to Admin (you).</p>
-
-  <table id="pendingTable">
+  <table>
     <thead>
       <tr>
         <th>Name</th>
         <th>Email</th>
         <th>Practice #</th>
         <th>Clinic</th>
+        <th>Requested</th>
         <th>Actions</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="rows">
+      <tr><td colspan="6">Loading…</td></tr>
+    </tbody>
   </table>
 
   <div class="status" id="status"></div>
@@ -94,130 +110,149 @@
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
-    const statusEl = document.getElementById("status");
-    const tbody = document.querySelector("#pendingTable tbody");
+    const ADMIN_EMAIL = "rudikruger708@icloud.com"; // 🔁 change this
 
-    function setStatus(msg, type="ok") {
+    const statusEl = document.getElementById("status");
+    const rowsEl = document.getElementById("rows");
+
+    function setStatus(msg, type="info") {
       statusEl.textContent = msg;
-      statusEl.className = "status " + type;
+      statusEl.className = "status " + (type === "ok" ? "ok" : type === "err" ? "err" : "");
     }
 
-    // 🔐 ONLY YOU CAN VIEW THIS PAGE
-    const ADMIN_EMAIL = "rudikruger708@icloud.com"; // <-- REPLACE WITH YOUR email
+    // Auth guard – only you
+    let accessToken = null;
 
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session || session.user.email !== ADMIN_EMAIL) {
+    async function requireAdmin() {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        alert("Please log in first.");
+        window.location.href = "/login.html";
+        return null;
+      }
+
+      if (session.user.email !== ADMIN_EMAIL) {
         alert("Access denied.");
         window.location.href = "/login.html";
+        return null;
       }
-    })();
 
-    // Load pending doctors
+      accessToken = session.access_token;
+      return session;
+    }
+
     async function loadPending() {
-      const { data, error } = await supabase
-        .from("pending_doctors")
-        .select("*")
-        .order("created_at", { ascending: true });
+      setStatus("Loading pending doctors…");
+      rowsEl.innerHTML = `<tr><td colspan="6">Loading…</td></tr>`;
 
-      if (error) {
-        setStatus("Error loading pending doctors: " + error.message, "err");
+      const res = await fetch("/api/admin-get-pending", {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      });
+
+      if (!res.ok) {
+        setStatus("Failed to load pending doctors.", "err");
+        rowsEl.innerHTML = `<tr><td colspan="6">Error.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = "";
+      const json = await res.json();
+      const list = json.pending || [];
 
-      data.forEach(doc => {
+      if (!list.length) {
+        rowsEl.innerHTML = `<tr><td colspan="6">No pending requests.</td></tr>`;
+        setStatus("No pending doctors.");
+        return;
+      }
+
+      rowsEl.innerHTML = "";
+      list.forEach(doc => {
         const tr = document.createElement("tr");
+        const created = doc.created_at ? new Date(doc.created_at).toLocaleString() : "-";
 
         tr.innerHTML = `
-          <td>${doc.full_name}</td>
-          <td>${doc.email}</td>
-          <td>${doc.practice_number}</td>
-          <td>${doc.clinic_name || "—"}</td>
+          <td>${doc.full_name || "-"}</td>
+          <td>${doc.email || "-"}</td>
+          <td>${doc.practice_number || "-"}</td>
+          <td>${doc.clinic_name || "-"}</td>
+          <td>${created}</td>
           <td>
-            <button class="approve" data-id="${doc.id}">Approve</button>
-            <button class="reject" data-id="${doc.id}">Reject</button>
+            <button class="btn-approve" data-id="${doc.id}">Approve</button>
+            <button class="btn-reject" data-id="${doc.id}">Reject</button>
           </td>
         `;
 
-        tbody.appendChild(tr);
+        rowsEl.appendChild(tr);
       });
 
-      attachActions();
+      attachRowHandlers();
+      setStatus("Loaded.");
     }
 
-    loadPending();
-
-    // Approve / Reject actions
-    function attachActions() {
-      document.querySelectorAll(".approve").forEach(btn => {
-        btn.addEventListener("click", () => approveDoctor(btn.dataset.id));
+    function attachRowHandlers() {
+      document.querySelectorAll(".btn-approve").forEach(btn => {
+        btn.onclick = () => approveDoctor(btn.dataset.id);
       });
-      document.querySelectorAll(".reject").forEach(btn => {
-        btn.addEventListener("click", () => rejectDoctor(btn.dataset.id));
+      document.querySelectorAll(".btn-reject").forEach(btn => {
+        btn.onclick = () => rejectDoctor(btn.dataset.id);
       });
     }
 
     async function approveDoctor(id) {
+      if (!confirm("Approve this doctor and create a login account?")) return;
+
       setStatus("Approving doctor…");
-
-      // Fetch pending doctor info
-      const { data: doc } = await supabase
-        .from("pending_doctors")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (!doc) return;
-
-      // 1️⃣ Create Supabase Auth user
-      const tempPass = crypto.randomUUID().slice(0, 10);
-
-      const { data: auth, error: authError } = await supabase.auth.admin.createUser({
-        email: doc.email,
-        password: tempPass,
-        email_confirm: true
+      const res = await fetch("/api/admin-approve-doctor", {
+        method: "POST",
+        headers: {
+          "Content-Type":"application/json",
+          Authorization: "Bearer " + accessToken,
+        },
+        body: JSON.stringify({ id }),
       });
 
-      if (authError) {
-        setStatus("Error creating user: " + authError.message, "err");
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setStatus("Approve failed: " + (json.error || "Unknown error"), "err");
         return;
       }
 
-      // 2️⃣ Insert into users table
-      await supabase.from("users").insert({
-        id: auth.user.id,
-        email: doc.email,
-        full_name: doc.full_name,
-        practice_number: doc.practice_number,
-        clinic_name: doc.clinic_name,
-        clinic_address: doc.clinic_address
-      });
-
-      // 3️⃣ Remove from pending list
-      await supabase.from("pending_doctors").delete().eq("id", id);
-
-      // 4️⃣ Email login details
-      await fetch("/send-access-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: doc.email,
-          password: tempPass
-        })
-      });
-
-      setStatus("Doctor approved and login credentials emailed.");
+      // You can see the temp password in console if needed
+      console.log("New doctor login:", json);
+      setStatus("Doctor approved. A temporary password was generated.", "ok");
       loadPending();
     }
 
     async function rejectDoctor(id) {
-      await supabase.from("pending_doctors").delete().eq("id", id);
-      setStatus("Doctor rejected.");
+      if (!confirm("Reject this doctor request?")) return;
+
+      setStatus("Rejecting doctor…");
+      const res = await fetch("/api/admin-reject-doctor", {
+        method: "POST",
+        headers: {
+          "Content-Type":"application/json",
+          Authorization: "Bearer " + accessToken,
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setStatus("Reject failed: " + (json.error || "Unknown error"), "err");
+        return;
+      }
+
+      setStatus("Doctor rejected.", "ok");
       loadPending();
     }
 
+    // Init
+    (async () => {
+      const session = await requireAdmin();
+      if (!session) return;
+      loadPending();
+    })();
   </script>
 
 </body>
