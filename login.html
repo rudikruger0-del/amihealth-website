@@ -136,6 +136,14 @@
       width: 100%;
     }
 
+    .forgot {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--accent-2);
+      cursor: pointer;
+      display: inline-block;
+    }
+
     .status {
       margin-top: 12px;
       font-size: 13px;
@@ -167,6 +175,9 @@
     <input type="password" id="password" placeholder="••••••••" />
 
     <button id="loginBtn">Login</button>
+
+    <div class="forgot" id="forgotPass">Forgot Password?</div>
+
     <div class="status" id="loginStatus"></div>
 
     <button class="request-btn" id="requestAccessBtn">Request Access (Doctors Only)</button>
@@ -178,6 +189,7 @@
     const emailInput = document.getElementById("email");
     const passInput = document.getElementById("password");
     const loginBtn = document.getElementById("loginBtn");
+    const forgotBtn = document.getElementById("forgotPass");
     const statusEl = document.getElementById("loginStatus");
     const requestBtn = document.getElementById("requestAccessBtn");
 
@@ -186,7 +198,7 @@
       statusEl.className = "status " + type;
     }
 
-    // Redirect if already logged in
+    // Auto-login if already authenticated
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) window.location.href = "/dashboard.html";
@@ -204,10 +216,7 @@
       loginBtn.disabled = true;
       setStatus("Signing in…", "info");
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         setStatus("Login failed: " + error.message, "err");
@@ -223,7 +232,23 @@
     emailInput.addEventListener("keydown", e => e.key === "Enter" && signIn());
     passInput.addEventListener("keydown", e => e.key === "Enter" && signIn());
 
-    // ⭐ FIXED: Request Access Button
+    // ⭐ Forgot Password
+    forgotBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+      if (!email) {
+        setStatus("Enter your email first to reset your password.", "err");
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        setStatus("Reset failed: " + error.message, "err");
+      } else {
+        setStatus("Password reset email sent. Check your inbox.", "ok");
+      }
+    });
+
+    // Request Access
     requestBtn.addEventListener("click", () => {
       window.location.href = "/doctor-register.html";
     });
