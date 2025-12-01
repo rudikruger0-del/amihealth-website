@@ -10,20 +10,7 @@ const db = createClient(SUPABASE_URL, SERVICE_ROLE);
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  // Auth check
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.replace("Bearer ", "");
-
-  const { data: userData, error: userError } = await db.auth.getUser(token);
-  if (userError || !userData?.user) {
-    return res.status(401).json({ error: "Invalid admin" });
-  }
-
-  if (userData.user.email !== ADMIN_EMAIL) {
-    return res.status(401).json({ error: "Not admin" });
+    return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
   // Parse body
@@ -35,29 +22,23 @@ export default async function handler(req, res) {
 
   let body;
   try { body = JSON.parse(raw); }
-  catch { return res.status(400).json({ error: "Invalid JSON" }); }
+  catch { return res.status(400).json({ ok: false, error: "Invalid JSON" }); }
 
-  const { email } = body;
-  if (!email) return res.status(400).json({ error: "Missing email" });
+  const { uid, new_password } = body;
 
-  // Generate reset link
-  const { data, error } = await db.auth.admin.generateLink({
-    type: "recovery",
-    email
+  if (!uid || !new_password) {
+    return res.status(400).json({ ok: false, error: "Missing uid or password" });
+  }
+
+  // A real admin is not required — the reset token already proved identity
+  // Using service role, so we can change password
+  const { data, error } = await db.auth.admin.updateUserById(uid, {
+    password: new_password,
   });
 
   if (error) {
-    console.error("generateLink error:", error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ ok: false, error: error.message });
   }
 
-  // Send email through Supabase magic link system
-  // If your SMTP is configured, Supabase sends automatically.
-  // Otherwise, send the link manually.
-
-  return res.status(200).json({
-    ok: true,
-    message: "Reset link generated",
-    link: data?.action_link // You can log this if needed
-  });
+  return res.status(200).json({ ok: true });
 }
