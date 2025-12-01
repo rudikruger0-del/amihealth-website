@@ -48,6 +48,13 @@
       font-weight: 800;
     }
 
+    p {
+      margin-top: 4px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
     label {
       display: block;
       margin-top: 18px;
@@ -67,6 +74,13 @@
       margin-top: 4px;
     }
 
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(0,224,184,0.7);
+      box-shadow: 0 0 0 1px rgba(0,224,184,0.4);
+      background: #06091c;
+    }
+
     button {
       width: 100%;
       padding: 14px;
@@ -78,15 +92,22 @@
       font-size: 16px;
       font-weight: 700;
       cursor: pointer;
+      box-shadow: 0 14px 40px rgba(0,179,255,0.45);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: default;
+      box-shadow: none;
     }
 
     .status {
       margin-top: 14px;
-      font-size: 14px;
+      font-size: 13px;
       min-height: 20px;
     }
 
-    .status.ok { color: #7ef7d3; }
+    .status.ok  { color: #7ef7d3; }
     .status.err { color: #ff8f9b; }
 
     .back {
@@ -97,7 +118,6 @@
       font-size: 14px;
       text-decoration: none;
     }
-
   </style>
 </head>
 
@@ -107,8 +127,8 @@
     <h1>Doctor Access Request</h1>
     <p>Please complete your details to request access to AMI Health.</p>
 
-    <label>Full Name (Include title, e.g. Dr. A. Smith)</label>
-    <input id="fullName" type="text" placeholder="Dr. John Doe" />
+    <label>Full Name (Include title, e.g. Dr A. Smith)</label>
+    <input id="fullName" type="text" placeholder="Dr John Smith" />
 
     <label>Email</label>
     <input id="email" type="email" placeholder="doctor@clinic.co.za" />
@@ -132,52 +152,92 @@
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
-    const fullName = document.getElementById("fullName");
-    const email = document.getElementById("email");
-    const practice = document.getElementById("practice");
-    const clinicName = document.getElementById("clinicName");
-    const clinicAddress = document.getElementById("clinicAddress");
-    const statusEl = document.getElementById("status");
-    const btn = document.getElementById("submitBtn");
+    const fullName       = document.getElementById("fullName");
+    const email          = document.getElementById("email");
+    const practice       = document.getElementById("practice");
+    const clinicName     = document.getElementById("clinicName");
+    const clinicAddress  = document.getElementById("clinicAddress");
+    const statusEl       = document.getElementById("status");
+    const btn            = document.getElementById("submitBtn");
 
-    function setStatus(msg, type="ok") {
+    function setStatus(msg, type = "ok") {
       statusEl.textContent = msg;
       statusEl.className = "status " + type;
     }
 
+    // Very simple name parser: "Dr John Michael Smith"
+    // -> title="Dr", first_name="John Michael", last_name="Smith"
+    function parseName(raw) {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        return {
+          title: null,
+          first_name: "Unknown",
+          last_name: "Doctor"
+        };
+      }
+
+      const parts = trimmed.split(/\s+/);
+      if (parts.length === 1) {
+        return {
+          title: null,
+          first_name: parts[0],
+          last_name: "Doctor"
+        };
+      }
+
+      const title = parts[0].endsWith(".") || parts[0].toLowerCase().startsWith("dr")
+        ? parts[0]
+        : null;
+
+      if (parts.length === 2) {
+        return {
+          title,
+          first_name: parts[0],
+          last_name: parts[1]
+        };
+      }
+
+      const last = parts[parts.length - 1];
+      const middle = parts.slice(1, -1).join(" ");
+
+      return {
+        title,
+        first_name: middle || parts[0],
+        last_name: last
+      };
+    }
+
     btn.addEventListener("click", async () => {
-      const nameVal = fullName.value.trim();
+      const nameVal  = fullName.value.trim();
       const emailVal = email.value.trim();
-      const mpVal = practice.value.trim();
+      const mpVal    = practice.value.trim();
       const cNameVal = clinicName.value.trim();
       const cAddrVal = clinicAddress.value.trim();
 
       if (!nameVal || !emailVal || !mpVal) {
-        setStatus("Please fill in all required fields.", "err");
+        setStatus("Please fill in your full name, email and MP number.", "err");
         return;
       }
-
-      // Split "Dr. John Doe" → title = Dr., first = John, last = Doe
-      const parts = nameVal.split(" ");
-      const title = parts.shift(); 
-      const first_name = parts.shift();
-      const last_name = parts.join(" ") || "";
 
       btn.disabled = true;
       setStatus("Submitting…", "ok");
 
+      const parsed = parseName(nameVal);
+
       const { error } = await supabase.from("pending_doctors").insert({
-        title: title,
-        first_name: first_name,
-        last_name: last_name,
-        email: emailVal,
-        mp_number: mpVal,
-        clinic_name: cNameVal,
+        title:          parsed.title,
+        first_name:     parsed.first_name,
+        last_name:      parsed.last_name,
+        email:          emailVal,
+        mp_number:      mpVal,          // 🔑 matches your table column
+        clinic_name:    cNameVal,
         clinic_address: cAddrVal,
-        status: "pending"
+        // status will default to 'pending' in the table
       });
 
       if (error) {
+        console.error(error);
         setStatus("Error: " + error.message, "err");
         btn.disabled = false;
         return;
