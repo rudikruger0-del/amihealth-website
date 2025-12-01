@@ -89,7 +89,7 @@
       font-weight: 600;
     }
 
-    input {
+    input, select, textarea {
       width: 100%;
       padding: 12px;
       border-radius: 9px;
@@ -97,12 +97,6 @@
       background: rgba(7,11,30,0.95);
       color: #fff;
       font-size: 15px;
-    }
-
-    input:focus {
-      border-color: rgba(0,224,184,0.7);
-      box-shadow: 0 0 0 1px rgba(0,224,184,0.4);
-      background: #06091c;
     }
 
     button {
@@ -119,11 +113,6 @@
       box-shadow: 0 14px 40px rgba(0,179,255,0.5);
     }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-
     .status {
       margin-top: 12px;
       font-size: 13px;
@@ -131,31 +120,69 @@
       min-height: 18px;
     }
 
-    .status.ok     { color: #7ef7d3; }
-    .status.err    { color: #ff8f9b; }
-    .status.info   { color: #98a0b3; }
-
     .help {
-      margin-top: 16px;
+      margin-top: 18px;
       font-size: 13px;
       color: var(--muted);
     }
 
-    .help a {
+    .help button {
+      background: none;
+      border: none;
       color: var(--accent);
-      text-decoration: none;
+      cursor: pointer;
       font-weight: 600;
+      font-size: 13px;
+      padding: 0;
+    }
+
+    /* --- NEW DOCTOR ACCESS FORM (slide-up modal) --- */
+    .modal {
+      position: fixed;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      background: rgba(6,10,30,0.97);
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 -12px 60px rgba(0,0,0,0.5);
+      transition: bottom 0.4s ease;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    .modal.open {
+      bottom: 0;
+    }
+
+    .modal h2 {
+      margin-top: 0;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 26px;
+      float: right;
+      cursor: pointer;
+    }
+
+    .submit-access {
+      margin-top: 12px;
     }
   </style>
 </head>
 
 <body>
 
+  <!-- LOGIN CARD -->
   <div class="card">
-    <div class="logo-wrap">
-      <img src="logo.png" alt="AMI Logo" />
-    </div>
-
+    <div class="logo-wrap"><img src="logo.png" alt="AMI Logo"></div>
     <h1>Clinician Login</h1>
     <div class="subtitle">Secure AI-assisted blood report analysis for clinicians.</div>
 
@@ -166,71 +193,81 @@
     <input type="password" id="password" placeholder="••••••••" />
 
     <button id="loginBtn">Login</button>
+
     <div class="status" id="loginStatus"></div>
 
     <div class="help">
-      Need access? Email <a href="mailto:info@amihealth.co.za">info@amihealth.co.za</a>
+      Need access?
+      <button id="openRequestForm">Request Access (Doctors Only)</button>
     </div>
   </div>
+
+
+  <!-- DOCTOR ACCESS REQUEST MODAL -->
+  <div class="modal" id="requestModal">
+
+    <button class="close-btn" id="closeModal">&times;</button>
+    <h2>Doctor Access Request</h2>
+
+    <label>Title</label>
+    <select id="title">
+      <option value="">Select</option>
+      <option>Dr</option>
+      <option>Prof</option>
+      <option>Mr</option>
+      <option>Ms</option>
+      <option>Mrs</option>
+      <option>Other</option>
+    </select>
+
+    <label>Name</label>
+    <input id="firstName" type="text" placeholder="First name">
+
+    <label>Surname</label>
+    <input id="lastName" type="text" placeholder="Last name">
+
+    <label>Email</label>
+    <input id="docEmail" type="email" placeholder="doctor@clinic.co.za">
+
+    <label>Practice / MP Number</label>
+    <input id="mpNumber" type="text" placeholder="MP 0XXXXX">
+
+    <label>Clinic Name</label>
+    <input id="clinicName" type="text" placeholder="Clinic / Practice Name">
+
+    <label>Clinic Address</label>
+    <textarea id="clinicAddress" placeholder="Street, suburb, town, postal code"></textarea>
+
+    <div class="status" id="reqStatus"></div>
+    <button class="submit-access" id="submitRequest">Submit Request</button>
+
+  </div>
+
 
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
-    const emailInput = document.getElementById("email");
-    const passInput = document.getElementById("password");
-    const btn = document.getElementById("loginBtn");
-    const statusEl = document.getElementById("loginStatus");
+    const loginStatus = document.getElementById("loginStatus");
+    const reqStatus = document.getElementById("reqStatus");
 
-    function setStatus(msg, type="info") {
-      statusEl.textContent = msg;
-      statusEl.className = "status " + type;
+    function setStatus(el, msg, cls="info") {
+      el.textContent = msg;
+      el.style.color = cls === "ok" ? "#7ef7d3" :
+                       cls === "err" ? "#ff8f9b" : "#98a0b3";
     }
 
-    // 🔐 If already logged in, go straight to dashboard
-    (async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (session && !error) {
-        window.location.href = "/dashboard.html";
-      }
-    })();
-
-    async function signIn() {
-      const email = emailInput.value.trim();
-      const password = passInput.value.trim();
+    /* --- LOGIN LOGIC --- */
+    document.getElementById("loginBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
 
       if (!email || !password) {
-        setStatus("Please enter both email and password.", "err");
+        setStatus(loginStatus, "Please enter both email and password.", "err");
         return;
       }
 
-      btn.disabled = true;
-      setStatus("Signing in…", "info");
+      setStatus(loginStatus, "Signing in…");
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        setStatus("Login failed: " + error.message, "err");
-        btn.disabled = false;
-        return;
-      }
-
-      if (!data.session) {
-        setStatus("No session returned from Supabase.", "err");
-        btn.disabled = false;
-        return;
-      }
-
-      setStatus("Login successful. Redirecting…", "ok");
-      window.location.href = "/dashboard.html";
-    }
-
-    btn.addEventListener("click", signIn);
-    emailInput.addEventListener("keydown", e => e.key==="Enter" && signIn());
-    passInput.addEventListener("keydown", e => e.key==="Enter" && signIn());
-  </script>
-
-</body>
-</html>
+      if (error) return setStatus(loginStatus
