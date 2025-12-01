@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doctor Access Request – AMI Health</title>
+
+  <style>
+    :root {
+      --bg: #030414;
+      --card: #0b1020;
+      --muted: #98a0b3;
+      --accent: #00e0b8;
+      --accent-2: #00b3ff;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: radial-gradient(circle at top, #0b1230 0, #020214 55%, #02010c 100%);
+      color: #e6eef8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: radial-gradient(circle at top left, rgba(0, 224, 184, 0.07), transparent 40%),
+                  radial-gradient(circle at bottom right, rgba(0, 179, 255, 0.07), transparent 40%),
+                  rgba(6, 10, 30, 0.96);
+      padding: 40px 36px 30px;
+      border-radius: var(--radius);
+      max-width: 480px;
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 18px 70px rgba(0,0,0,0.65);
+      backdrop-filter: blur(12px);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    label {
+      display: block;
+      margin-top: 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(7,11,30,0.9);
+      color: #fff;
+      margin-top: 4px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 26px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #001319;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .status {
+      margin-top: 14px;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    .status.ok { color: #7ef7d3; }
+    .status.err { color: #ff8f9b; }
+
+    .back {
+      margin-top: 18px;
+      display: block;
+      text-align: center;
+      color: var(--accent);
+      font-size: 14px;
+      text-decoration: none;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+    <h1>Doctor Access Request</h1>
+    <p>Please complete your details to request access to AMI Health.</p>
+
+    <label>Full Name (Include title, e.g. Dr. A. Smith)</label>
+    <input id="fullName" type="text" placeholder="Dr. John Doe" />
+
+    <label>Email</label>
+    <input id="email" type="email" placeholder="doctor@clinic.co.za" />
+
+    <label>Practice Number (MP Number)</label>
+    <input id="practice" type="text" placeholder="MPxxxxx" />
+
+    <label>Clinic Name</label>
+    <input id="clinicName" type="text" placeholder="Sundown Medical Centre" />
+
+    <label>Clinic Address</label>
+    <textarea id="clinicAddress" rows="2" placeholder="123 Example Street, City, Province"></textarea>
+
+    <button id="submitBtn">Submit Request</button>
+
+    <div class="status" id="status"></div>
+
+    <a class="back" href="/login.html">← Back to Login</a>
+  </div>
+
+  <script type="module">
+    import { supabase } from "./lib/supabaseClient.js";
+
+    const fullName = document.getElementById("fullName");
+    const email = document.getElementById("email");
+    const practice = document.getElementById("practice");
+    const clinicName = document.getElementById("clinicName");
+    const clinicAddress = document.getElementById("clinicAddress");
+    const statusEl = document.getElementById("status");
+    const btn = document.getElementById("submitBtn");
+
+    function setStatus(msg, type="ok") {
+      statusEl.textContent = msg;
+      statusEl.className = "status " + type;
+    }
+
+    btn.addEventListener("click", async () => {
+      const nameVal = fullName.value.trim();
+      const emailVal = email.value.trim();
+      const mpVal = practice.value.trim();
+      const cNameVal = clinicName.value.trim();
+      const cAddrVal = clinicAddress.value.trim();
+
+      if (!nameVal || !emailVal || !mpVal) {
+        setStatus("Please fill in all required fields.", "err");
+        return;
+      }
+
+      btn.disabled = true;
+      setStatus("Submitting…", "ok");
+
+      const { error } = await supabase.from("pending_doctors").insert({
+        full_name: nameVal,
+        email: emailVal,
+        practice_number: mpVal,
+        clinic_name: cNameVal,
+        clinic_address: cAddrVal
+      });
+
+      if (error) {
+        setStatus("Error: " + error.message, "err");
+        btn.disabled = false;
+        return;
+      }
+
+      setStatus("Request submitted successfully. We will contact you soon.", "ok");
+      btn.style.display = "none";
+    });
+  </script>
+
+</body>
+</html>
