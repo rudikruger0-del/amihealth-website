@@ -145,7 +145,9 @@
 <header>
   <div class="header-left">
     <a id="backBtn" href="/dashboard.html">← Back</a>
-    <img src="/logo.png" alt="AMI Health Logo" />
+
+    <!-- ✅ FIXED LOGO URL BELOW -->
+    <img src="https://amihealth.co.za/logo.png" alt="AMI Health Logo" />
   </div>
 
   <div class="header-actions">
@@ -230,16 +232,12 @@
     const rpt = data.report;
     REPORT_DATA = rpt;
 
-    // Patient info — ONLY DB VALUES
     document.getElementById("name").textContent = rpt.name || "Unknown";
-    document.getElementById("age").textContent =
-      rpt.age != null ? rpt.age : "–";
-    document.getElementById("sex").textContent =
-      rpt.sex || "–";
+    document.getElementById("age").textContent = rpt.age ?? "–";
+    document.getElementById("sex").textContent = rpt.sex || "–";
     document.getElementById("date").textContent =
       rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
 
-    // Load original PDF
     if (rpt.file_path) {
       const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
       const pdfJson = await pdfRes.json();
@@ -250,8 +248,6 @@
         dl.href = pdfJson.url;
         dl.download = "original-lab-report.pdf";
       }
-    } else {
-      document.getElementById("pdfFrame").src = "";
     }
 
     renderCBC(rpt.ai_results);
@@ -272,27 +268,24 @@
     const parsed = safeParseAI(ai);
     const cbc = parsed.cbc || [];
 
-    if (!Array.isArray(cbc) || cbc.length === 0) {
+    if (!cbc.length) {
       box.textContent = "No CBC data.";
       return;
     }
 
     const rows = cbc.map(item => {
-      const flagClass =
-        item.flag === "high" ? "cbc-row-flag-high" :
-        item.flag === "low"  ? "cbc-row-flag-low"  :
-        "cbc-row-flag-normal";
-
-      const refLow = item.reference_low != null ? item.reference_low : "";
-      const refHigh = item.reference_high != null ? item.reference_high : "";
-      const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+      const flag = item.flag || "normal";
 
       return `
-        <div class="row ${flagClass}">
+        <div class="row cbc-row-flag-${flag}">
           <b>${item.analyte || ""}:</b>
-          ${item.value != null ? item.value : ""} ${item.units || ""}
-          ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ""}
-          ${item.flag && item.flag !== "normal" ? ` — <i>${item.flag}</i>` : ""}
+          ${item.value ?? ""} ${item.units || ""}
+          ${
+            item.reference_low || item.reference_high
+              ? `<span style="opacity:.75"> (ref: ${item.reference_low ?? ""}–${item.reference_high ?? ""})</span>`
+              : ""
+          }
+          ${flag !== "normal" ? ` — <i>${flag}</i>` : ""}
         </div>
       `;
     }).join("");
@@ -304,15 +297,13 @@
     const box = document.getElementById("aiContent");
     const parsed = safeParseAI(ai);
     const summary = parsed.summary || {};
-    const impression = summary.impression || "No overall impression provided.";
-    const followUp = summary.suggested_follow_up || "No specific follow-up recommendations.";
 
     box.innerHTML = `
       <div class="ai-section-title">Summary</div>
-      <div>${impression}</div>
+      <div>${summary.impression || "No overall impression provided."}</div>
 
       <div class="ai-section-title">Suggested follow-up</div>
-      <div>${followUp}</div>
+      <div>${summary.suggested_follow_up || "No specific follow-up recommendations."}</div>
     `;
   }
 
@@ -323,35 +314,40 @@
     }
 
     const ai = safeParseAI(REPORT_DATA.ai_results);
-    const cbc = Array.isArray(ai.cbc) ? ai.cbc : [];
+    const cbc = ai.cbc || [];
     const summary = ai.summary || {};
 
     const name = REPORT_DATA.name || "Unknown";
-    const age  = REPORT_DATA.age != null ? REPORT_DATA.age : "–";
+    const age  = REPORT_DATA.age ?? "–";
     const sex  = REPORT_DATA.sex || "–";
+    const createdAt = REPORT_DATA.created_at
+      ? new Date(REPORT_DATA.created_at).toLocaleString()
+      : "";
 
     const impression = summary.impression || "No overall impression provided.";
     const followUp   = summary.suggested_follow_up || "No specific follow-up recommendations.";
-    const createdAt  = REPORT_DATA.created_at ? new Date(REPORT_DATA.created_at).toLocaleString() : "";
 
-    const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(REPORT_DATA.id)}`;
+    const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT_DATA.id}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 
-    const cbcTableRows = cbc.map((item, idx) => {
-      const refLow  = item.reference_low  != null ? item.reference_low  : "";
-      const refHigh = item.reference_high != null ? item.reference_high : "";
-      const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
-      return `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${item.analyte || ""}</td>
-          <td>${item.value != null ? item.value : ""}</td>
-          <td>${item.units || ""}</td>
-          <td>${refRange}</td>
-          <td>${item.flag || "normal"}</td>
-        </tr>
-      `;
-    }).join("");
+    const rows = cbc
+      .map((item, idx) => {
+        const refLow = item.reference_low ?? "";
+        const refHigh = item.reference_high ?? "";
+        const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${item.analyte || ""}</td>
+            <td>${item.value ?? ""}</td>
+            <td>${item.units || ""}</td>
+            <td>${refRange}</td>
+            <td>${item.flag || "normal"}</td>
+          </tr>
+        `;
+      })
+      .join("");
 
     const win = window.open("", "_blank");
 
@@ -429,10 +425,6 @@
       justify-content:space-between;
       align-items:center;
     }
-    .signature-block {
-      margin-top:20px;
-      font-size:12px;
-    }
     .signature-line {
       margin-top:24px;
       border-bottom:1px solid #111827;
@@ -448,7 +440,9 @@
 
   <div class="header">
     <div class="header-left">
+      <!-- LOGO FIXED HERE TOO -->
       <img src="https://amihealth.co.za/logo.png" alt="AMI Logo" />
+
       <div>
         <div class="header-title">AMI Health — AI Interpretation Report</div>
         <div class="header-sub">
@@ -467,7 +461,10 @@
     <div>Name: <b>${name}</b> &nbsp;&nbsp; Age: <b>${age}</b> &nbsp;&nbsp; Sex: <b>${sex}</b></div>
 
     <h2>Complete Blood Count (CBC) Overview</h2>
-    ${cbcTableRows ? `
+
+    ${
+      rows
+        ? `
       <table>
         <thead>
           <tr>
@@ -479,11 +476,10 @@
             <th>Flag</th>
           </tr>
         </thead>
-        <tbody>
-          ${cbcTableRows}
-        </tbody>
-      </table>
-    ` : `<div>No structured CBC data available in this AI report.</div>`}
+        <tbody>${rows}</tbody>
+      </table>`
+        : "<div>No structured CBC data available.</div>"
+    }
 
     <h2>AI Summary</h2>
     <div class="section-label">Impression</div>
@@ -492,7 +488,7 @@
     <div class="section-label">Suggested follow-up</div>
     <div>${followUp}</div>
 
-    <div class="signature-block">
+    <div style="margin-top:20px;">
       <div class="signature-line"></div>
       <div>Signed by: Dr ________________________________</div>
     </div>
@@ -500,15 +496,15 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
       <div style="font-size:10px; color:#6b7280;">
         This AI-generated interpretation is intended to support clinical judgement and does not
-        replace a medical diagnosis. Final diagnostic and treatment decisions must always be made
-        by a licensed medical professional.
+        replace a medical diagnosis. Final decisions must always be made by a licensed professional.
       </div>
       <div class="qr-block">
         <div>Scan to verify this report</div>
-        <img src="${qrUrl}" alt="Verification QR" />
+        <img src="${qrUrl}" alt="Verification QR">
         <div><a href="${verifyUrl}">${verifyUrl}</a></div>
       </div>
     </div>
+
   </div>
 
   <div class="footer">
