@@ -145,8 +145,7 @@
 <header>
   <div class="header-left">
     <a id="backBtn" href="/dashboard.html">← Back</a>
-    <!-- FIXED LOGO PATH -->
-    <img src="/lib/logo.png" alt="AMI Health Logo" />
+    <img src="/logo.png" alt="AMI Health Logo" />
   </div>
 
   <div class="header-actions">
@@ -231,12 +230,16 @@
     const rpt = data.report;
     REPORT_DATA = rpt;
 
+    // Patient info — ONLY DB VALUES
     document.getElementById("name").textContent = rpt.name || "Unknown";
-    document.getElementById("age").textContent = rpt.age != null ? rpt.age : "–";
-    document.getElementById("sex").textContent = rpt.sex || "–";
+    document.getElementById("age").textContent =
+      rpt.age != null ? rpt.age : "–";
+    document.getElementById("sex").textContent =
+      rpt.sex || "–";
     document.getElementById("date").textContent =
       rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
 
+    // Load original PDF
     if (rpt.file_path) {
       const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
       const pdfJson = await pdfRes.json();
@@ -258,7 +261,8 @@
   function safeParseAI(ai) {
     if (!ai) return {};
     if (typeof ai === "string") {
-      try { return JSON.parse(ai); } catch { return {}; }
+      try { return JSON.parse(ai); }
+      catch { return {}; }
     }
     return ai;
   }
@@ -334,7 +338,7 @@
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 
     const cbcTableRows = cbc.map((item, idx) => {
-      const refLow  = item.reference_low != null ? item.reference_low : "";
+      const refLow  = item.reference_low  != null ? item.reference_low  : "";
       const refHigh = item.reference_high != null ? item.reference_high : "";
       const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
       return `
@@ -444,8 +448,7 @@
 
   <div class="header">
     <div class="header-left">
-      <!-- FIXED LOGO PATH IN PRINT VIEW -->
-      <img src="https://amihealth.co.za/lib/logo.png" alt="AMI Logo" />
+      <img src="https://amihealth.co.za/logo.png" alt="AMI Logo" />
       <div>
         <div class="header-title">AMI Health — AI Interpretation Report</div>
         <div class="header-sub">
