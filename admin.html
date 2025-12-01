@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AMI Admin – Doctor Approvals</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, sans-serif;
+      background: #0e1225;
+      color: #e6eef8;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #151b33;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    th {
+      background: #1c2342;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .approve {
+      background: #00e0b8;
+      color: #001319;
+    }
+
+    .reject {
+      background: #ff6b6b;
+      color: white;
+      margin-left: 8px;
+    }
+
+    .status {
+      margin-top: 16px;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    .ok { color: #7ef7d3; }
+    .err { color: #ff8f9b; }
+  </style>
+</head>
+
+<body>
+
+  <h1>Doctor Access Approvals</h1>
+
+  <p>Only visible to Admin (you).</p>
+
+  <table id="pendingTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Practice #</th>
+        <th>Clinic</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="status" id="status"></div>
+
+  <script type="module">
+    import { supabase } from "./lib/supabaseClient.js";
+
+    const statusEl = document.getElementById("status");
+    const tbody = document.querySelector("#pendingTable tbody");
+
+    function setStatus(msg, type="ok") {
+      statusEl.textContent = msg;
+      statusEl.className = "status " + type;
+    }
+
+    // 🔐 ONLY YOU CAN VIEW THIS PAGE
+    const ADMIN_EMAIL = "rudi@your-email.com"; // <-- REPLACE WITH YOUR email
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || session.user.email !== ADMIN_EMAIL) {
+        alert("Access denied.");
+        window.location.href = "/login.html";
+      }
+    })();
+
+    // Load pending doctors
+    async function loadPending() {
+      const { data, error } = await supabase
+        .from("pending_doctors")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setStatus("Error loading pending doctors: " + error.message, "err");
+        return;
+      }
+
+      tbody.innerHTML = "";
+
+      data.forEach(doc => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${doc.full_name}</td>
+          <td>${doc.email}</td>
+          <td>${doc.practice_number}</td>
+          <td>${doc.clinic_name || "—"}</td>
+          <td>
+            <button class="approve" data-id="${doc.id}">Approve</button>
+            <button class="reject" data-id="${doc.id}">Reject</button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      attachActions();
+    }
+
+    loadPending();
+
+    // Approve / Reject actions
+    function attachActions() {
+      document.querySelectorAll(".approve").forEach(btn => {
+        btn.addEventListener("click", () => approveDoctor(btn.dataset.id));
+      });
+      document.querySelectorAll(".reject").forEach(btn => {
+        btn.addEventListener("click", () => rejectDoctor(btn.dataset.id));
+      });
+    }
+
+    async function approveDoctor(id) {
+      setStatus("Approving doctor…");
+
+      // Fetch pending doctor info
+      const { data: doc } = await supabase
+        .from("pending_doctors")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (!doc) return;
+
+      // 1️⃣ Create Supabase Auth user
+      const tempPass = crypto.randomUUID().slice(0, 10);
+
+      const { data: auth, error: authError } = await supabase.auth.admin.createUser({
+        email: doc.email,
+        password: tempPass,
+        email_confirm: true
+      });
+
+      if (authError) {
+        setStatus("Error creating user: " + authError.message, "err");
+        return;
+      }
+
+      // 2️⃣ Insert into users table
+      await supabase.from("users").insert({
+        id: auth.user.id,
+        email: doc.email,
+        full_name: doc.full_name,
+        practice_number: doc.practice_number,
+        clinic_name: doc.clinic_name,
+        clinic_address: doc.clinic_address
+      });
+
+      // 3️⃣ Remove from pending list
+      await supabase.from("pending_doctors").delete().eq("id", id);
+
+      // 4️⃣ Email login details
+      await fetch("/send-access-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: doc.email,
+          password: tempPass
+        })
+      });
+
+      setStatus("Doctor approved and login credentials emailed.");
+      loadPending();
+    }
+
+    async function rejectDoctor(id) {
+      await supabase.from("pending_doctors").delete().eq("id", id);
+      setStatus("Doctor rejected.");
+      loadPending();
+    }
+
+  </script>
+
+</body>
+</html>
