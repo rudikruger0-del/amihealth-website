@@ -114,7 +114,7 @@
     <input id="email" type="email" placeholder="doctor@clinic.co.za" />
 
     <label>Practice Number (MP Number)</label>
-    <input id="practice" type="text" placeholder="MPxxxxx" />
+    <input id="practice" type="text" placeholder="MP1234567" />
 
     <label>Clinic Name</label>
     <input id="clinicName" type="text" placeholder="Sundown Medical Centre" />
@@ -157,15 +157,24 @@
         return;
       }
 
+      // Split "Dr. John Doe" → title = Dr., first = John, last = Doe
+      const parts = nameVal.split(" ");
+      const title = parts.shift(); 
+      const first_name = parts.shift();
+      const last_name = parts.join(" ") || "";
+
       btn.disabled = true;
       setStatus("Submitting…", "ok");
 
       const { error } = await supabase.from("pending_doctors").insert({
-        full_name: nameVal,
+        title: title,
+        first_name: first_name,
+        last_name: last_name,
         email: emailVal,
-        practice_number: mpVal,
+        mp_number: mpVal,
         clinic_name: cNameVal,
-        clinic_address: cAddrVal
+        clinic_address: cAddrVal,
+        status: "pending"
       });
 
       if (error) {
