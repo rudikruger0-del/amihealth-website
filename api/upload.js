@@ -1,8 +1,9 @@
-// /api/upload.js — FINAL, FULLY SECURE VERSION
+// /api/upload.js — BULLETPROOF VERSION
 
 import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
 import fs from "fs";
+import crypto from "crypto";
 
 export const config = { api: { bodyParser: false } };
 
@@ -30,7 +31,6 @@ export default async function handler(req, res) {
     });
 
     const token = req.headers.authorization?.replace("Bearer ", "");
-
     const { data: userData } = await authClient.auth.getUser(token);
     const user = userData?.user;
 
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     }
 
     // ======================================================================
-    // 3) SECURITY CHECK — A USER CAN ONLY UPLOAD THEIR OWN REPORT
+    // 3) SECURITY CHECK — USER MUST MATCH SESSION USER
     // ======================================================================
 
     if (formEmail !== userEmail) {
@@ -89,24 +89,51 @@ export default async function handler(req, res) {
     }
 
     // ======================================================================
-    // 5) CREATE SERVICE-ROLE SUPABASE CLIENT AFTER AUTH PASSED
+    // 5) CREATE SERVICE-ROLE SUPABASE CLIENT
     // ======================================================================
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     // ======================================================================
-    // 6) INSERT REPORT RECORD — RLS SAFE
+    // ⭐ BULLETPROOF FIX STARTS HERE ⭐
+    // Upload FIRST — Create DB row ONLY after upload succeeds.
+    // ======================================================================
+
+    const buffer = fs.readFileSync(file.filepath);
+
+    // Create a UUID for report ID before inserting
+    const reportId = crypto.randomUUID();
+    const storagePath = `${reportId}.pdf`;
+
+    // ---- Upload PDF to storage BEFORE touching the database ----
+    const { error: uploadErr } = await supabase.storage
+      .from("reports")
+      .upload(storagePath, buffer, {
+        upsert: false,
+        contentType: file.mimetype || "application/pdf"
+      });
+
+    if (uploadErr) {
+      console.error("❌ Storage upload failed:", uploadErr);
+      return res.status(500).json({ error: "Upload failed" });
+    }
+
+    // ======================================================================
+    // DB ENTRY IS ONLY CREATED AFTER PDF EXISTS
+    // Therefore file_path can NEVER be null.
     // ======================================================================
 
     const { data: row, error: rowErr } = await supabase
       .from("reports")
       .insert({
+        id: reportId,
         email: userEmail,
-        user_id: user.id, // CRITICAL FOR RLS
+        user_id: user.id,
         title,
         name,
         age,
         sex,
+        file_path: storagePath, // ⭐ ALWAYS PRESENT
         ai_status: "pending"
       })
       .select()
@@ -114,47 +141,12 @@ export default async function handler(req, res) {
 
     if (rowErr) {
       console.error("❌ Error inserting report:", rowErr);
+
+      // Roll back PDF if DB fails
+      await supabase.storage.from("reports").remove([storagePath]);
+
       return res.status(500).json({ error: "DB insert failed" });
     }
-
-    const reportId = row.id;
-
-    // ======================================================================
-    // 7) UPLOAD PDF FILE TO STORAGE (PRIVATE BUCKET)
-    // ======================================================================
-
-    const buffer = fs.readFileSync(file.filepath);
-    const storagePath = `${reportId}.pdf`;
-
-    const { error: uploadErr } = await supabase.storage
-      .from("reports")
-      .upload(storagePath, buffer, {
-        upsert: true,
-        contentType: file.mimetype || "application/pdf"
-      });
-
-    if (uploadErr) {
-      console.error("❌ Storage upload failed:", uploadErr);
-
-      await supabase
-        .from("reports")
-        .update({
-          ai_status: "failed",
-          ai_error: "Storage upload failed"
-        })
-        .eq("id", reportId);
-
-      return res.status(500).json({ error: "Upload failed" });
-    }
-
-    // ======================================================================
-    // 8) SAVE FILE PATH
-    // ======================================================================
-
-    await supabase
-      .from("reports")
-      .update({ file_path: storagePath })
-      .eq("id", reportId);
 
     // ======================================================================
     // 9) SUCCESS
