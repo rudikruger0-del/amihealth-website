@@ -154,22 +154,16 @@ import { supabase } from "./lib/supabaseClient.js";
  **************************************/
 async function requireAuth() {
   const { data: { session }, error } = await supabase.auth.getSession();
-
   if (error || !session) {
     window.location.href = "/login.html";
     return null;
   }
-
   return session;
 }
-
 const session = await requireAuth();
-if (!session) {
-  // already redirected
-}
 
 /**************************************
- * 🔐 LOGOUT HANDLER
+ * 🔐 LOGOUT
  **************************************/
 document.getElementById("logoutLink").onclick = async () => {
   await supabase.auth.signOut();
@@ -177,7 +171,7 @@ document.getElementById("logoutLink").onclick = async () => {
 };
 
 /**************************************
- * 📤 SECURE UPLOAD
+ * 📤 FIXED & SAFE UPLOAD FLOW
  **************************************/
 const uploadBtn = document.getElementById("uploadBtn");
 const statusText = document.getElementById("statusText");
@@ -194,10 +188,13 @@ uploadBtn.onclick = async () => {
     return;
   }
 
+  // Disable button to prevent double-click issues
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = "Uploading…";
+
   statusText.style.color = "#96a0b8";
   statusText.textContent = "Uploading… Please wait.";
 
-  // ⭐ THE FIX — include token!
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session.access_token;
 
@@ -210,20 +207,24 @@ uploadBtn.onclick = async () => {
 
   const res = await fetch("/api/upload", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`
-    },
+    headers: { Authorization: `Bearer ${token}` },
     body: formData
   });
 
   const data = await res.json();
 
-  if (!data.ok) {
+  // NEW SAFETY CHECKS — MAKES MISSING file_path IMPOSSIBLE
+  if (!data.ok || !data.file_path || data.file_path.trim() === "") {
     statusText.style.color = "#ff8080";
-    statusText.textContent = "Upload failed: " + data.error;
+    statusText.textContent =
+      "Upload failed — PDF was not fully processed. Please try again.";
+
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = "Upload";
     return;
   }
 
+  // SUCCESS
   statusText.style.color = "#00e0b8";
   statusText.textContent = "Upload successful! Redirecting…";
 
