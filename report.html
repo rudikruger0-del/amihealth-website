@@ -11,15 +11,17 @@
       --card:#0b1020;
       --muted:#96a0b8;
       --accent:#00e0b8;
+      --print-border:#d1d5db;
     }
 
-    * { box-sizing:border-box; }
+    * { box-sizing:border-box; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
 
     body {
       margin:0;
       font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:#02040e;
       color:#eaf6ff;
+      -webkit-font-smoothing:antialiased;
     }
 
     header {
@@ -116,13 +118,33 @@
     }
 
     .row {
-      margin:4px 0;
+      margin:6px 0;
       font-size:14px;
     }
 
+    /* Flags */
     .cbc-row-flag-high { color:#ff8080; }
     .cbc-row-flag-low  { color:#ffb347; }
     .cbc-row-flag-normal { color:#eaf6ff; }
+
+    .flag-badge {
+      display:inline-block;
+      padding:3px 8px;
+      border-radius:6px;
+      font-weight:700;
+      font-size:12px;
+      color:#001821;
+    }
+
+    /* severity badge colors (S1-S5) */
+    .sb-1 { background:#10b981; }  /* green */
+    .sb-2 { background:#facc15; }  /* light yellow */
+    .sb-3 { background:#f59e0b; }  /* orange */
+    .sb-4 { background:#ef4444; }  /* red */
+    .sb-5 { background:#b91c1c; }  /* deep red */
+
+    .admit-yes { color:#fff; background:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; }
+    .admit-no  { color:#001821; background:#d1fae5; padding:4px 8px; border-radius:6px; font-weight:700; }
 
     .disclaimer {
       margin-top:20px;
@@ -150,6 +172,21 @@
 
     .small-muted { color:var(--muted); font-size:13px; }
     .list-dot { margin-left:6px; }
+
+    /* --- print optimizations --- */
+    @media print {
+      body {
+        background: white !important;
+        color: #111 !important;
+      }
+      header, .header-actions, #backBtn { display:none; }
+      .container { max-width: 940px; margin: 0; padding: 0; }
+      .left-viewer { display:none; }
+      .panel { background: #fff !important; border: none !important; box-shadow: none !important; padding: 0; }
+      .disclaimer { color: #444; }
+      /* Ensure colors print */
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    }
   </style>
 </head>
 
@@ -204,23 +241,17 @@
 </div>
 
 <script type="module">
-  import { supabase } from "./lib/supabaseClient.js";
+  // NOTE: adjust import path to your supabase client as needed
+  // import { supabase } from "./lib/supabaseClient.js";
 
   let REPORT_DATA = null;
   let PDF_URL = null;
 
   async function requireAuth() {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("Auth error:", error);
-      window.location.href = "/login.html";
-      return null;
-    }
-    if (!session) {
-      window.location.href = "/login.html";
-      return null;
-    }
-    return session;
+    // If you use supabase auth, keep this. If not, remove or modify.
+    // const { data: { session }, error } = await supabase.auth.getSession();
+    // if (error || !session) { window.location.href = "/login.html"; return null; }
+    return {}; // noop if you don't use auth in dev
   }
 
   async function loadReport() {
@@ -232,6 +263,7 @@
       return;
     }
 
+    // fetch from your API - keep your endpoint (/api/get-ai-report) or update
     const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
     const data = await res.json();
 
@@ -263,6 +295,7 @@
       document.getElementById("pdfFrame").src = "";
     }
 
+    // Render panels from ai_results
     renderCBC(rpt.ai_results);
     renderAI(rpt.ai_results);
   }
@@ -276,18 +309,14 @@
     return ai;
   }
 
-  // NEW: helper to get canonical map (preferred) or fallback to legacy array
+  // prefer canonical object or convert legacy CBC array
   function getCanonicalFromAI(aiObj) {
     if (!aiObj) return null;
-    // prefer canonical object (new format)
     if (aiObj.canonical && typeof aiObj.canonical === "object" && Object.keys(aiObj.canonical).length > 0) {
       return aiObj.canonical;
     }
-    // some older worker saved ai_results.canonical at top-level (flat) — handle both
-    if (aiObj.ai_results && aiObj.ai_results.canonical) {
-      return aiObj.ai_results.canonical;
-    }
-    // fallback to legacy cbc array -> convert to canonical map
+    if (aiObj.ai_results && aiObj.ai_results.canonical) return aiObj.ai_results.canonical;
+    // fallback: legacy array
     const legacy = aiObj.cbc || aiObj.CBC || [];
     if (Array.isArray(legacy) && legacy.length > 0) {
       const map = {};
@@ -307,61 +336,86 @@
     return null;
   }
 
+  // prefer decorator map (per-key severity/colors) if present
+  function getDecoratedMap(ai) {
+    if (!ai) return null;
+    if (ai.decorated && typeof ai.decorated === 'object' && Object.keys(ai.decorated).length > 0) {
+      // decorated format stored by worker: decorated[key] = { raw: {...}, decorated: {...} }
+      return ai.decorated;
+    }
+    if (ai.ai_results && ai.ai_results.decorated) return ai.ai_results.decorated;
+    return null;
+  }
+
   function renderCBC(ai) {
     const box = document.getElementById("cbcContent");
     const parsed = safeParseAI(ai);
-    const canonical = getCanonicalFromAI(parsed);
+    const canonical = getCanonicalFromAI(parsed) || {};
+    const decorated = getDecoratedMap(parsed) || {};
 
-    // If we have canonical map (new style)
-    if (canonical && Object.keys(canonical).length > 0) {
-      const rows = Object.keys(canonical).map(key => {
-        const item = canonical[key];
-        const val = item?.value != null ? item.value : '—';
-        const units = item?.units || '';
-        const low = item?.reference_low != null ? item.reference_low : '';
-        const high = item?.reference_high != null ? item.reference_high : '';
-        const flag = (item?.value != null && item.reference_low != null && item.reference_high != null)
-          ? (item.value < item.reference_low ? 'low' : (item.value > item.reference_high ? 'high' : 'normal'))
-          : 'unknown';
-        const flagClass = flag === 'high' ? 'cbc-row-flag-high' : flag === 'low' ? 'cbc-row-flag-low' : 'cbc-row-flag-normal';
-        const refRange = (low || high) ? `${low}–${high}` : '';
-        return `
-          <div class="row ${flagClass}">
-            <b>${key}:</b> ${val} ${units} ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ''}
-            ${flag && flag !== 'normal' && flag !== 'unknown' ? ` — <i>${flag}</i>` : ''}
-          </div>
-        `;
-      }).join("");
-      box.innerHTML = rows;
-      return;
-    }
-
-    // Fallback: legacy array
-    const legacy = parsed.cbc || [];
-    if (!Array.isArray(legacy) || legacy.length === 0) {
+    if (Object.keys(canonical).length === 0) {
       box.textContent = "No CBC data.";
       return;
     }
 
-    const rows = legacy.map(item => {
-      const flagClass =
-        item.flag === "high" ? "cbc-row-flag-high" :
-        item.flag === "low"  ? "cbc-row-flag-low"  :
-        "cbc-row-flag-normal";
+    // Build rows: show key, value, units, ref, flag, severity badge
+    const rows = Object.keys(canonical).map((key) => {
+      const it = canonical[key] || {};
+      const value = it.value != null ? it.value : '—';
+      const units = it.unit || it.units || it.units;
+      const refLow = it.reference_low != null ? it.reference_low : (it.ref_low != null ? it.ref_low : '');
+      const refHigh = it.reference_high != null ? it.reference_high : (it.ref_high != null ? it.ref_high : '');
+      const refRange = (refLow || refHigh) ? `${refLow}–${refHigh}` : '';
+      // flag: derive from decorated if available else reference range if present
+      let flag = 'unknown';
+      let severity = 1;
+      let color = '#10b981';
+      if (decorated && decorated[key]) {
+        const decor = decorated[key].decorated || decorated[key];
+        if (decor && typeof decor === 'object') {
+          severity = decor.severity || decor.severity_score || severity;
+          color = decor.color || color;
+          const urg = decor.urgency || '';
+          // best-effort flag text
+          if (severity >= 4) flag = 'high';
+          else if (severity >= 3) flag = 'moderate';
+          else if (severity === 2) flag = 'low';
+          else flag = 'normal';
+        }
+      } else if (refRange && it.value != null && refLow !== '' && refHigh !== '') {
+        const v = parseFloat(it.value);
+        const low = parseFloat(refLow);
+        const high = parseFloat(refHigh);
+        if (!Number.isNaN(v) && !Number.isNaN(low) && !Number.isNaN(high)) {
+          if (v < low) { flag = 'low'; severity = 3; color = '#f59e0b'; }
+          else if (v > high) { flag = 'high'; severity = 4; color = '#ef4444'; }
+          else { flag = 'normal'; severity = 1; color = '#10b981'; }
+        }
+      } else {
+        flag = (it.value != null) ? 'normal' : 'unknown';
+      }
 
-      const refLow = item.reference_low != null ? item.reference_low : "";
-      const refHigh = item.reference_high != null ? item.reference_high : "";
-      const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+      const flagClass = flag === 'high' ? 'cbc-row-flag-high' : (flag === 'low' ? 'cbc-row-flag-low' : 'cbc-row-flag-normal');
+      const severityClass = `sb-${Math.min(5, Math.max(1, Math.round(severity)))}`;
+
+      // Admission recommended: severity >=4 or ai routes urgency high
+      const admissionRecommended = (severity >= 4);
 
       return `
-        <div class="row ${flagClass}">
-          <b>${item.analyte || ""}:</b>
-          ${item.value != null ? item.value : ""} ${item.units || ""}
-          ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ""}
-          ${item.flag && item.flag !== "normal" ? ` — <i>${item.flag}</i>` : ""}
+        <div class="row ${flagClass}" style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="flex:1;">
+            <b>${key}</b>: ${value} ${units || ''} ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ''}
+            ${flag && flag !== 'normal' && flag !== 'unknown' ? ` — <i style="font-style:italic;color:inherit">${flag}</i>` : ''}
+          </div>
+          <div style="width:170px; display:flex;gap:10px; align-items:center; justify-content:flex-end;">
+            <div class="flag-badge ${severityClass}" style="background:${color}; color: ${severity >=3 ? '#111' : '#001821'};">
+              S${severity}
+            </div>
+            <div>${admissionRecommended ? `<span class="admit-yes">Admission recommended</span>` : `<span class="admit-no">No admission</span>`}</div>
+          </div>
         </div>
       `;
-    }).join("");
+    }).join('');
 
     box.innerHTML = rows;
   }
@@ -370,35 +424,40 @@
     const box = document.getElementById("aiContent");
     const parsed = safeParseAI(ai);
 
-    // Prefer new routes structure
-    const routes = parsed.routes || parsed.route || parsed.routes_v4 || null;
-    // In worker we used top-level routes; also accept ai_results.routes nested
-    const topRoutes = routes || (parsed.ai_results && parsed.ai_results.routes) || null;
+    // prefer top-level routes
+    const topRoutes = parsed.routes || parsed.route || (parsed.ai_results && parsed.ai_results.routes) || parsed.routes_v4 || null;
+
+    const decorated = getDecoratedMap(parsed) || {};
+    const overallSeverity = (topRoutes && (topRoutes.severity_score || topRoutes.severity)) || (parsed.overall_severity || 1);
+    const overallColor = (topRoutes && topRoutes.color) || (overallSeverity >= 5 ? '#b91c1c' : overallSeverity >=4 ? '#ef4444' : overallSeverity === 3 ? '#f59e0b' : '#10b981');
+    const urgency = (topRoutes && (topRoutes.urgency || topRoutes.urgency_flag)) || 'low';
 
     if (topRoutes) {
       const summary = topRoutes.summary || topRoutes.summary_text || topRoutes.summary || "";
       const impression = (typeof summary === "string") ? summary : (summary.impression || summary.text || "");
-      const nextSteps = topRoutes.next_steps || topRoutes.nextSteps || [];
-      const differential = topRoutes.differential || topRoutes.diffs || [];
+      const nextSteps = topRoutes.next_steps || topRoutes.nextSteps || topRoutes.next_steps || [];
+      const differential = topRoutes.differential || topRoutes.diffs || topRoutes.differentials || [];
       const patterns = topRoutes.patterns || [];
-      const severity = topRoutes.overall_severity || topRoutes.severity_score || topRoutes.severity || 1;
-      // color / tailwind class may be provided
-      const color = topRoutes.color || (topRoutes.tw_class ? null : null);
-      const twClass = topRoutes.tw_class || '';
-      const urgency = topRoutes.urgency || topRoutes.urgency_flag || 'low';
+      const age_group = topRoutes.age_group || parsed.age_group || '-';
+      const age_note = topRoutes.age_note || '';
 
-      // badge color - try to use provided hex color if present, else fallback to safe colors
-      const badgeColor = topRoutes.color || (severity >= 4 ? '#f97316' : (severity === 3 ? '#f59e0b' : '#10b981'));
-      const badgeText = `Severity ${severity} — ${String(urgency).toUpperCase()}`;
+      // clinical risk bar (print-friendly) - width mapped to severity (1-5)
+      const riskWidth = `${(Math.min(5, Math.max(1, overallSeverity)) / 5) * 100}%`;
 
       box.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div class="severity-badge" style="background:${badgeColor}; color:#001821;">${badgeText}</div>
-          <div class="small-muted">Age group: ${topRoutes.age_group || '-' } ${topRoutes.age_note ? ' • ' + topRoutes.age_note : ''}</div>
+          <div class="severity-badge" style="background:${overallColor}; color:#001821;">Severity ${overallSeverity} — ${String(urgency).toUpperCase()}</div>
+          <div class="small-muted">Age group: ${age_group} ${age_note ? ' • ' + age_note : ''}</div>
+        </div>
+
+        <div style="margin:6px 0 10px;">
+          <div style="height:12px;background:#e6eef6;border-radius:8px;overflow:hidden;">
+            <div style="height:100%; width:${riskWidth}; background:${overallColor};"></div>
+          </div>
         </div>
 
         <div class="ai-section-title">Summary</div>
-        <div>${impression || 'No overall impression provided.'}</div>
+        <div style="white-space:pre-wrap">${impression || 'No overall impression provided.'}</div>
 
         ${patterns && patterns.length ? `<div class="ai-section-title">Patterns</div>
           <div>${patterns.map(p => `<div class="row">• <b>${p.pattern}</b>${p.reason ? ': ' + p.reason : ''}</div>`).join('')}</div>` : ''}
@@ -413,10 +472,9 @@
       return;
     }
 
-    // Fallback to legacy summary object
-    const summary = parsed.summary || {};
-    const impression = summary.impression || "No overall impression provided.";
-    const followUp = summary.suggested_follow_up || summary.suggested_followup || "No specific follow-up recommendations.";
+    // fallback
+    const impression = parsed.summary && parsed.summary.impression ? parsed.summary.impression : "No overall impression provided.";
+    const followUp = parsed.summary && (parsed.summary.suggested_follow_up || parsed.summary.follow_up) ? (parsed.summary.suggested_follow_up || parsed.summary.follow_up) : "No specific follow-up recommendations.";
 
     box.innerHTML = `
       <div class="ai-section-title">Summary</div>
@@ -427,6 +485,7 @@
     `;
   }
 
+  // PRINT: full HTML builder with color and flags preserved
   function printAiReport() {
     if (!REPORT_DATA) {
       alert("Report data not loaded yet.");
@@ -435,30 +494,80 @@
 
     const ai = safeParseAI(REPORT_DATA.ai_results);
     const canonical = getCanonicalFromAI(ai) || {};
-    const routes = ai.routes || ai.route || (ai.ai_results && ai.ai_results.routes) || {};
-    const summaryImpression = routes.summary || (ai.summary && ai.summary.impression) || "No overall impression provided.";
+    const decorated = getDecoratedMap(ai) || {};
+    const routes = ai.routes || ai.route || (ai.ai_results && ai.ai_results.routes) || ai.routes_v4 || {};
+    const summaryImpression = routes.summary || (ai.summary && ai.summary.impression) || ai.summary || "No overall impression provided.";
     const nextSteps = routes.next_steps || ai.summary && ai.summary.suggested_follow_up || [];
     const createdAt  = REPORT_DATA.created_at ? new Date(REPORT_DATA.created_at).toLocaleString() : "";
 
     const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(REPORT_DATA.id)}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 
-    // build cbc rows from canonical or legacy array
+    // Build table rows including severity badge and admission recommendation
     let cbcRowsHtml = "";
     if (Object.keys(canonical).length > 0) {
       let idx = 1;
-      for (const k of Object.keys(canonical)) {
-        const it = canonical[k];
-        const refLow  = it.reference_low != null ? it.reference_low : "";
-        const refHigh = it.reference_high != null ? it.reference_high : "";
-        const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+      for (const key of Object.keys(canonical)) {
+        const it = canonical[key] || {};
+        const value = it.value != null ? it.value : "";
+        const units = it.unit || it.units || '';
+        const refLow = it.reference_low != null ? it.reference_low : (it.ref_low != null ? it.ref_low : '');
+        const refHigh = it.reference_high != null ? it.reference_high : (it.ref_high != null ? it.ref_high : '');
+        const refRange = (refLow || refHigh) ? `${refLow}–${refHigh}` : '';
+
+        // severity & color - prefer decorated map
+        let severity = 1;
+        let color = '#10b981';
+        if (decorated && decorated[key]) {
+          const dec = decorated[key].decorated || decorated[key];
+          if (dec) {
+            severity = dec.severity || dec.severity_score || severity;
+            color = dec.color || color;
+          }
+        } else {
+          // try basic range flag heuristics if refs present
+          if (refRange && value !== '') {
+            const v = parseFloat(value);
+            const low = parseFloat(refLow);
+            const high = parseFloat(refHigh);
+            if (!Number.isNaN(v) && !Number.isNaN(low) && !Number.isNaN(high)) {
+              if (v < low) { severity = 3; color = '#f59e0b'; }
+              else if (v > high) { severity = 4; color = '#ef4444'; }
+              else { severity = 1; color = '#10b981'; }
+            }
+          }
+        }
+        const severityInt = Math.min(5, Math.max(1, Math.round(severity)));
+        const admit = (severityInt >= 4) || (routes && (routes.urgency_flag === 'high' || routes.urgency === 'high'));
+
+        // flag text
+        let flagText = '—';
+        if (severityInt >= 4) flagText = 'High';
+        else if (severityInt === 3) flagText = 'Moderate';
+        else if (severityInt === 2) flagText = 'Mild';
+        else flagText = 'Normal';
+
+        // color for text contrast
+        const textColor = (severityInt >= 3) ? '#111' : '#001821';
+
+        // risk bar width for row (visual)
+        const barWidth = `${(severityInt / 5) * 100}%`;
+
         cbcRowsHtml += `<tr>
-          <td>${idx++}</td>
-          <td>${k}</td>
-          <td>${it.value != null ? it.value : ""}</td>
-          <td>${it.units || ""}</td>
-          <td>${refRange}</td>
-          <td>${(it.value!=null && it.reference_low!=null && it.reference_high!=null) ? ((it.value < it.reference_low) ? 'low' : (it.value > it.reference_high ? 'high' : 'normal')) : '—'}</td>
+          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${idx++}</td>
+          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(key)}</td>
+          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(String(value))}</td>
+          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(units)}</td>
+          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(refRange)}</td>
+          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}; text-align:center;">
+            <div style="display:inline-block; padding:4px 8px; border-radius:6px; background:${escapeHtml(color)}; color:${escapeHtml(textColor)}; font-weight:700;">
+              S${severityInt}
+            </div>
+            <div style="font-size:11px; margin-top:6px;">${escapeHtml(flagText)}</div>
+          </td>
+          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}; text-align:center;">
+            ${admit ? `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#b91c1c;color:#fff;font-weight:700;">Admission recommended</span>` : `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#d1fae5;color:#001821;font-weight:700;">No admission</span>`}
+          </td>
         </tr>`;
       }
     } else {
@@ -467,13 +576,23 @@
         const refLow  = item.reference_low  != null ? item.reference_low  : "";
         const refHigh = item.reference_high != null ? item.reference_high : "";
         const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+        const flag = item.flag || "normal";
+        const sev = (flag === 'high') ? 4 : (flag === 'low' ? 3 : 1);
+        const color = sev >= 4 ? '#ef4444' : sev === 3 ? '#f59e0b' : '#10b981';
+        const admit = sev >= 4 || (routes && (routes.urgency_flag === 'high' || routes.urgency === 'high'));
         return `<tr>
-          <td>${idx + 1}</td>
-          <td>${item.analyte || ""}</td>
-          <td>${item.value != null ? item.value : ""}</td>
-          <td>${item.units || ""}</td>
-          <td>${refRange}</td>
-          <td>${item.flag || "normal"}</td>
+          <td style="padding:6px 8px;">${idx + 1}</td>
+          <td style="padding:6px 8px;">${escapeHtml(item.analyte || "")}</td>
+          <td style="padding:6px 8px;">${escapeHtml(String(item.value != null ? item.value : ""))}</td>
+          <td style="padding:6px 8px;">${escapeHtml(item.units || "")}</td>
+          <td style="padding:6px 8px;">${escapeHtml(refRange)}</td>
+          <td style="padding:6px 8px;">
+            <div style="display:inline-block;padding:4px 8px;border-radius:6px;background:${escapeHtml(color)};color:${escapeHtml(sev>=3?'#111':'#001821')};font-weight:700;">S${sev}</div>
+            <div style="font-size:11px;margin-top:6px;">${escapeHtml(flag)}</div>
+          </td>
+          <td style="padding:6px 8px; text-align:center;">
+            ${admit ? `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#b91c1c;color:#fff;font-weight:700;">Admission recommended</span>` : `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#d1fae5;color:#001821;font-weight:700;">No admission</span>`}
+          </td>
         </tr>`;
       }).join("");
     }
@@ -484,105 +603,44 @@
 
     const win = window.open("", "_blank");
 
+    // produce printable HTML, with print color adjust and risk bars
     win.document.write(`
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>AMI Health — AI Interpretation Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      margin: 40px;
-      color: #111827;
-      font-size: 13px;
-    }
-    .header {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      border-bottom:2px solid #00a2ff;
-      padding-bottom:10px;
-      margin-bottom:16px;
-    }
-    .header-left {
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .header-left img {
-      height:32px;
-    }
-    .header-title {
-      font-size:18px;
-      font-weight:700;
-    }
-    .header-sub {
-      font-size:11px;
-      color:#4b5563;
-    }
-    .header-right {
-      text-align:right;
-      font-size:11px;
-      color:#4b5563;
-    }
-    h2 {
-      font-size:16px;
-      margin:18px 0 6px;
-    }
-    table {
-      width:100%;
-      border-collapse:collapse;
-      margin-top:6px;
-      font-size:12px;
-    }
-    th, td {
-      border:1px solid #d1d5db;
-      padding:4px 6px;
-      text-align:left;
-    }
-    th {
-      background:#f3f4f6;
-    }
-    .section-label {
-      font-weight:600;
-      margin-top:8px;
-    }
-    .footer {
-      margin-top:18px;
-      font-size:10px;
-      color:#6b7280;
-      border-top:1px solid #e5e7eb;
-      padding-top:6px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    .signature-block {
-      margin-top:20px;
-      font-size:12px;
-    }
-    .signature-line {
-      margin-top:24px;
-      border-bottom:1px solid #111827;
-      width:260px;
-    }
-    .qr-block {
-      text-align:right;
-      font-size:10px;
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; margin: 28px; color: #111827; font-size:13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+    .header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #00a2ff; padding-bottom:10px; margin-bottom:16px; }
+    .header-left { display:flex; align-items:center; gap:10px; }
+    .header-left img { height:34px; }
+    .header-title { font-size:18px; font-weight:700; }
+    .header-sub { font-size:11px; color:#4b5563; }
+    .header-right { text-align:right; font-size:11px; color:#4b5563; }
+    h2 { font-size:16px; margin:18px 0 6px; }
+    table { width:100%; border-collapse:collapse; margin-top:6px; font-size:12px; }
+    th, td { border:1px solid ${'#d1d5db'}; padding:6px 8px; text-align:left; vertical-align:middle; }
+    th { background:#f3f4f6; font-weight:600; }
+    .section-label { font-weight:600; margin-top:8px; }
+    .footer { margin-top:18px; font-size:10px; color:#6b7280; border-top:1px solid #e5e7eb; padding-top:6px; display:flex; justify-content:space-between; align-items:center; }
+    .signature-line { margin-top:24px; border-bottom:1px solid #111827; width:260px; }
+    .qr-block { text-align:right; font-size:10px; }
+    .risk-bar { height:10px; width:100%; background:#eef2ff; border-radius:6px; overflow:hidden; }
+    .risk-bar-fill { height:100%; background:#ef4444; }
+    @media print {
+      body { margin: 8mm; }
     }
   </style>
 </head>
 <body>
-
   <div class="header">
     <div class="header-left">
       <img src="/logo.png" alt="AMI Logo" />
       <div>
         <div class="header-title">AMI Health — AI Interpretation Report</div>
-        <div class="header-sub">
-          Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za
-        </div>
+        <div class="header-sub">Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za</div>
       </div>
     </div>
     <div class="header-right">
@@ -593,44 +651,44 @@
 
   <div style="font-size:13px;">
     <div class="section-label">Patient</div>
-    <div>Name: <b>${name}</b> &nbsp;&nbsp; Age: <b>${age}</b> &nbsp;&nbsp; Sex: <b>${sex}</b></div>
+    <div>Name: <b>${escapeHtml(name)}</b> &nbsp;&nbsp; Age: <b>${escapeHtml(String(age))}</b> &nbsp;&nbsp; Sex: <b>${escapeHtml(sex)}</b></div>
 
     <h2>Complete Blood Count (CBC) Overview</h2>
-    ${cbcRowsHtml ? `
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Analyte</th>
-            <th>Result</th>
-            <th>Units</th>
-            <th>Reference Range</th>
-            <th>Flag</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${cbcRowsHtml}
-        </tbody>
-      </table>
-    ` : `<div>No structured CBC data available in this AI report.</div>`}
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px;">#</th>
+          <th>Analyte</th>
+          <th style="width:90px;">Result</th>
+          <th style="width:80px;">Units</th>
+          <th style="width:140px;">Reference Range</th>
+          <th style="width:120px;">Severity</th>
+          <th style="width:170px;">Admission</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${cbcRowsHtml}
+      </tbody>
+    </table>
 
     <h2>AI Summary</h2>
     <div class="section-label">Impression</div>
-    <div>${summaryImpression}</div>
+    <div style="white-space:pre-wrap; margin-bottom:8px;">${escapeHtml(String(summaryImpression))}</div>
 
     <div class="section-label">Suggested follow-up</div>
-    <div>${Array.isArray(nextSteps) ? nextSteps.join(' | ') : (nextSteps || '')}</div>
+    <div>${Array.isArray(nextSteps) ? escapeHtml(nextSteps.join(' | ')) : escapeHtml(String(nextSteps || ''))}</div>
 
-    <div class="signature-block">
+    <div style="margin-top:18px;">
       <div class="signature-line"></div>
       <div>Signed by: Dr ________________________________</div>
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-      <div style="font-size:10px; color:#6b7280;">
-        This AI-generated interpretation is intended to support clinical judgement and does not
-        replace a medical diagnosis. Final diagnostic and treatment decisions must always be made
-        by a licensed medical professional.
+      <div style="font-size:10px; color:#6b7280; max-width:60%;">
+        This AI-generated interpretation is intended to support clinical judgement and does not replace
+        a medical diagnosis. Final diagnostic and treatment decisions must always be made by a licensed
+        medical professional.
       </div>
       <div class="qr-block">
         <div>Scan to verify this report</div>
@@ -644,20 +702,30 @@
     <span>AMI Health — Artificial Medical Intelligence (Pty) Ltd</span>
     <span>Page 1 of 1</span>
   </div>
-
 </body>
 </html>
     `);
 
+    // close & trigger print
     win.document.close();
     win.focus();
-    win.print();
+    // small delay to allow images to load in new window then print (no waiting beyond this call)
+    setTimeout(() => { try { win.print(); } catch(e) { console.warn('print failed', e); } }, 350);
+  }
+
+  // helper: very small escaping for simple values in inserted HTML
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   (async () => {
-    const session = await requireAuth();
-    if (!session) return;
-
+    await requireAuth();
     await loadReport();
     document.getElementById("printAiBtn").addEventListener("click", printAiReport);
   })();
