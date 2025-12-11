@@ -4,179 +4,91 @@
   <meta charset="utf-8" />
   <title>AMI — Report</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-
   <style>
-    :root {
+    :root{
       --bg:#030414;
       --card:#0b1020;
       --muted:#96a0b8;
       --accent:#00e0b8;
       --white:#eaf6ff;
       --row-padding:8px 0;
+      --print-font: "Helvetica Neue", Arial, sans-serif;
     }
-
-    * { box-sizing:border-box; }
-
-    body {
+    *{box-sizing:border-box}
+    body{
       margin:0;
       font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:#02040e;
+      background:var(--bg);
       color:var(--white);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
     }
-
-    header {
-      padding:18px 24px;
+    header{
+      padding:16px 20px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       background:#050a16;
-      border-bottom:1px solid rgba(255,255,255,0.08);
+      border-bottom:1px solid rgba(255,255,255,0.06);
     }
+    .header-left{display:flex;align-items:center;gap:14px}
+    #backBtn{color:#00d4ff;text-decoration:none;font-size:14px}
+    header img{height:36px}
+    .header-actions{display:flex;gap:10px}
+    .btn{padding:10px 16px;border-radius:999px;border:none;cursor:pointer;font-weight:700}
+    .btn.primary{background:linear-gradient(90deg,#00e0b8,#00b7ff);color:#001821}
+    .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--white)}
 
-    .header-left {
-      display:flex;
-      align-items:center;
-      gap:16px;
-    }
+    .container{max-width:1200px;margin:18px auto;padding:0 18px 30px;display:grid;grid-template-columns:1.2fr 1fr;gap:20px}
+    @media (max-width:900px){.container{grid-template-columns:1fr}}
 
-    #backBtn {
-      color:#00d4ff;
-      text-decoration:none;
-      font-size:14px;
-    }
+    .left-viewer{background:#000;border-radius:12px;overflow:hidden;height:78vh;border:1px solid rgba(255,255,255,0.06)}
+    iframe{width:100%;height:100%;border:none}
 
-    header img { height:40px; }
+    .panel{background:var(--card);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);margin-bottom:16px}
+    h2{margin:0 0 8px;font-size:18px;font-weight:700}
+    .row{margin:6px 0;font-size:14px;padding:var(--row-padding)}
+    .ai-section-title{margin-top:10px;font-weight:700;font-size:14px}
 
-    .header-actions {
-      display:flex;
-      gap:10px;
-    }
+    .cbc-row-flag-high{color:#ff8b8b}
+    .cbc-row-flag-low{color:#ffcf84}
+    .cbc-row-flag-normal{color:var(--white)}
 
-    .btn {
-      padding:10px 18px;
-      border-radius:999px;
-      border:none;
-      cursor:pointer;
-      font-size:14px;
-      font-weight:600;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
+    .small-muted{color:var(--muted);font-size:13px}
+    .disclaimer{margin-top:12px;text-align:center;font-size:12px;color:var(--muted);padding:6px}
 
-    .btn.primary {
-      background:linear-gradient(90deg,#00e0b8,#00b7ff);
-      color:#001821;
-    }
-
-    .btn.secondary {
-      background:transparent;
-      border:1px solid rgba(255,255,255,0.28);
-      color:var(--white);
-    }
-
-    .container {
-      max-width:1200px;
-      margin:20px auto;
-      padding:0 20px 30px;
-      display:grid;
-      grid-template-columns:1.2fr 1fr;
-      gap:20px;
-    }
-
-    @media (max-width:900px){
-      .container {
-        grid-template-columns:1fr;
-      }
-      .left-viewer {
-        height:60vh;
-      }
-    }
-
-    .left-viewer {
-      background:#000;
-      border-radius:12px;
-      overflow:hidden;
-      height:85vh;
-      border:1px solid rgba(255,255,255,0.08);
-    }
-
-    iframe { width:100%; height:100%; border:none;}
-
-    .panel {
-      background:var(--card);
-      padding:20px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.07);
-      margin-bottom:18px;
-    }
-
-    h2 {
-      margin-top:0;
-      font-size:20px;
-      font-weight:700;
-    }
-
-    .row {
-      margin:6px 0;
-      font-size:14px;
-      padding: var(--row-padding);
-    }
-
-    .cbc-row-flag-high { color:#ff8b8b; }     /* soft red */
-    .cbc-row-flag-low  { color:#ffcf84; }     /* soft orange */
-    .cbc-row-flag-normal { color:var(--white); }
-
-    .disclaimer {
-      margin-top:20px;
-      text-align:center;
-      font-size:12px;
-      color:var(--muted);
-      padding:10px;
-    }
-
-    .ai-section-title {
-      margin-top:10px;
-      font-weight:600;
-      font-size:14px;
-    }
-
-    .severity-badge {
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:700;
-      color:#001821;
-    }
-
-    .small-muted { color:var(--muted); font-size:13px; }
-    .list-dot { margin-left:6px; }
-
-    /* small printable tweaks */
+    /* PRINT STYLES */
     @media print {
-      body { background: #fff; color: #111; }
-      header, .header-actions { display:none; }
-      .container { max-width: 100%; margin: 0; padding: 0; grid-template-columns: 1fr; }
-      .left-viewer { display:none; }
+      :root{background:#fff;color:#111}
+      body{background:#fff;color:#111}
+      header, .header-actions, #backBtn, .left-viewer{display:none}
+      .container{max-width:100%;margin:0;padding:0;grid-template-columns:1fr}
+      .panel{background:transparent;border:none;padding:0;margin:0}
+      .print-wrapper{padding:18px 22px;color:#111;font-family:var(--print-font)}
+      .print-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #e6eef8;padding-bottom:10px;margin-bottom:10px}
+      .print-title{font-size:18px;font-weight:800;color:#0b1220}
+      .print-sub{font-size:11px;color:#4b5563}
+      table.cbc-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+      table.cbc-table th, table.cbc-table td{border:1px solid #e6eef8;padding:6px 8px;text-align:left}
+      table.cbc-table th{background:#f3f6fb;color:#0b1220;font-weight:700}
+      .impression-box{background:#f7fbff;border:1px solid #e6eef8;padding:10px;border-radius:6px;margin:8px 0;color:#0b1220}
+      .print-footer{margin-top:12px;font-size:11px;color:#6b7280;border-top:1px solid #e6eef8;padding-top:8px;display:flex;justify-content:space-between;align-items:center}
+      .qr {text-align:right}
+      /* Try to keep it to 1 page: reduce margins & fonts */
+      body, .print-wrapper { margin: 8px; }
     }
   </style>
 </head>
-
 <body>
 
 <header>
   <div class="header-left">
     <a id="backBtn" href="/dashboard.html">← Back</a>
-    <img src="/logo.png" alt="AMI Health Logo" />
+    <img src="/logo.png" alt="AMI Health Logo">
   </div>
-
   <div class="header-actions">
     <button id="printAiBtn" class="btn primary">Print / Save AI Report</button>
-    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">
-      Download Original PDF
-    </a>
+    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">Download Original PDF</a>
   </div>
 </header>
 
@@ -186,7 +98,6 @@
   </div>
 
   <div>
-
     <div class="panel" id="patientPanel">
       <h2>Patient Info</h2>
       <div class="row"><b>Name:</b> <span id="name">Loading…</span></div>
@@ -206,33 +117,32 @@
     </div>
 
     <div class="disclaimer">
-      This AI-generated interpretation is intended to support clinical judgement and does not replace
-      a medical diagnosis. Final diagnostic and treatment decisions must always be made by a licensed
-      medical professional.
+      This AI-generated interpretation is intended to support clinical judgement and does not replace a medical diagnosis.
+      Final diagnostic and treatment decisions must always be made by a licensed medical professional.
     </div>
-
   </div>
 </div>
 
 <script type="module">
-  // You can keep your existing supabase client import if you need auth; the UI below expects the same endpoints
-  // import { supabase } from "./lib/supabaseClient.js";
+/*
+  Robust report viewer + PrintAiReport()
+  - Handles ai_results shapes A/B/C (nested / stringified)
+  - Uses decorated -> canonical -> legacy fallback
+  - Renders Diagnostic Possibilities at top
+  - PrintAiReport outputs a single-page table-style PDF
+*/
 
+  // --- helper: fetch report and populate ---
   let REPORT_DATA = null;
   let PDF_URL = null;
 
   async function loadReport() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
-
-    if (!id) {
-      alert("Missing report id");
-      return;
-    }
+    if (!id) { alert("Missing report id"); return; }
 
     const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
     const data = await res.json();
-
     if (!data.ok) {
       document.getElementById("aiContent").textContent = "Report not found.";
       return;
@@ -244,8 +154,7 @@
     document.getElementById("name").textContent = rpt.name || "Unknown";
     document.getElementById("age").textContent = rpt.age != null ? rpt.age : "–";
     document.getElementById("sex").textContent = rpt.sex || "–";
-    document.getElementById("date").textContent =
-      rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
+    document.getElementById("date").textContent = rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
 
     if (rpt.file_path) {
       const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
@@ -265,270 +174,309 @@
     renderAI(rpt.ai_results);
   }
 
+  // --- robust parser for ai_results (handles A / B / C) ---
   function safeParseAI(ai) {
     if (!ai) return {};
-    if (typeof ai === "string") {
-      try { return JSON.parse(ai); }
-      catch { return {}; }
-    }
-    return ai;
-  }
-
-  // Prefer new worker format: ai_results.canonical and ai_results.decorated and ai_results.routes
-  function getCanonicalFromAI(aiObj) {
-    if (!aiObj) return null;
-    if (aiObj.canonical && typeof aiObj.canonical === "object" && Object.keys(aiObj.canonical).length > 0) {
-      return aiObj.canonical;
-    }
-    if (aiObj.ai_results && aiObj.ai_results.canonical) {
-      return aiObj.ai_results.canonical;
-    }
-    // fallback legacy
-    const legacy = aiObj.cbc || aiObj.CBC || [];
-    if (Array.isArray(legacy) && legacy.length > 0) {
-      const map = {};
-      for (const it of legacy) {
-        const name = it.analyte || it.label || it.name;
-        if (!name) continue;
-        map[name] = {
-          value: it.value != null ? it.value : null,
-          units: it.units || it.unit || null,
-          reference_low: it.reference_low || it.ref_low || null,
-          reference_high: it.reference_high || it.ref_high || null,
-          raw: it
-        };
+    // if object with ai_results nested inside, unwrap
+    if (typeof ai === 'object') {
+      // case B: ai = { ai_results: { canonical:..., decorated:... } }
+      if (ai.ai_results && typeof ai.ai_results === 'object' && (ai.ai_results.canonical || ai.ai_results.decorated || ai.ai_results.routes)) {
+        return ai.ai_results;
       }
-      return map;
+      // case A: ai = { canonical:..., decorated:... } -> already correct
+      if (ai.canonical || ai.decorated || ai.routes || ai.diagnostic_possibilities) {
+        return ai;
+      }
+      // double-wrapped stringified JSON inside ai.ai_results.ai_results etc -> attempt to find nested payload
+      // Search for nested object with canonical/decorated fields
+      for (const k of Object.keys(ai)) {
+        try {
+          const v = ai[k];
+          if (typeof v === 'string') {
+            const maybe = tryParseJsonSafe(v);
+            if (maybe && (maybe.canonical || maybe.decorated)) return maybe;
+          } else if (typeof v === 'object') {
+            if (v.canonical || v.decorated) return v;
+            if (v.ai_results && (v.ai_results.canonical || v.ai_results.decorated)) return v.ai_results;
+          }
+        } catch(e){ /* ignore */ }
+      }
+      return ai; // fallback
     }
-    return null;
-  }
 
-  function getDecoratedFromAI(aiObj) {
-    if (!aiObj) return {};
-    if (aiObj.decorated && typeof aiObj.decorated === "object" && Object.keys(aiObj.decorated).length > 0) {
-      return aiObj.decorated;
-    }
-    if (aiObj.ai_results && aiObj.ai_results.decorated) {
-      return aiObj.ai_results.decorated;
+    // case C: ai is a JSON string
+    if (typeof ai === 'string') {
+      const parsed = tryParseJsonSafe(ai);
+      if (parsed) return safeParseAI(parsed);
+      return {};
     }
     return {};
   }
 
+  // safe JSON parse that returns null on error
+  function tryParseJsonSafe(s) {
+    if (!s || typeof s !== 'string') return null;
+    try { return JSON.parse(s); } catch(e) { return null; }
+  }
+
+  // canonical getter: returns canonical map if present, else tries common fallbacks
+  function getCanonicalFromAI(aiObj) {
+    if (!aiObj) return {};
+    // aiObj expected to be the "ai_results" level after safeParseAI
+    if (aiObj.canonical && typeof aiObj.canonical === 'object') return aiObj.canonical;
+    // older shape: aiObj.ai_results.canonical (unlikely after safeParseAI but keep)
+    if (aiObj.ai_results && aiObj.ai_results.canonical) return aiObj.ai_results.canonical;
+    // fallback: legacy cbc array => convert
+    const legacy = aiObj.cbc || aiObj.CBC || aiObj.results || aiObj.lab || [];
+    if (Array.isArray(legacy) && legacy.length) {
+      const map = {};
+      for (const it of legacy) {
+        const name = it.analyte || it.label || it.name;
+        if (!name) continue;
+        map[name] = { value: it.value != null ? it.value : null, unit: it.unit || it.units || '', reference_low: it.reference_low || it.ref_low || null, reference_high: it.reference_high || it.ref_high || null, raw: it };
+      }
+      return map;
+    }
+    return {};
+  }
+
+  // decorated getter: returns decorated map or empty
+  function getDecoratedFromAI(aiObj) {
+    if (!aiObj) return {};
+    if (aiObj.decorated && typeof aiObj.decorated === 'object') return aiObj.decorated;
+    if (aiObj.decorations && typeof aiObj.decorations === 'object') return aiObj.decorations;
+    // sometimes decorated stored under nested "ai_results.decorated"
+    if (aiObj.ai_results && aiObj.ai_results.decorated) return aiObj.ai_results.decorated;
+    // If worker saved decorated as string, try parse
+    if (typeof aiObj.decorated === 'string') {
+      const p = tryParseJsonSafe(aiObj.decorated);
+      if (p && typeof p === 'object') return p;
+    }
+    return {};
+  }
+
+  // Utilities to normalize keys (some workers use uppercase analytes or slightly different names)
+  function getKeyVariants(key) {
+    return [key, key.toUpperCase(), key.charAt(0).toUpperCase() + key.slice(1)];
+  }
+
+  // Render CBC: A1 with color using decorated (preferred)
   function renderCBC(ai) {
     const box = document.getElementById("cbcContent");
     const parsed = safeParseAI(ai);
-    const canonical = getCanonicalFromAI(parsed) || {};
-    const decorated = getDecoratedFromAI(parsed) || {};
+    const canonical = getCanonicalFromAI(parsed);
+    const decorated = getDecoratedFromAI(parsed);
 
-    // Build rows using decorated when available, falling back to canonical values
-    const keys = new Set([
-      ...Object.keys(decorated).map(k => k),
-      ...Object.keys(canonical).map(k => k)
-    ]);
+    // collect keys from decorated (preferred) then canonical
+    const keys = new Set();
+    Object.keys(decorated || {}).forEach(k => keys.add(k));
+    Object.keys(canonical || {}).forEach(k => keys.add(k));
 
+    // If no structured data, fallback message
     if (keys.size === 0) {
-      box.textContent = "No CBC data.";
+      box.textContent = "No CBC data available.";
       return;
     }
 
-    const rows = Array.from(keys).map(key => {
-      // Normalize key label (keep as-is)
-      const dec = decorated[key] || decorated[key.toLowerCase()] || {};
-      const canon = canonical[key] || canonical[key.toLowerCase()] || {};
+    // Build rows
+    let html = '';
+    Array.from(keys).forEach(key => {
+      // Prefer decorated entry
+      let dec = decorated[key] || decorated[key.toLowerCase()] || decorated[key.toUpperCase()] || null;
+      let canon = canonical[key] || canonical[key.toLowerCase()] || canonical[key.toUpperCase()] || null;
 
-      // Worker V5 uses: decorated[key] = { value, unit, flag, color, severity_text, risk_bar }
-      const value = dec.value != null ? dec.value : (canon.value != null ? canon.value : '—');
-      const unit = dec.unit || canon.unit || canon.units || '';
-      // flag and color prefer decorated
-      const flag = dec.flag || (dec.decorated && dec.decorated.flag) || ''; 
-      // color hex: prefer decorated.color or decorated.decorated.color; fallback white
-      const color = dec.color || (dec.decorated && dec.decorated.color) || '#ffffff';
-      const sev = dec.severity_text || (dec.decorated && dec.decorated.severity_text) || '';
+      // If decorated contains .decorated wrapper (older format), unwrap
+      if (dec && dec.decorated && typeof dec.decorated === 'object') {
+        dec = Object.assign({}, dec, dec.decorated);
+      }
 
-      // determine class (for semantic styling fallback)
+      const value = (dec && dec.value != null) ? dec.value : (canon && canon.value != null ? canon.value : '—');
+      const unit = (dec && dec.unit) ? dec.unit : (canon && (canon.unit || canon.units) ? (canon.unit || canon.units) : '');
+      const flag = (dec && dec.flag) ? dec.flag : ((dec && dec.decorated && dec.decorated.flag) ? dec.decorated.flag : '');
+      const severity_text = (dec && dec.severity_text) ? dec.severity_text : ((dec && dec.decorated && dec.decorated.severity_text) ? dec.decorated.severity_text : '');
+      const color = (dec && dec.color) ? dec.color : ((dec && dec.decorated && dec.decorated.color) ? dec.decorated.color : '#ffffff');
+
+      // choose CSS class fallback for general look
       const flagClass = flag === 'high' ? 'cbc-row-flag-high' : (flag === 'low' ? 'cbc-row-flag-low' : 'cbc-row-flag-normal');
 
-      // produce text: "Hb: 12.3 g/dL — low (mild)"
       const flagText = flag ? ` — ${flag}` : '';
-      const sevText = sev ? ` (${sev})` : '';
+      const sevText = severity_text ? ` (${severity_text})` : '';
 
-      // inline style color = color (if it's white, keep default)
+      // Inline style color if provided and not white
       const style = (color && color !== '#ffffff') ? `style="color:${color}"` : '';
 
-      return `<div class="row ${flagClass}" ${style}><b>${key}:</b> ${value} ${unit} ${flagText}${sevText}</div>`;
-    }).join("");
+      html += `<div class="row ${flagClass}" ${style}><b>${key}:</b> ${value} ${unit}${flagText}${sevText}</div>`;
+    });
 
-    box.innerHTML = rows;
+    box.innerHTML = html;
   }
 
+  // Render AI Interpretation
   function renderAI(ai) {
     const box = document.getElementById("aiContent");
     const parsed = safeParseAI(ai);
-
-    // Prefer routes at top-level
-    const routes = parsed.routes || parsed.route || (parsed.ai_results && parsed.ai_results.routes) || {};
-    const decorated = parsed.decorated || (parsed.ai_results && parsed.ai_results.decorated) || {};
-    // diagnostic possibilities can be top-level in routes or at ai_results.diagnostic_possibilities
-    const diag = (routes && routes.diagnostic_possibilities) || parsed.diagnostic_possibilities || (parsed.ai_results && parsed.ai_results.diagnostic_possibilities) || [];
-
-    // severity_text now in routes.severity_text (Worker V5)
-    const severityText = routes.severity_text || routes.severity || '';
-    const urgency = routes.urgency_flag || routes.urgency || 'low';
-    const color = routes.color || '#10b981';
-
-    // Render diagnostic possibilities first (Option A)
-    let impressionHtml = '';
-    if (Array.isArray(diag) && diag.length > 0) {
-      impressionHtml = `<div class="ai-section-title">Diagnostic possibilities</div>
-        <div>${diag.map(d => `<div class="row">• ${d}</div>`).join('')}</div>`;
-    }
-
-    // Summary (routes.summary)
+    const routes = parsed.routes || parsed.route || parsed; // parsed should already be ai_results-level
+    const diag = parsed.diagnostic_possibilities || (routes && routes.diagnostic_possibilities) || parsed.diagnostic || [];
     const summary = routes.summary || routes.summary_text || parsed.summary || '';
+    const patterns = routes.patterns || parsed.patterns || [];
+    const differential = routes.differential || routes.ddx || parsed.differential || [];
+    const nextSteps = routes.next_steps || routes.nextSteps || parsed.next_steps || [];
 
-    // Patterns
-    const patterns = routes.patterns || [];
+    // severity text (text-only requirement)
+    const severityText = routes.severity_text || routes.severity || parsed.severity_text || '';
+    const badgeColor = routes.color || '#10b981';
+    const badgeHtml = severityText ? `<div class="severity-badge" style="background:${badgeColor}; color:#001821;">${severityText.toUpperCase()}</div>` : '';
 
-    // Differential
-    const differential = routes.differential || routes.ddx || [];
-
-    // Next steps
-    const nextSteps = routes.next_steps || routes.nextSteps || routes.next || [];
-
-    // Age note
-    const ageNote = routes.age_note ? ` • ${routes.age_note}` : '';
-
-    // Badge: show severity_text (TEXT ONLY)
-    const badgeHtml = severityText ? `<div class="severity-badge" style="background:${color}; color:#001821;">${severityText.toUpperCase()}</div>` : '';
+    // Diagnostic possibilities top
+    let impressionHtml = '';
+    if (Array.isArray(diag) && diag.length) {
+      impressionHtml = `<div class="ai-section-title">Diagnostic possibilities</div>
+        <div>${diag.map(d => `<div class="row">• ${escapeHtml(String(d))}</div>`).join('')}</div>`;
+    }
 
     box.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
         ${badgeHtml}
-        <div class="small-muted">Age group: ${routes.age_group || '-' } ${ageNote}</div>
+        <div class="small-muted">Age group: ${routes.age_group || parsed.age_group || '-'} ${routes.age_note ? ' • ' + routes.age_note : ''}</div>
       </div>
 
       ${impressionHtml}
 
       <div class="ai-section-title">Summary</div>
-      <div>${summary || 'No overall impression provided.'}</div>
+      <div>${escapeHtml(String(summary || 'No overall impression provided.'))}</div>
 
       ${patterns && patterns.length ? `<div class="ai-section-title">Patterns</div>
-        <div>${patterns.map(p => `<div class="row">• <b>${p.pattern}</b>${p.reason ? ': ' + p.reason : ''}</div>`).join('')}</div>` : ''}
+        <div>${patterns.map(p => `<div class="row">• <b>${escapeHtml(p.pattern || '')}</b>${p.reason ? ': ' + escapeHtml(p.reason) : ''}</div>`).join('')}</div>` : ''}
 
       ${differential && differential.length ? `<div class="ai-section-title">Top differential diagnoses</div>
-        <div>${differential.map(d => `<div class="row">• ${d}</div>`).join('')}</div>` : ''}
+        <div>${differential.map(d => `<div class="row">• ${escapeHtml(String(d))}</div>`).join('')}</div>` : ''}
 
       ${nextSteps && nextSteps.length ? `<div class="ai-section-title">Immediate suggested actions</div>
-        <div>${nextSteps.map(s => `<div class="row">• ${s}</div>`).join('')}</div>` : ''}
+        <div>${nextSteps.map(s => `<div class="row">• ${escapeHtml(String(s))}</div>`).join('')}</div>` : ''}
 
     `;
   }
 
-  // PrintAiReport: printable view using diagnostic_possibilities and decorated analytes (A1 style)
-  function printAiReport() {
-    if (!REPORT_DATA) {
-      alert("Report data not loaded yet.");
-      return;
-    }
+  // Utility to escape HTML for safety when injecting text into DOM
+  function escapeHtml(s) {
+    if (!s) return '';
+    return s.replaceAll('&', '&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;');
+  }
 
+  // Improved PrintAiReport(): table format, single page optimized
+  function printAiReport() {
+    if (!REPORT_DATA) { alert("Report data not loaded yet."); return; }
     const ai = safeParseAI(REPORT_DATA.ai_results);
     const decorated = getDecoratedFromAI(ai) || {};
     const canonical = getCanonicalFromAI(ai) || {};
-    const routes = ai.routes || ai.route || (ai.ai_results && ai.ai_results.routes) || {};
-    const diag = (routes && routes.diagnostic_possibilities) || ai.diagnostic_possibilities || (ai.ai_results && ai.ai_results.diagnostic_possibilities) || [];
+    const routes = ai.routes || ai.route || ai || {};
+    const diag = ai.diagnostic_possibilities || routes.diagnostic_possibilities || ai.diagnostic || [];
 
     const createdAt = REPORT_DATA.created_at ? new Date(REPORT_DATA.created_at).toLocaleString() : "";
     const name = REPORT_DATA.name || "Unknown";
     const age  = REPORT_DATA.age != null ? REPORT_DATA.age : "–";
     const sex  = REPORT_DATA.sex || "–";
-
     const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(REPORT_DATA.id)}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
 
-    // Build CBC rows (A1 style) from decorated (preferred) or canonical fallback
-    const keys = new Set([...Object.keys(decorated), ...Object.keys(canonical)]);
-    const cbcRows = [];
-    for (const k of keys) {
-      const dec = decorated[k] || decorated[k.toLowerCase()] || {};
-      const canon = canonical[k] || canonical[k.toLowerCase()] || {};
-      const value = dec.value != null ? dec.value : (canon.value != null ? canon.value : '');
-      const unit = dec.unit || canon.unit || canon.units || '';
-      const flag = dec.flag || (dec.decorated && dec.decorated.flag) || '';
-      const severity = dec.severity_text || (dec.decorated && dec.decorated.severity_text) || '';
-      const color = dec.color || (dec.decorated && dec.decorated.color) || '#000000';
+    // Prepare table rows (keys from decorated and canonical)
+    const keys = Array.from(new Set([ ...Object.keys(decorated), ...Object.keys(canonical) ]));
 
-      // row HTML with inline color
-      const flagText = flag ? ` — ${flag}` : '';
-      const sevText = severity ? ` (${severity})` : '';
-      const style = (color && color !== '#ffffff') ? `style="color:${color}"` : '';
-
-      cbcRows.push(`<div style="padding:4px 0; ${style}"><strong>${k}:</strong> ${value} ${unit}${flagText}${sevText}</div>`);
+    // If still empty, attempt to pick top common analytes
+    if (keys.length === 0) {
+      keys.push('Hb','WBC','Neutrophils','Platelets','CRP','Creatinine','Sodium','Potassium');
     }
 
-    const summaryImpression = Array.isArray(diag) && diag.length ? diag.map(d => `<div>${d}</div>`).join('') : (routes.summary || ai.summary || 'No overall impression provided.');
-    const nextStepsArr = routes.next_steps || ai.summary && ai.summary.suggested_follow_up || [];
+    let tableRowsHtml = '';
+    let rowIndex = 1;
+    for (const k of keys) {
+      let dec = decorated[k] || decorated[k.toLowerCase()] || decorated[k.toUpperCase()] || null;
+      let canon = canonical[k] || canonical[k.toLowerCase()] || canonical[k.toUpperCase()] || null;
+      if (dec && dec.decorated && typeof dec.decorated === 'object') dec = Object.assign({}, dec, dec.decorated);
+      const value = (dec && dec.value != null) ? dec.value : (canon && canon.value != null ? canon.value : '');
+      const unit = (dec && dec.unit) ? dec.unit : (canon && (canon.unit || canon.units) ? (canon.unit || canon.units) : '');
+      const flag = (dec && dec.flag) ? dec.flag : ((dec&&dec.decorated&&dec.decorated.flag)?dec.decorated.flag:'');
+      const severity_text = (dec && dec.severity_text) ? dec.severity_text : ((dec && dec.decorated && dec.decorated.severity_text) ? dec.decorated.severity_text : '');
+      const color = (dec && dec.color) ? dec.color : ((dec && dec.decorated && dec.decorated.color) ? dec.decorated.color : '#000000');
+      const flagLabel = flag || (value === '' ? '—' : 'normal');
 
-    const win = window.open("", "_blank");
+      // For printing, text color needs contrast — convert hex to rgb and use as inline style if dark text is readable
+      const styleColor = (color && color !== '#ffffff') ? `style="color:${color}"` : '';
+      tableRowsHtml += `<tr>
+        <td style="padding:6px 8px;">${rowIndex++}</td>
+        <td style="padding:6px 8px;">${escapeHtml(k)}</td>
+        <td style="padding:6px 8px;">${escapeHtml(String(value))}</td>
+        <td style="padding:6px 8px;">${escapeHtml(String(unit))}</td>
+        <td style="padding:6px 8px;" ${styleColor}>${escapeHtml(String(flagLabel))}${severity_text ? ' • ' + escapeHtml(String(severity_text)) : ''}</td>
+      </tr>`;
+    }
+
+    // Diagnostic possibilities HTML
+    const diagHtml = (Array.isArray(diag) && diag.length) ? diag.map(d => `<div>• ${escapeHtml(String(d))}</div>`).join('') : (routes.summary || ai.summary || 'No overall impression provided.');
+
+    // Build printable HTML (single page optimized)
+    const win = window.open('', '_blank');
     win.document.write(`<!doctype html>
 <html>
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8">
 <title>AMI Health — AI Interpretation Report</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; margin:30px; color:#111; }
-  .header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #00a2ff; padding-bottom:10px; margin-bottom:16px; }
-  .header-left { display:flex; gap:10px; align-items:center; }
-  .header-left img { height:32px; }
-  .header-title { font-size:18px; font-weight:700; }
-  .header-sub { font-size:11px; color:#4b5563; }
-  .section-label { font-weight:700; margin-top:12px; font-size:13px; }
-  table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px;}
-  th, td { border:1px solid #d1d5db; padding:6px 8px; text-align:left; }
-  th { background:#f3f4f6; }
-  .footer { margin-top:18px; font-size:10px; color:#6b7280; border-top:1px solid #e5e7eb; padding-top:8px; display:flex; justify-content:space-between; align-items:center; }
-  .qr { text-align:center; font-size:11px; color:#374151; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin:18px; color:#111; background:#fff; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #e6eef8; padding-bottom:8px; margin-bottom:10px }
+  .title { font-size:18px; font-weight:800; color:#0b1220 }
+  .sub { font-size:11px; color:#4b5563 }
+  .meta { font-size:12px; color:#374151 }
+  .impression { margin-top:8px; margin-bottom:12px }
+  .impression-box { background:#f7fbff; border:1px solid #e6eef8; padding:10px; border-radius:6px; color:#0b1220 }
+  table.cbc-table { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+  table.cbc-table th, table.cbc-table td { border:1px solid #e6eef8; padding:8px; text-align:left; vertical-align:middle }
+  table.cbc-table th { background:#f3f6fb; font-weight:700; color:#0b1220 }
+  .actions { margin-top:12px; font-size:12px; }
+  .footer { margin-top:14px; font-size:11px; color:#6b7280; border-top:1px solid #e6eef8; padding-top:8px; display:flex; justify-content:space-between; align-items:center }
+  .qr { text-align:right; font-size:11px; color:#374151 }
+  @media print {
+    body { margin:8px; }
+  }
 </style>
 </head>
 <body>
-
   <div class="header">
-    <div class="header-left">
-      <img src="/logo.png" alt="AMI" />
-      <div>
-        <div class="header-title">AMI Health — AI Interpretation Report</div>
-        <div class="header-sub">Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za</div>
-      </div>
+    <div>
+      <div class="title">AMI Health — AI Interpretation Report</div>
+      <div class="sub">Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za</div>
+      <div class="meta">Report generated: ${escapeHtml(createdAt)} &nbsp;&nbsp; Patient: <strong>${escapeHtml(name)}</strong> • Age: <strong>${escapeHtml(String(age))}</strong> • Sex: <strong>${escapeHtml(sex)}</strong></div>
     </div>
-    <div style="text-align:right">
-      <div>Report generated: ${createdAt}</div>
-      <div style="margin-top:6px">Patient: <strong>${name}</strong> • Age: <strong>${age}</strong> • Sex: <strong>${sex}</strong></div>
+    <div class="qr">
+      <img src="${qrUrl}" alt="QR" style="width:90px;height:90px;border:0"/><br/>
+      <div style="margin-top:6px;"><a href="${verifyUrl}">${verifyUrl}</a></div>
     </div>
   </div>
 
-  <div>
-    <div class="section-label">Diagnostic possibilities</div>
-    <div style="margin-top:6px;">${summaryImpression}</div>
+  <div class="impression">
+    <div style="font-weight:700;margin-bottom:6px">Diagnostic possibilities</div>
+    <div class="impression-box">${diagHtml}</div>
+  </div>
 
-    <div class="section-label">CBC Results</div>
-    <div style="margin-top:8px;">
-      ${cbcRows.join('')}
-    </div>
+  <div style="margin-top:6px;font-weight:700">Complete Blood Count — Results</div>
+  <table class="cbc-table" role="table" aria-label="CBC results">
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th style="width:220px">Analyte</th>
+        <th style="width:100px">Result</th>
+        <th style="width:90px">Unit</th>
+        <th>Flag • Severity</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tableRowsHtml}
+    </tbody>
+  </table>
 
-    <div class="section-label">Immediate suggested actions</div>
-    <div style="margin-top:6px;">
-      ${Array.isArray(nextStepsArr) ? nextStepsArr.map(s => `<div>• ${s}</div>`).join('') : (nextStepsArr || '')}
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:18px;">
-      <div style="font-size:11px; color:#4b5563;">
-        This AI-generated interpretation supports clinical judgement and does not replace a medical diagnosis.
-      </div>
-      <div class="qr">
-        <img src="${qrUrl}" alt="QR" />
-        <div><a href="${verifyUrl}">${verifyUrl}</a></div>
-      </div>
-    </div>
-
+  <div class="actions" style="margin-top:12px;">
+    <div style="font-weight:700;margin-bottom:6px">Immediate suggested actions</div>
+    <div>${(routes.next_steps && routes.next_steps.length) ? routes.next_steps.map(s => `<div>• ${escapeHtml(String(s))}</div>`).join('') : (Array.isArray(ai.suggested_actions) ? ai.suggested_actions.map(s=>`<div>• ${escapeHtml(String(s))}</div>`).join('') : (routes.next_steps || ai.next_steps || 'No immediate suggested actions.'))}</div>
   </div>
 
   <div class="footer">
@@ -538,18 +486,17 @@
 
 </body>
 </html>`);
-
     win.document.close();
     win.focus();
-    // small delay to ensure assets render
-    setTimeout(() => win.print(), 350);
+    // tiny delay to allow images to load
+    setTimeout(()=>win.print(), 350);
   }
 
-  // Initialize
+  // Init
   (async () => {
     await loadReport();
     document.getElementById("printAiBtn").addEventListener("click", printAiReport);
-    document.getElementById("downloadOriginalBtn").addEventListener("click", (e) => {
+    document.getElementById("downloadOriginalBtn").addEventListener("click", (e)=>{
       if (!PDF_URL) { e.preventDefault(); alert("Original PDF not available."); }
     });
   })();
