@@ -1,191 +1,223 @@
-<!DOCTYPE html>
+function printAiReport() {
+  if (!REPORT_DATA) {
+    alert("Report data not loaded yet.");
+    return;
+  }
+
+  const ai = safeParseAI(REPORT_DATA.ai_results);
+  const canonical = getCanonicalFromAI(ai) || {};
+  const routes = ai.routes || ai.route || (ai.ai_results && ai.ai_results.routes) || {};
+  const summaryImpression = routes.summary || (ai.summary && ai.summary.impression) || "No overall impression provided.";
+  const nextSteps = routes.next_steps || ai.summary && ai.summary.suggested_follow_up || [];
+  const createdAt  = REPORT_DATA.created_at ? new Date(REPORT_DATA.created_at).toLocaleString() : "";
+
+  const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(REPORT_DATA.id)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
+
+  // helper to decide flag string and flag class (text-only colours)
+  function flagForItem(it) {
+    if (!it || it.value == null) return { flagText: "—", flagClass: "flag-unknown" };
+
+    const low = it.reference_low != null ? Number(it.reference_low) : null;
+    const high = it.reference_high != null ? Number(it.reference_high) : null;
+    const val = Number(it.value);
+
+    if (low != null && high != null) {
+      if (!isNaN(val) && val < low) return { flagText: "low", flagClass: "flag-low" };
+      if (!isNaN(val) && val > high) return { flagText: "high", flagClass: "flag-high" };
+      return { flagText: "normal", flagClass: "flag-normal" };
+    }
+
+    // fallback to any provided flag field
+    const rawFlag = it.flag || it.flags || it.status || "";
+    if (typeof rawFlag === "string") {
+      const rf = rawFlag.toLowerCase();
+      if (rf.includes("high") || rf === "h") return { flagText: "high", flagClass: "flag-high" };
+      if (rf.includes("low") || rf === "l")  return { flagText: "low",  flagClass: "flag-low" };
+      if (rf === "normal" || rf === "n")     return { flagText: "normal", flagClass: "flag-normal" };
+      if (rf) return { flagText: rawFlag, flagClass: "flag-unknown" };
+    }
+
+    return { flagText: "—", flagClass: "flag-unknown" };
+  }
+
+  // build cbc rows from canonical or legacy array
+  let cbcRowsHtml = "";
+  if (Object.keys(canonical).length > 0) {
+    let idx = 1;
+    for (const k of Object.keys(canonical)) {
+      const it = canonical[k];
+      const val = it.value != null ? it.value : "";
+      const units = it.units || "";
+      const refLow  = it.reference_low != null ? it.reference_low : "";
+      const refHigh = it.reference_high != null ? it.reference_high : "";
+      const refRange = (refLow || refHigh) ? `${refLow}–${refHigh}` : "";
+      const flag = flagForItem(it);
+      cbcRowsHtml += `<tr>
+        <td>${idx++}</td>
+        <td>${k}</td>
+        <td>${val}</td>
+        <td>${units}</td>
+        <td>${refRange}</td>
+        <td class="${flag.flagClass}">${flag.flagText}</td>
+      </tr>`;
+    }
+  } else {
+    const legacy = ai.cbc || [];
+    cbcRowsHtml = legacy.map((item, idx) => {
+      const refLow  = item.reference_low  != null ? item.reference_low  : "";
+      const refHigh = item.reference_high != null ? item.reference_high : "";
+      const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
+      const it = {
+        value: item.value,
+        reference_low: item.reference_low,
+        reference_high: item.reference_high,
+        flag: item.flag
+      };
+      const flag = flagForItem(it);
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td>${item.analyte || ""}</td>
+        <td>${item.value != null ? item.value : ""}</td>
+        <td>${item.units || ""}</td>
+        <td>${refRange}</td>
+        <td class="${flag.flagClass}">${flag.flagText}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  const name = REPORT_DATA.name || "Unknown";
+  const age  = REPORT_DATA.age != null ? REPORT_DATA.age : "–";
+  const sex  = REPORT_DATA.sex || "–";
+
+  const win = window.open("", "_blank");
+
+  win.document.write(`
+<!doctype html>
 <html>
 <head>
-<meta charset="utf-8" />
-<title>AMI Health — AI Interpretation Report</title>
+  <meta charset="utf-8" />
+  <title>AMI Health — AI Interpretation Report</title>
+  <style>
+    /* base */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      margin: 40px;
+      color: #111827;
+      font-size: 13px;
+      background: white;
+    }
+    .header { display:flex; align-items:center; justify-content:space-between; border-bottom:3px solid #00a2ff; padding-bottom:10px; margin-bottom:16px; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .header-left img { height:40px; }
+    .header-title { font-size:20px; font-weight:700; }
+    .header-sub { font-size:11px; color:#4b5563; }
+    .header-right { text-align:right; font-size:11px; color:#4b5563; }
+    h2 { font-size:16px; margin:18px 0 6px; font-weight:700; }
+    .section-label { font-weight:600; margin-top:10px; font-size:13px; }
+    table { width:100%; border-collapse:collapse; margin-top:6px; font-size:12px; }
+    th, td { border:1px solid #d1d5db; padding:6px 6px; text-align:left; }
+    th { background:#f3f4f6; font-weight:600; }
 
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    margin: 40px;
-    color: #111827;
-    font-size: 13px;
-    background: white;
-  }
+    /* TEXT-ONLY FLAG COLOURS (no background) */
+    .flag-high { color:#b91c1c; font-weight:700; }    /* red text */
+    .flag-low  { color:#b45309; font-weight:700; }    /* amber text */
+    .flag-normal { color:#065f46; font-weight:700; }  /* green text */
+    .flag-unknown { color:#374151; font-weight:600; } /* neutral */
 
-  /* HEADER */
-  .header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    border-bottom:3px solid #00a2ff;
-    padding-bottom:10px;
-    margin-bottom:16px;
-  }
+    /* severity badges */
+    .severity-container { margin:12px 0; }
+    .sev-badge { display:inline-block; padding:6px 14px; font-size:13px; font-weight:700; border-radius:6px; color:white; }
+    .sev-5 { background:#dc2626; } .sev-4 { background:#ea580c; } .sev-3 { background:#facc15; color:#111 !important; } .sev-2 { background:#10b981; } .sev-1 { background:#0ea5e9; }
 
-  .header-left { display:flex; align-items:center; gap:12px; }
-  .header-left img { height:40px; }
-  .header-title { font-size:20px; font-weight:700; }
-  .header-sub { font-size:11px; color:#4b5563; }
-  .header-right { text-align:right; font-size:11px; color:#4b5563; }
+    .footer { margin-top:24px; font-size:10px; color:#6b7280; border-top:1px solid #e5e7eb; padding-top:8px; display:flex; justify-content:space-between; align-items:center; }
+    .signature-block { margin-top:24px; font-size:12px; }
+    .signature-line { margin-top:28px; border-bottom:1px solid #111827; width:280px; }
+    .qr-block { text-align:right; font-size:10px; }
 
-  /* SECTION TITLES */
-  h2 {
-    font-size:16px;
-    margin:18px 0 6px;
-    font-weight:700;
-  }
-
-  .section-label {
-    font-weight:600;
-    margin-top:10px;
-    font-size:13px;
-  }
-
-  /* CBC TABLE */
-  table {
-    width:100%;
-    border-collapse:collapse;
-    margin-top:6px;
-    font-size:12px;
-  }
-
-  th, td {
-    border:1px solid #d1d5db;
-    padding:6px;
-    text-align:left;
-  }
-
-  th { background:#f3f4f6; font-weight:600; }
-
-  /* CBC FLAG BACKGROUND COLORS */
-  .flag-high    { background:#ffe5e5; color:#b91c1c; font-weight:600; }
-  .flag-low     { background:#fff3d6; color:#b45309; font-weight:600; }
-  .flag-normal  { background:#e6fff4; color:#065f46; font-weight:500; }
-  .flag-unknown { background:white;  color:#374151; }
-
-  /* Severity badge colours */
-  .severity-container { margin:14px 0; }
-
-  .sev-badge {
-    display:inline-block;
-    padding:6px 14px;
-    font-size:13px;
-    font-weight:700;
-    border-radius:6px;
-    color:white;
-  }
-
-  .sev-5 { background:#dc2626; }
-  .sev-4 { background:#ea580c; }
-  .sev-3 { background:#facc15; color:#111 !important; }
-  .sev-2 { background:#10b981; }
-  .sev-1 { background:#0ea5e9; }
-
-  /* Signature */
-  .signature-block { margin-top:26px; font-size:12px; }
-  .signature-line { margin-top:24px; border-bottom:1px solid #111827; width:280px; }
-
-  /* Footer + QR */
-  .qr-block { text-align:right; font-size:10px; }
-  .footer {
-    margin-top:28px;
-    font-size:10px;
-    color:#6b7280;
-    border-top:1px solid #e5e7eb;
-    padding-top:6px;
-    display:flex;
-    justify-content:space-between;
-  }
-</style>
+    /* Ensure browsers attempt to preserve colours in printing (text colours are usually printed) */
+    @media print {
+      -webkit-print-color-adjust: exact;
+      color-adjust: exact;
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="header">
-  <div class="header-left">
-    <img src="/logo.png" />
-    <div>
-      <div class="header-title">AMI Health — AI Interpretation Report</div>
-      <div class="header-sub">
-        Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za
+  <div class="header">
+    <div class="header-left">
+      <img src="/logo.png" alt="AMI Logo" />
+      <div>
+        <div class="header-title">AMI Health — AI Interpretation Report</div>
+        <div class="header-sub">Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div>AMI Report</div>
+      <div>${createdAt}</div>
+    </div>
+  </div>
+
+  <div style="font-size:13px;">
+    <div class="section-label">Patient</div>
+    <div>Name: <b>${name}</b> &nbsp;&nbsp; Age: <b>${age}</b> &nbsp;&nbsp; Sex: <b>${sex}</b></div>
+
+    <h2>Complete Blood Count (CBC) Overview</h2>
+    ${cbcRowsHtml ? `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Analyte</th>
+            <th>Result</th>
+            <th>Units</th>
+            <th>Reference Range</th>
+            <th>Flag</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cbcRowsHtml}
+        </tbody>
+      </table>
+    ` : `<div>No structured CBC data available in this AI report.</div>`}
+
+    <h2>AI Summary</h2>
+    <div class="section-label">Impression</div>
+    <div>${summaryImpression}</div>
+
+    <div class="section-label">Suggested follow-up</div>
+    <div>${Array.isArray(nextSteps) ? nextSteps.join(' | ') : (nextSteps || '')}</div>
+
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <div>Signed by: Dr ________________________________</div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+      <div style="font-size:10px; color:#6b7280;">
+        This AI-generated interpretation is intended to support clinical judgement and does not
+        replace a medical diagnosis. Final diagnostic and treatment decisions must always be made
+        by a licensed medical professional.
+      </div>
+      <div class="qr-block">
+        <div>Scan to verify this report</div>
+        <img src="${qrUrl}" alt="Verification QR" />
+        <div><a href="${verifyUrl}">${verifyUrl}</a></div>
       </div>
     </div>
   </div>
 
-  <div class="header-right">
-    <div>AMI Report</div>
-    <div>{{CREATED_AT}}</div>
+  <div class="footer">
+    <span>AMI Health — Artificial Medical Intelligence (Pty) Ltd</span>
+    <span>Page 1 of 1</span>
   </div>
-</div>
-
-<!-- Patient -->
-<div class="section-label">Patient</div>
-<div>
-  Name: <b>{{NAME}}</b>  
-  &nbsp; Age: <b>{{AGE}}</b>  
-  &nbsp; Sex: <b>{{SEX}}</b>
-</div>
-
-<!-- Severity Badge -->
-<div class="severity-container">
-  <span class="sev-badge sev-{{SEVERITY_CLASS}}">
-    Severity {{SEVERITY}} — {{URGENCY}}
-  </span>
-</div>
-
-<!-- CBC Table -->
-<h2>Complete Blood Count (CBC) Overview</h2>
-
-<table>
-<thead>
-  <tr>
-    <th>#</th>
-    <th>Analyte</th>
-    <th>Result</th>
-    <th>Units</th>
-    <th>Reference</th>
-    <th>Flag</th>
-  </tr>
-</thead>
-<tbody>
-  {{CBC_ROWS}}
-</tbody>
-</table>
-
-<!-- AI Summary -->
-<h2>AI Summary</h2>
-
-<div class="section-label">Impression</div>
-<div>{{IMPRESSION}}</div>
-
-<div class="section-label">Suggested follow-up</div>
-<div>{{FOLLOW_UP}}</div>
-
-<!-- Signature -->
-<div class="signature-block">
-  <div class="signature-line"></div>
-  Signed by: Dr ____________________________________
-</div>
-
-<!-- QR + Footer -->
-<div style="display:flex; justify-content:space-between; margin-top:14px;">
-  <div style="font-size:10px; color:#6b7280; max-width:60%;">
-    This AI interpretation supports clinical judgement and does not replace a medical diagnosis.
-    Treatment decisions must always be made by a licensed medical professional.
-  </div>
-
-  <div class="qr-block">
-    <div>Scan to verify this report</div>
-    <img src="{{QR_URL}}" />
-    <div><a href="{{VERIFY_URL}}">{{VERIFY_URL}}</a></div>
-  </div>
-</div>
-
-<div class="footer">
-  <span>AMI Health — Artificial Medical Intelligence (Pty) Ltd</span>
-  <span>Page 1 of 1</span>
-</div>
 
 </body>
 </html>
+  `);
+
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
