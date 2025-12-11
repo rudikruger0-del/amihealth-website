@@ -1,646 +1,99 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>AMI — Report</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-
-  <style>
-    :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#96a0b8;
-      --accent:#00e0b8;
-      --print-border:#d1d5db;
-    }
-
-    * { box-sizing:border-box; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
-
-    body {
-      margin:0;
-      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:#02040e;
-      color:#eaf6ff;
-      -webkit-font-smoothing:antialiased;
-    }
-
-    header {
-      padding:18px 24px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      background:#050a16;
-      border-bottom:1px solid rgba(255,255,255,0.08);
-    }
-
-    .header-left {
-      display:flex;
-      align-items:center;
-      gap:16px;
-    }
-
-    #backBtn {
-      color:#00d4ff;
-      text-decoration:none;
-      font-size:14px;
-    }
-
-    header img { height:40px; }
-
-    .header-actions {
-      display:flex;
-      gap:10px;
-    }
-
-    .btn {
-      padding:10px 18px;
-      border-radius:999px;
-      border:none;
-      cursor:pointer;
-      font-size:14px;
-      font-weight:600;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    .btn.primary {
-      background:linear-gradient(90deg,#00e0b8,#00b7ff);
-      color:#001821;
-    }
-
-    .btn.secondary {
-      background:transparent;
-      border:1px solid rgba(255,255,255,0.28);
-      color:#eaf6ff;
-    }
-
-    .container {
-      max-width:1200px;
-      margin:20px auto;
-      padding:0 20px 30px;
-      display:grid;
-      grid-template-columns:1.2fr 1fr;
-      gap:20px;
-    }
-
-    @media (max-width:900px){
-      .container {
-        grid-template-columns:1fr;
-      }
-      .left-viewer {
-        height:60vh;
-      }
-    }
-
-    .left-viewer {
-      background:#000;
-      border-radius:12px;
-      overflow:hidden;
-      height:85vh;
-      border:1px solid rgba(255,255,255,0.08);
-    }
-
-    iframe { width:100%; height:100%; border:none;}
-
-    .panel {
-      background:var(--card);
-      padding:20px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.07);
-      margin-bottom:18px;
-    }
-
-    h2 {
-      margin-top:0;
-      font-size:20px;
-      font-weight:700;
-    }
-
-    .row {
-      margin:6px 0;
-      font-size:14px;
-    }
-
-    /* Flags */
-    .cbc-row-flag-high { color:#ff8080; }
-    .cbc-row-flag-low  { color:#ffb347; }
-    .cbc-row-flag-normal { color:#eaf6ff; }
-
-    .flag-badge {
-      display:inline-block;
-      padding:3px 8px;
-      border-radius:6px;
-      font-weight:700;
-      font-size:12px;
-      color:#001821;
-    }
-
-    /* severity badge colors (S1-S5) */
-    .sb-1 { background:#10b981; }  /* green */
-    .sb-2 { background:#facc15; }  /* light yellow */
-    .sb-3 { background:#f59e0b; }  /* orange */
-    .sb-4 { background:#ef4444; }  /* red */
-    .sb-5 { background:#b91c1c; }  /* deep red */
-
-    .admit-yes { color:#fff; background:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; }
-    .admit-no  { color:#001821; background:#d1fae5; padding:4px 8px; border-radius:6px; font-weight:700; }
-
-    .disclaimer {
-      margin-top:20px;
-      text-align:center;
-      font-size:12px;
-      color:var(--muted);
-      padding:10px;
-    }
-
-    .ai-section-title {
-      margin-top:10px;
-      font-weight:600;
-      font-size:14px;
-    }
-
-    .severity-badge {
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:700;
-      color:#001821;
-    }
-
-    .small-muted { color:var(--muted); font-size:13px; }
-    .list-dot { margin-left:6px; }
-
-    /* --- print optimizations --- */
-    @media print {
-      body {
-        background: white !important;
-        color: #111 !important;
-      }
-      header, .header-actions, #backBtn { display:none; }
-      .container { max-width: 940px; margin: 0; padding: 0; }
-      .left-viewer { display:none; }
-      .panel { background: #fff !important; border: none !important; box-shadow: none !important; padding: 0; }
-      .disclaimer { color: #444; }
-      /* Ensure colors print */
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-    }
-  </style>
-</head>
-
-<body>
-
-<header>
-  <div class="header-left">
-    <a id="backBtn" href="/dashboard.html">← Back</a>
-    <img src="/logo.png" alt="AMI Health Logo" />
-  </div>
-
-  <div class="header-actions">
-    <button id="printAiBtn" class="btn primary">Print / Save AI Report</button>
-    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">
-      Download Original PDF
-    </a>
-  </div>
-</header>
-
-<div class="container">
-  <div class="left-viewer">
-    <iframe id="pdfFrame"></iframe>
-  </div>
-
-  <div>
-
-    <div class="panel" id="patientPanel">
-      <h2>Patient Info</h2>
-      <div class="row"><b>Name:</b> <span id="name">Loading…</span></div>
-      <div class="row"><b>Age:</b> <span id="age">-</span></div>
-      <div class="row"><b>Sex:</b> <span id="sex">-</span></div>
-      <div class="row"><b>Date:</b> <span id="date">-</span></div>
-    </div>
-
-    <div class="panel" id="cbcPanel">
-      <h2>CBC Results</h2>
-      <div id="cbcContent">Loading…</div>
-    </div>
-
-    <div class="panel" id="aiPanel">
-      <h2>AI Interpretation</h2>
-      <div id="aiContent">Loading…</div>
-    </div>
-
-    <div class="disclaimer">
-      This AI-generated interpretation is intended to support clinical judgement and does not replace
-      a medical diagnosis. Final diagnostic and treatment decisions must always be made by a licensed
-      medical professional.
-    </div>
-
-  </div>
-</div>
-
-<script type="module">
-  // NOTE: adjust import path to your supabase client as needed
-  // import { supabase } from "./lib/supabaseClient.js";
-
-  let REPORT_DATA = null;
-  let PDF_URL = null;
-
-  async function requireAuth() {
-    // If you use supabase auth, keep this. If not, remove or modify.
-    // const { data: { session }, error } = await supabase.auth.getSession();
-    // if (error || !session) { window.location.href = "/login.html"; return null; }
-    return {}; // noop if you don't use auth in dev
-  }
-
-  async function loadReport() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-
-    if (!id) {
-      alert("Missing report id");
-      return;
-    }
-
-    // fetch from your API - keep your endpoint (/api/get-ai-report) or update
-    const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
-    const data = await res.json();
-
-    if (!data.ok) {
-      document.getElementById("aiContent").textContent = "Report not found.";
-      return;
-    }
-
-    const rpt = data.report;
-    REPORT_DATA = rpt;
-
-    document.getElementById("name").textContent = rpt.name || "Unknown";
-    document.getElementById("age").textContent = rpt.age != null ? rpt.age : "–";
-    document.getElementById("sex").textContent = rpt.sex || "–";
-    document.getElementById("date").textContent =
-      rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
-
-    if (rpt.file_path) {
-      const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
-      const pdfJson = await pdfRes.json();
-      if (pdfJson.url) {
-        PDF_URL = pdfJson.url;
-        document.getElementById("pdfFrame").src = pdfJson.url;
-        const dl = document.getElementById("downloadOriginalBtn");
-        dl.href = pdfJson.url;
-        dl.download = "original-lab-report.pdf";
-      }
-    } else {
-      document.getElementById("pdfFrame").src = "";
-    }
-
-    // Render panels from ai_results
-    renderCBC(rpt.ai_results);
-    renderAI(rpt.ai_results);
-  }
-
-  function safeParseAI(ai) {
-    if (!ai) return {};
-    if (typeof ai === "string") {
-      try { return JSON.parse(ai); }
-      catch { return {}; }
-    }
-    return ai;
-  }
-
-  // prefer canonical object or convert legacy CBC array
-  function getCanonicalFromAI(aiObj) {
-    if (!aiObj) return null;
-    if (aiObj.canonical && typeof aiObj.canonical === "object" && Object.keys(aiObj.canonical).length > 0) {
-      return aiObj.canonical;
-    }
-    if (aiObj.ai_results && aiObj.ai_results.canonical) return aiObj.ai_results.canonical;
-    // fallback: legacy array
-    const legacy = aiObj.cbc || aiObj.CBC || [];
-    if (Array.isArray(legacy) && legacy.length > 0) {
-      const map = {};
-      for (const it of legacy) {
-        const name = it.analyte || it.label || it.name;
-        if (!name) continue;
-        map[name] = {
-          value: it.value != null ? it.value : null,
-          units: it.units || it.unit || null,
-          reference_low: it.reference_low || it.ref_low || null,
-          reference_high: it.reference_high || it.ref_high || null,
-          raw: it
-        };
-      }
-      return map;
-    }
-    return null;
-  }
-
-  // prefer decorator map (per-key severity/colors) if present
-  function getDecoratedMap(ai) {
-    if (!ai) return null;
-    if (ai.decorated && typeof ai.decorated === 'object' && Object.keys(ai.decorated).length > 0) {
-      // decorated format stored by worker: decorated[key] = { raw: {...}, decorated: {...} }
-      return ai.decorated;
-    }
-    if (ai.ai_results && ai.ai_results.decorated) return ai.ai_results.decorated;
-    return null;
-  }
-
-  function renderCBC(ai) {
-    const box = document.getElementById("cbcContent");
-    const parsed = safeParseAI(ai);
-    const canonical = getCanonicalFromAI(parsed) || {};
-    const decorated = getDecoratedMap(parsed) || {};
-
-    if (Object.keys(canonical).length === 0) {
-      box.textContent = "No CBC data.";
-      return;
-    }
-
-    // Build rows: show key, value, units, ref, flag, severity badge
-    const rows = Object.keys(canonical).map((key) => {
-      const it = canonical[key] || {};
-      const value = it.value != null ? it.value : '—';
-      const units = it.unit || it.units || it.units;
-      const refLow = it.reference_low != null ? it.reference_low : (it.ref_low != null ? it.ref_low : '');
-      const refHigh = it.reference_high != null ? it.reference_high : (it.ref_high != null ? it.ref_high : '');
-      const refRange = (refLow || refHigh) ? `${refLow}–${refHigh}` : '';
-      // flag: derive from decorated if available else reference range if present
-      let flag = 'unknown';
-      let severity = 1;
-      let color = '#10b981';
-      if (decorated && decorated[key]) {
-        const decor = decorated[key].decorated || decorated[key];
-        if (decor && typeof decor === 'object') {
-          severity = decor.severity || decor.severity_score || severity;
-          color = decor.color || color;
-          const urg = decor.urgency || '';
-          // best-effort flag text
-          if (severity >= 4) flag = 'high';
-          else if (severity >= 3) flag = 'moderate';
-          else if (severity === 2) flag = 'low';
-          else flag = 'normal';
-        }
-      } else if (refRange && it.value != null && refLow !== '' && refHigh !== '') {
-        const v = parseFloat(it.value);
-        const low = parseFloat(refLow);
-        const high = parseFloat(refHigh);
-        if (!Number.isNaN(v) && !Number.isNaN(low) && !Number.isNaN(high)) {
-          if (v < low) { flag = 'low'; severity = 3; color = '#f59e0b'; }
-          else if (v > high) { flag = 'high'; severity = 4; color = '#ef4444'; }
-          else { flag = 'normal'; severity = 1; color = '#10b981'; }
-        }
-      } else {
-        flag = (it.value != null) ? 'normal' : 'unknown';
-      }
-
-      const flagClass = flag === 'high' ? 'cbc-row-flag-high' : (flag === 'low' ? 'cbc-row-flag-low' : 'cbc-row-flag-normal');
-      const severityClass = `sb-${Math.min(5, Math.max(1, Math.round(severity)))}`;
-
-      // Admission recommended: severity >=4 or ai routes urgency high
-      const admissionRecommended = (severity >= 4);
-
-      return `
-        <div class="row ${flagClass}" style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="flex:1;">
-            <b>${key}</b>: ${value} ${units || ''} ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ''}
-            ${flag && flag !== 'normal' && flag !== 'unknown' ? ` — <i style="font-style:italic;color:inherit">${flag}</i>` : ''}
-          </div>
-          <div style="width:170px; display:flex;gap:10px; align-items:center; justify-content:flex-end;">
-            <div class="flag-badge ${severityClass}" style="background:${color}; color: ${severity >=3 ? '#111' : '#001821'};">
-              S${severity}
-            </div>
-            <div>${admissionRecommended ? `<span class="admit-yes">Admission recommended</span>` : `<span class="admit-no">No admission</span>`}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    box.innerHTML = rows;
-  }
-
-  function renderAI(ai) {
-    const box = document.getElementById("aiContent");
-    const parsed = safeParseAI(ai);
-
-    // prefer top-level routes
-    const topRoutes = parsed.routes || parsed.route || (parsed.ai_results && parsed.ai_results.routes) || parsed.routes_v4 || null;
-
-    const decorated = getDecoratedMap(parsed) || {};
-    const overallSeverity = (topRoutes && (topRoutes.severity_score || topRoutes.severity)) || (parsed.overall_severity || 1);
-    const overallColor = (topRoutes && topRoutes.color) || (overallSeverity >= 5 ? '#b91c1c' : overallSeverity >=4 ? '#ef4444' : overallSeverity === 3 ? '#f59e0b' : '#10b981');
-    const urgency = (topRoutes && (topRoutes.urgency || topRoutes.urgency_flag)) || 'low';
-
-    if (topRoutes) {
-      const summary = topRoutes.summary || topRoutes.summary_text || topRoutes.summary || "";
-      const impression = (typeof summary === "string") ? summary : (summary.impression || summary.text || "");
-      const nextSteps = topRoutes.next_steps || topRoutes.nextSteps || topRoutes.next_steps || [];
-      const differential = topRoutes.differential || topRoutes.diffs || topRoutes.differentials || [];
-      const patterns = topRoutes.patterns || [];
-      const age_group = topRoutes.age_group || parsed.age_group || '-';
-      const age_note = topRoutes.age_note || '';
-
-      // clinical risk bar (print-friendly) - width mapped to severity (1-5)
-      const riskWidth = `${(Math.min(5, Math.max(1, overallSeverity)) / 5) * 100}%`;
-
-      box.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div class="severity-badge" style="background:${overallColor}; color:#001821;">Severity ${overallSeverity} — ${String(urgency).toUpperCase()}</div>
-          <div class="small-muted">Age group: ${age_group} ${age_note ? ' • ' + age_note : ''}</div>
-        </div>
-
-        <div style="margin:6px 0 10px;">
-          <div style="height:12px;background:#e6eef6;border-radius:8px;overflow:hidden;">
-            <div style="height:100%; width:${riskWidth}; background:${overallColor};"></div>
-          </div>
-        </div>
-
-        <div class="ai-section-title">Summary</div>
-        <div style="white-space:pre-wrap">${impression || 'No overall impression provided.'}</div>
-
-        ${patterns && patterns.length ? `<div class="ai-section-title">Patterns</div>
-          <div>${patterns.map(p => `<div class="row">• <b>${p.pattern}</b>${p.reason ? ': ' + p.reason : ''}</div>`).join('')}</div>` : ''}
-
-        ${differential && differential.length ? `<div class="ai-section-title">Top differential diagnoses</div>
-          <div>${differential.map(d => `<div class="row">• ${d}</div>`).join('')}</div>` : ''}
-
-        ${nextSteps && nextSteps.length ? `<div class="ai-section-title">Immediate suggested actions</div>
-          <div>${nextSteps.map(s => `<div class="row">• ${s}</div>`).join('')}</div>` : ''}
-
-      `;
-      return;
-    }
-
-    // fallback
-    const impression = parsed.summary && parsed.summary.impression ? parsed.summary.impression : "No overall impression provided.";
-    const followUp = parsed.summary && (parsed.summary.suggested_follow_up || parsed.summary.follow_up) ? (parsed.summary.suggested_follow_up || parsed.summary.follow_up) : "No specific follow-up recommendations.";
-
-    box.innerHTML = `
-      <div class="ai-section-title">Summary</div>
-      <div>${impression}</div>
-
-      <div class="ai-section-title">Suggested follow-up</div>
-      <div>${followUp}</div>
-    `;
-  }
-
-  // PRINT: full HTML builder with color and flags preserved
-  function printAiReport() {
-    if (!REPORT_DATA) {
-      alert("Report data not loaded yet.");
-      return;
-    }
-
-    const ai = safeParseAI(REPORT_DATA.ai_results);
-    const canonical = getCanonicalFromAI(ai) || {};
-    const decorated = getDecoratedMap(ai) || {};
-    const routes = ai.routes || ai.route || (ai.ai_results && ai.ai_results.routes) || ai.routes_v4 || {};
-    const summaryImpression = routes.summary || (ai.summary && ai.summary.impression) || ai.summary || "No overall impression provided.";
-    const nextSteps = routes.next_steps || ai.summary && ai.summary.suggested_follow_up || [];
-    const createdAt  = REPORT_DATA.created_at ? new Date(REPORT_DATA.created_at).toLocaleString() : "";
-
-    const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(REPORT_DATA.id)}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
-
-    // Build table rows including severity badge and admission recommendation
-    let cbcRowsHtml = "";
-    if (Object.keys(canonical).length > 0) {
-      let idx = 1;
-      for (const key of Object.keys(canonical)) {
-        const it = canonical[key] || {};
-        const value = it.value != null ? it.value : "";
-        const units = it.unit || it.units || '';
-        const refLow = it.reference_low != null ? it.reference_low : (it.ref_low != null ? it.ref_low : '');
-        const refHigh = it.reference_high != null ? it.reference_high : (it.ref_high != null ? it.ref_high : '');
-        const refRange = (refLow || refHigh) ? `${refLow}–${refHigh}` : '';
-
-        // severity & color - prefer decorated map
-        let severity = 1;
-        let color = '#10b981';
-        if (decorated && decorated[key]) {
-          const dec = decorated[key].decorated || decorated[key];
-          if (dec) {
-            severity = dec.severity || dec.severity_score || severity;
-            color = dec.color || color;
-          }
-        } else {
-          // try basic range flag heuristics if refs present
-          if (refRange && value !== '') {
-            const v = parseFloat(value);
-            const low = parseFloat(refLow);
-            const high = parseFloat(refHigh);
-            if (!Number.isNaN(v) && !Number.isNaN(low) && !Number.isNaN(high)) {
-              if (v < low) { severity = 3; color = '#f59e0b'; }
-              else if (v > high) { severity = 4; color = '#ef4444'; }
-              else { severity = 1; color = '#10b981'; }
-            }
-          }
-        }
-        const severityInt = Math.min(5, Math.max(1, Math.round(severity)));
-        const admit = (severityInt >= 4) || (routes && (routes.urgency_flag === 'high' || routes.urgency === 'high'));
-
-        // flag text
-        let flagText = '—';
-        if (severityInt >= 4) flagText = 'High';
-        else if (severityInt === 3) flagText = 'Moderate';
-        else if (severityInt === 2) flagText = 'Mild';
-        else flagText = 'Normal';
-
-        // color for text contrast
-        const textColor = (severityInt >= 3) ? '#111' : '#001821';
-
-        // risk bar width for row (visual)
-        const barWidth = `${(severityInt / 5) * 100}%`;
-
-        cbcRowsHtml += `<tr>
-          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${idx++}</td>
-          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(key)}</td>
-          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(String(value))}</td>
-          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(units)}</td>
-          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}">${escapeHtml(refRange)}</td>
-          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}; text-align:center;">
-            <div style="display:inline-block; padding:4px 8px; border-radius:6px; background:${escapeHtml(color)}; color:${escapeHtml(textColor)}; font-weight:700;">
-              S${severityInt}
-            </div>
-            <div style="font-size:11px; margin-top:6px;">${escapeHtml(flagText)}</div>
-          </td>
-          <td style="padding:6px 8px; border:1px solid ${escapeHtml('--print-border')}; text-align:center;">
-            ${admit ? `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#b91c1c;color:#fff;font-weight:700;">Admission recommended</span>` : `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#d1fae5;color:#001821;font-weight:700;">No admission</span>`}
-          </td>
-        </tr>`;
-      }
-    } else {
-      const legacy = ai.cbc || [];
-      cbcRowsHtml = legacy.map((item, idx) => {
-        const refLow  = item.reference_low  != null ? item.reference_low  : "";
-        const refHigh = item.reference_high != null ? item.reference_high : "";
-        const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
-        const flag = item.flag || "normal";
-        const sev = (flag === 'high') ? 4 : (flag === 'low' ? 3 : 1);
-        const color = sev >= 4 ? '#ef4444' : sev === 3 ? '#f59e0b' : '#10b981';
-        const admit = sev >= 4 || (routes && (routes.urgency_flag === 'high' || routes.urgency === 'high'));
-        return `<tr>
-          <td style="padding:6px 8px;">${idx + 1}</td>
-          <td style="padding:6px 8px;">${escapeHtml(item.analyte || "")}</td>
-          <td style="padding:6px 8px;">${escapeHtml(String(item.value != null ? item.value : ""))}</td>
-          <td style="padding:6px 8px;">${escapeHtml(item.units || "")}</td>
-          <td style="padding:6px 8px;">${escapeHtml(refRange)}</td>
-          <td style="padding:6px 8px;">
-            <div style="display:inline-block;padding:4px 8px;border-radius:6px;background:${escapeHtml(color)};color:${escapeHtml(sev>=3?'#111':'#001821')};font-weight:700;">S${sev}</div>
-            <div style="font-size:11px;margin-top:6px;">${escapeHtml(flag)}</div>
-          </td>
-          <td style="padding:6px 8px; text-align:center;">
-            ${admit ? `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#b91c1c;color:#fff;font-weight:700;">Admission recommended</span>` : `<span style="display:inline-block;padding:6px 8px;border-radius:6px;background:#d1fae5;color:#001821;font-weight:700;">No admission</span>`}
-          </td>
-        </tr>`;
-      }).join("");
-    }
-
-    const name = REPORT_DATA.name || "Unknown";
-    const age  = REPORT_DATA.age != null ? REPORT_DATA.age : "–";
-    const sex  = REPORT_DATA.sex || "–";
-
-    const win = window.open("", "_blank");
-
-    // produce printable HTML, with print color adjust and risk bars
-    win.document.write(`
+win.document.write(`
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>AMI Health — AI Interpretation Report</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; margin: 28px; color: #111827; font-size:13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-    .header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #00a2ff; padding-bottom:10px; margin-bottom:16px; }
-    .header-left { display:flex; align-items:center; gap:10px; }
-    .header-left img { height:34px; }
-    .header-title { font-size:18px; font-weight:700; }
-    .header-sub { font-size:11px; color:#4b5563; }
-    .header-right { text-align:right; font-size:11px; color:#4b5563; }
-    h2 { font-size:16px; margin:18px 0 6px; }
-    table { width:100%; border-collapse:collapse; margin-top:6px; font-size:12px; }
-    th, td { border:1px solid ${'#d1d5db'}; padding:6px 8px; text-align:left; vertical-align:middle; }
-    th { background:#f3f4f6; font-weight:600; }
-    .section-label { font-weight:600; margin-top:8px; }
-    .footer { margin-top:18px; font-size:10px; color:#6b7280; border-top:1px solid #e5e7eb; padding-top:6px; display:flex; justify-content:space-between; align-items:center; }
-    .signature-line { margin-top:24px; border-bottom:1px solid #111827; width:260px; }
-    .qr-block { text-align:right; font-size:10px; }
-    .risk-bar { height:10px; width:100%; background:#eef2ff; border-radius:6px; overflow:hidden; }
-    .risk-bar-fill { height:100%; background:#ef4444; }
-    @media print {
-      body { margin: 8mm; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      margin: 40px;
+      color: #111827;
+      font-size: 13px;
+    }
+    .header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      border-bottom:2px solid #00a2ff;
+      padding-bottom:10px;
+      margin-bottom:16px;
+    }
+    .header-left {
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .header-left img {
+      height:32px;
+    }
+    .header-title {
+      font-size:18px;
+      font-weight:700;
+    }
+    .header-sub {
+      font-size:11px;
+      color:#4b5563;
+    }
+    .header-right {
+      text-align:right;
+      font-size:11px;
+      color:#4b5563;
+    }
+    h2 {
+      font-size:16px;
+      margin:18px 0 6px;
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:6px;
+      font-size:12px;
+    }
+    th, td {
+      border:1px solid #d1d5db;
+      padding:4px 6px;
+      text-align:left;
+    }
+    th {
+      background:#f3f4f6;
+    }
+
+    /* Severity color text */
+    .sev-normal   { color:#059669; font-weight:600; }
+    .sev-mild     { color:#ca8a04; font-weight:600; }
+    .sev-moderate { color:#ea580c; font-weight:600; }
+    .sev-high     { color:#b91c1c; font-weight:600; }
+    .sev-critical { color:#7f1d1d; font-weight:700; }
+
+    .section-label {
+      font-weight:600;
+      margin-top:8px;
+    }
+
+    .footer {
+      margin-top:18px;
+      font-size:10px;
+      color:#6b7280;
+      border-top:1px solid #e5e7eb;
+      padding-top:6px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
     }
   </style>
 </head>
+
 <body>
+
   <div class="header">
     <div class="header-left">
       <img src="/logo.png" alt="AMI Logo" />
       <div>
         <div class="header-title">AMI Health — AI Interpretation Report</div>
-        <div class="header-sub">Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za</div>
+        <div class="header-sub">
+          Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za
+        </div>
       </div>
     </div>
     <div class="header-right">
@@ -651,20 +104,19 @@
 
   <div style="font-size:13px;">
     <div class="section-label">Patient</div>
-    <div>Name: <b>${escapeHtml(name)}</b> &nbsp;&nbsp; Age: <b>${escapeHtml(String(age))}</b> &nbsp;&nbsp; Sex: <b>${escapeHtml(sex)}</b></div>
+    <div>Name: <b>${name}</b> &nbsp;&nbsp; Age: <b>${age}</b> &nbsp;&nbsp; Sex: <b>${sex}</b></div>
 
     <h2>Complete Blood Count (CBC) Overview</h2>
 
     <table>
       <thead>
         <tr>
-          <th style="width:30px;">#</th>
+          <th>#</th>
           <th>Analyte</th>
-          <th style="width:90px;">Result</th>
-          <th style="width:80px;">Units</th>
-          <th style="width:140px;">Reference Range</th>
-          <th style="width:120px;">Severity</th>
-          <th style="width:170px;">Admission</th>
+          <th>Result</th>
+          <th>Units</th>
+          <th>Reference Range</th>
+          <th>Severity</th>
         </tr>
       </thead>
       <tbody>
@@ -674,62 +126,23 @@
 
     <h2>AI Summary</h2>
     <div class="section-label">Impression</div>
-    <div style="white-space:pre-wrap; margin-bottom:8px;">${escapeHtml(String(summaryImpression))}</div>
+    <div>${summaryImpression}</div>
 
     <div class="section-label">Suggested follow-up</div>
-    <div>${Array.isArray(nextSteps) ? escapeHtml(nextSteps.join(' | ')) : escapeHtml(String(nextSteps || ''))}</div>
+    <div>${Array.isArray(nextSteps) ? nextSteps.join(' | ') : nextSteps}</div>
 
-    <div style="margin-top:18px;">
-      <div class="signature-line"></div>
-      <div>Signed by: Dr ________________________________</div>
+    <div style="margin-top:20px;font-size:11px;color:#6b7280;">
+      This AI-generated interpretation supports clinical judgement but does not replace 
+      formal diagnostic evaluation by a qualified medical professional.
     </div>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-      <div style="font-size:10px; color:#6b7280; max-width:60%;">
-        This AI-generated interpretation is intended to support clinical judgement and does not replace
-        a medical diagnosis. Final diagnostic and treatment decisions must always be made by a licensed
-        medical professional.
-      </div>
-      <div class="qr-block">
-        <div>Scan to verify this report</div>
-        <img src="${qrUrl}" alt="Verification QR" />
-        <div><a href="${verifyUrl}">${verifyUrl}</a></div>
-      </div>
-    </div>
   </div>
 
   <div class="footer">
     <span>AMI Health — Artificial Medical Intelligence (Pty) Ltd</span>
     <span>Page 1 of 1</span>
   </div>
-</body>
-</html>
-    `);
-
-    // close & trigger print
-    win.document.close();
-    win.focus();
-    // small delay to allow images to load in new window then print (no waiting beyond this call)
-    setTimeout(() => { try { win.print(); } catch(e) { console.warn('print failed', e); } }, 350);
-  }
-
-  // helper: very small escaping for simple values in inserted HTML
-  function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  (async () => {
-    await requireAuth();
-    await loadReport();
-    document.getElementById("printAiBtn").addEventListener("click", printAiReport);
-  })();
-</script>
 
 </body>
 </html>
+`);
