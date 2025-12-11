@@ -1,667 +1,269 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <title>AMI — Report</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8" />
+<title>AMI Health — AI Interpretation Report</title>
 
-  <style>
-    :root {
-      --bg:#030414;
-      --card:#0b1020;
-      --muted:#96a0b8;
-      --accent:#00e0b8;
-    }
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    margin: 40px;
+    color: #111827;
+    font-size: 13px;
+    background: white;
+  }
 
-    * { box-sizing:border-box; }
+  /* --------------------------------------------------
+     HEADER
+  -------------------------------------------------- */
+  .header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:3px solid #00a2ff;
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
 
-    body {
-      margin:0;
-      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:#02040e;
-      color:#eaf6ff;
-    }
+  .header-left {
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
 
-    header {
-      padding:18px 24px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      background:#050a16;
-      border-bottom:1px solid rgba(255,255,255,0.08);
-    }
+  .header-left img {
+    height:40px;
+  }
 
-    .header-left {
-      display:flex;
-      align-items:center;
-      gap:16px;
-    }
+  .header-title {
+    font-size:20px;
+    font-weight:700;
+  }
 
-    #backBtn {
-      color:#00d4ff;
-      text-decoration:none;
-      font-size:14px;
-    }
+  .header-sub {
+    font-size:11px;
+    color:#4b5563;
+  }
 
-    header img { height:40px; }
+  .header-right {
+    text-align:right;
+    font-size:11px;
+    color:#4b5563;
+  }
 
-    .header-actions {
-      display:flex;
-      gap:10px;
-    }
+  /* --------------------------------------------------
+     SECTION TITLES
+  -------------------------------------------------- */
+  h2 {
+    font-size:16px;
+    margin:18px 0 6px;
+    font-weight:700;
+  }
 
-    .btn {
-      padding:10px 18px;
-      border-radius:999px;
-      border:none;
-      cursor:pointer;
-      font-size:14px;
-      font-weight:600;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
+  .section-label {
+    font-weight:600;
+    margin-top:10px;
+    font-size:13px;
+  }
 
-    .btn.primary {
-      background:linear-gradient(90deg,#00e0b8,#00b7ff);
-      color:#001821;
-    }
+  /* --------------------------------------------------
+     CBC TABLE
+  -------------------------------------------------- */
+  table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:6px;
+    font-size:12px;
+  }
 
-    .btn.secondary {
-      background:transparent;
-      border:1px solid rgba(255,255,255,0.28);
-      color:#eaf6ff;
-    }
+  th, td {
+    border:1px solid #d1d5db;
+    padding:6px 6px;
+    text-align:left;
+  }
 
-    .container {
-      max-width:1200px;
-      margin:20px auto;
-      padding:0 20px 30px;
-      display:grid;
-      grid-template-columns:1.2fr 1fr;
-      gap:20px;
-    }
+  th {
+    background:#f3f4f6;
+    font-weight:600;
+  }
 
-    @media (max-width:900px){
-      .container {
-        grid-template-columns:1fr;
-      }
-      .left-viewer {
-        height:60vh;
-      }
-    }
+  /* --------------------------------------------------
+     CBC FLAG COLOURS
+     (MATCHES UI COLOURS)
+  -------------------------------------------------- */
 
-    .left-viewer {
-      background:#000;
-      border-radius:12px;
-      overflow:hidden;
-      height:85vh;
-      border:1px solid rgba(255,255,255,0.08);
-    }
+  .flag-high {
+    color:#b91c1c;              /* strong red text */
+    background:#ffe5e5;         /* soft red background */
+    font-weight:700;
+  }
 
-    iframe { width:100%; height:100%; border:none;}
+  .flag-low {
+    color:#b45309;              /* dark orange text */
+    background:#fff3d6;         /* light amber background */
+    font-weight:700;
+  }
 
-    .panel {
-      background:var(--card);
-      padding:20px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.07);
-      margin-bottom:18px;
-    }
+  .flag-normal {
+    color:#065f46;              /* green text */
+    background:#d1fae5;         /* pale green background */
+  }
 
-    h2 {
-      margin-top:0;
-      font-size:20px;
-      font-weight:700;
-    }
+  .flag-unknown {
+    color:#374151;
+    background:white;
+  }
 
-    .row {
-      margin:4px 0;
-      font-size:14px;
-    }
+  /* --------------------------------------------------
+     SEVERITY BADGE (ER STYLE)
+  -------------------------------------------------- */
 
-    .cbc-row-flag-high { color:#ff8080; }
-    .cbc-row-flag-low  { color:#ffb347; }
-    .cbc-row-flag-normal { color:#eaf6ff; }
+  .severity-container {
+    margin:12px 0;
+  }
 
-    .disclaimer {
-      margin-top:20px;
-      text-align:center;
-      font-size:12px;
-      color:var(--muted);
-      padding:10px;
-    }
+  .sev-badge {
+    display:inline-block;
+    padding:6px 14px;
+    font-size:13px;
+    font-weight:700;
+    border-radius:6px;
+    color:white;
+  }
 
-    .ai-section-title {
-      margin-top:10px;
-      font-weight:600;
-      font-size:14px;
-    }
+  .sev-5 { background:#dc2626; }   /* red */
+  .sev-4 { background:#ea580c; }   /* orange */
+  .sev-3 { background:#facc15; color:#111 !important; } /* yellow */
+  .sev-2 { background:#10b981; }
+  .sev-1 { background:#0ea5e9; }
 
-    .severity-badge {
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:700;
-      color:#001821;
-    }
+  /* --------------------------------------------------
+     FOOTER
+  -------------------------------------------------- */
+  .footer {
+    margin-top:24px;
+    font-size:10px;
+    color:#6b7280;
+    border-top:1px solid #e5e7eb;
+    padding-top:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
 
-    .small-muted { color:var(--muted); font-size:13px; }
-    .list-dot { margin-left:6px; }
-  </style>
+  /* --------------------------------------------------
+     SIGNATURE BLOCK
+  -------------------------------------------------- */
+  .signature-block {
+    margin-top:24px;
+    font-size:12px;
+  }
+
+  .signature-line {
+    margin-top:28px;
+    border-bottom:1px solid #111827;
+    width:280px;
+  }
+
+  /* --------------------------------------------------
+     QR
+  -------------------------------------------------- */
+  .qr-block {
+    text-align:right;
+    font-size:10px;
+  }
+
+</style>
 </head>
 
 <body>
 
-<header>
+<div class="header">
   <div class="header-left">
-    <a id="backBtn" href="/dashboard.html">← Back</a>
-    <img src="/logo.png" alt="AMI Health Logo" />
+    <img src="/logo.png" />
+    <div>
+      <div class="header-title">AMI Health — AI Interpretation Report</div>
+      <div class="header-sub">
+        Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za
+      </div>
+    </div>
   </div>
 
-  <div class="header-actions">
-    <button id="printAiBtn" class="btn primary">Print / Save AI Report</button>
-    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">
-      Download Original PDF
-    </a>
-  </div>
-</header>
-
-<div class="container">
-  <div class="left-viewer">
-    <iframe id="pdfFrame"></iframe>
-  </div>
-
-  <div>
-
-    <div class="panel" id="patientPanel">
-      <h2>Patient Info</h2>
-      <div class="row"><b>Name:</b> <span id="name">Loading…</span></div>
-      <div class="row"><b>Age:</b> <span id="age">-</span></div>
-      <div class="row"><b>Sex:</b> <span id="sex">-</span></div>
-      <div class="row"><b>Date:</b> <span id="date">-</span></div>
-    </div>
-
-    <div class="panel" id="cbcPanel">
-      <h2>CBC Results</h2>
-      <div id="cbcContent">Loading…</div>
-    </div>
-
-    <div class="panel" id="aiPanel">
-      <h2>AI Interpretation</h2>
-      <div id="aiContent">Loading…</div>
-    </div>
-
-    <div class="disclaimer">
-      This AI-generated interpretation is intended to support clinical judgement and does not replace
-      a medical diagnosis. Final diagnostic and treatment decisions must always be made by a licensed
-      medical professional.
-    </div>
-
+  <div class="header-right">
+    <div>AMI Report</div>
+    <div>{{CREATED_AT}}</div>
   </div>
 </div>
 
-<script type="module">
-  import { supabase } from "./lib/supabaseClient.js";
 
-  let REPORT_DATA = null;
-  let PDF_URL = null;
+<!-- PATIENT SECTION -->
+<div class="section-label">Patient</div>
+<div>Name: <b>{{NAME}}</b> &nbsp; Age: <b>{{AGE}}</b> &nbsp; Sex: <b>{{SEX}}</b></div>
 
-  async function requireAuth() {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("Auth error:", error);
-      window.location.href = "/login.html";
-      return null;
-    }
-    if (!session) {
-      window.location.href = "/login.html";
-      return null;
-    }
-    return session;
-  }
 
-  async function loadReport() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
+<!-- SEVERITY BADGE -->
+<div class="severity-container">
+  <span class="sev-badge sev-{{SEVERITY_CLASS}}">
+    Severity {{SEVERITY}} — {{URGENCY}}
+  </span>
+</div>
 
-    if (!id) {
-      alert("Missing report id");
-      return;
-    }
 
-    const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
-    const data = await res.json();
+<!-- CBC TABLE -->
+<h2>Complete Blood Count (CBC) Overview</h2>
 
-    if (!data.ok) {
-      document.getElementById("aiContent").textContent = "Report not found.";
-      return;
-    }
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Analyte</th>
+      <th>Result</th>
+      <th>Units</th>
+      <th>Reference</th>
+      <th>Flag</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{CBC_ROWS}}
+  </tbody>
+</table>
 
-    const rpt = data.report;
-    REPORT_DATA = rpt;
 
-    document.getElementById("name").textContent = rpt.name || "Unknown";
-    document.getElementById("age").textContent = rpt.age != null ? rpt.age : "–";
-    document.getElementById("sex").textContent = rpt.sex || "–";
-    document.getElementById("date").textContent =
-      rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "-";
+<!-- AI SUMMARY -->
+<h2>AI Summary</h2>
 
-    if (rpt.file_path) {
-      const pdfRes = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
-      const pdfJson = await pdfRes.json();
-      if (pdfJson.url) {
-        PDF_URL = pdfJson.url;
-        document.getElementById("pdfFrame").src = pdfJson.url;
-        const dl = document.getElementById("downloadOriginalBtn");
-        dl.href = pdfJson.url;
-        dl.download = "original-lab-report.pdf";
-      }
-    } else {
-      document.getElementById("pdfFrame").src = "";
-    }
+<div class="section-label">Impression</div>
+<div>{{IMPRESSION}}</div>
 
-    renderCBC(rpt.ai_results);
-    renderAI(rpt.ai_results);
-  }
+<div class="section-label">Suggested follow-up</div>
+<div>{{FOLLOW_UP}}</div>
 
-  function safeParseAI(ai) {
-    if (!ai) return {};
-    if (typeof ai === "string") {
-      try { return JSON.parse(ai); }
-      catch { return {}; }
-    }
-    return ai;
-  }
 
-  // NEW: helper to get canonical map (preferred) or fallback to legacy array
-  function getCanonicalFromAI(aiObj) {
-    if (!aiObj) return null;
-    // prefer canonical object (new format)
-    if (aiObj.canonical && typeof aiObj.canonical === "object" && Object.keys(aiObj.canonical).length > 0) {
-      return aiObj.canonical;
-    }
-    // some older worker saved ai_results.canonical at top-level (flat) — handle both
-    if (aiObj.ai_results && aiObj.ai_results.canonical) {
-      return aiObj.ai_results.canonical;
-    }
-    // fallback to legacy cbc array -> convert to canonical map
-    const legacy = aiObj.cbc || aiObj.CBC || [];
-    if (Array.isArray(legacy) && legacy.length > 0) {
-      const map = {};
-      for (const it of legacy) {
-        const name = it.analyte || it.label || it.name;
-        if (!name) continue;
-        map[name] = {
-          value: it.value != null ? it.value : null,
-          units: it.units || it.unit || null,
-          reference_low: it.reference_low || it.ref_low || null,
-          reference_high: it.reference_high || it.ref_high || null,
-          raw: it
-        };
-      }
-      return map;
-    }
-    return null;
-  }
+<!-- SIGNATURE BLOCK -->
+<div class="signature-block">
+  <div class="signature-line"></div>
+  <div>Signed by: Dr ________________________________</div>
+</div>
 
-  function renderCBC(ai) {
-    const box = document.getElementById("cbcContent");
-    const parsed = safeParseAI(ai);
-    const canonical = getCanonicalFromAI(parsed);
 
-    // If we have canonical map (new style)
-    if (canonical && Object.keys(canonical).length > 0) {
-      const rows = Object.keys(canonical).map(key => {
-        const item = canonical[key];
-        const val = item?.value != null ? item.value : '—';
-        const units = item?.units || '';
-        const low = item?.reference_low != null ? item.reference_low : '';
-        const high = item?.reference_high != null ? item.reference_high : '';
-        const flag = (item?.value != null && item.reference_low != null && item.reference_high != null)
-          ? (item.value < item.reference_low ? 'low' : (item.value > item.reference_high ? 'high' : 'normal'))
-          : 'unknown';
-        const flagClass = flag === 'high' ? 'cbc-row-flag-high' : flag === 'low' ? 'cbc-row-flag-low' : 'cbc-row-flag-normal';
-        const refRange = (low || high) ? `${low}–${high}` : '';
-        return `
-          <div class="row ${flagClass}">
-            <b>${key}:</b> ${val} ${units} ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ''}
-            ${flag && flag !== 'normal' && flag !== 'unknown' ? ` — <i>${flag}</i>` : ''}
-          </div>
-        `;
-      }).join("");
-      box.innerHTML = rows;
-      return;
-    }
-
-    // Fallback: legacy array
-    const legacy = parsed.cbc || [];
-    if (!Array.isArray(legacy) || legacy.length === 0) {
-      box.textContent = "No CBC data.";
-      return;
-    }
-
-    const rows = legacy.map(item => {
-      const flagClass =
-        item.flag === "high" ? "cbc-row-flag-high" :
-        item.flag === "low"  ? "cbc-row-flag-low"  :
-        "cbc-row-flag-normal";
-
-      const refLow = item.reference_low != null ? item.reference_low : "";
-      const refHigh = item.reference_high != null ? item.reference_high : "";
-      const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
-
-      return `
-        <div class="row ${flagClass}">
-          <b>${item.analyte || ""}:</b>
-          ${item.value != null ? item.value : ""} ${item.units || ""}
-          ${refRange ? `<span style="opacity:0.75"> (ref: ${refRange})</span>` : ""}
-          ${item.flag && item.flag !== "normal" ? ` — <i>${item.flag}</i>` : ""}
-        </div>
-      `;
-    }).join("");
-
-    box.innerHTML = rows;
-  }
-
-  function renderAI(ai) {
-    const box = document.getElementById("aiContent");
-    const parsed = safeParseAI(ai);
-
-    // Prefer new routes structure
-    const routes = parsed.routes || parsed.route || parsed.routes_v4 || null;
-    // In worker we used top-level routes; also accept ai_results.routes nested
-    const topRoutes = routes || (parsed.ai_results && parsed.ai_results.routes) || null;
-
-    if (topRoutes) {
-      const summary = topRoutes.summary || topRoutes.summary_text || topRoutes.summary || "";
-      const impression = (typeof summary === "string") ? summary : (summary.impression || summary.text || "");
-      const nextSteps = topRoutes.next_steps || topRoutes.nextSteps || [];
-      const differential = topRoutes.differential || topRoutes.diffs || [];
-      const patterns = topRoutes.patterns || [];
-      const severity = topRoutes.overall_severity || topRoutes.severity_score || topRoutes.severity || 1;
-      // color / tailwind class may be provided
-      const color = topRoutes.color || (topRoutes.tw_class ? null : null);
-      const twClass = topRoutes.tw_class || '';
-      const urgency = topRoutes.urgency || topRoutes.urgency_flag || 'low';
-
-      // badge color - try to use provided hex color if present, else fallback to safe colors
-      const badgeColor = topRoutes.color || (severity >= 4 ? '#f97316' : (severity === 3 ? '#f59e0b' : '#10b981'));
-      const badgeText = `Severity ${severity} — ${String(urgency).toUpperCase()}`;
-
-      box.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <div class="severity-badge" style="background:${badgeColor}; color:#001821;">${badgeText}</div>
-          <div class="small-muted">Age group: ${topRoutes.age_group || '-' } ${topRoutes.age_note ? ' • ' + topRoutes.age_note : ''}</div>
-        </div>
-
-        <div class="ai-section-title">Summary</div>
-        <div>${impression || 'No overall impression provided.'}</div>
-
-        ${patterns && patterns.length ? `<div class="ai-section-title">Patterns</div>
-          <div>${patterns.map(p => `<div class="row">• <b>${p.pattern}</b>${p.reason ? ': ' + p.reason : ''}</div>`).join('')}</div>` : ''}
-
-        ${differential && differential.length ? `<div class="ai-section-title">Top differential diagnoses</div>
-          <div>${differential.map(d => `<div class="row">• ${d}</div>`).join('')}</div>` : ''}
-
-        ${nextSteps && nextSteps.length ? `<div class="ai-section-title">Immediate suggested actions</div>
-          <div>${nextSteps.map(s => `<div class="row">• ${s}</div>`).join('')}</div>` : ''}
-
-      `;
-      return;
-    }
-
-    // Fallback to legacy summary object
-    const summary = parsed.summary || {};
-    const impression = summary.impression || "No overall impression provided.";
-    const followUp = summary.suggested_follow_up || summary.suggested_followup || "No specific follow-up recommendations.";
-
-    box.innerHTML = `
-      <div class="ai-section-title">Summary</div>
-      <div>${impression}</div>
-
-      <div class="ai-section-title">Suggested follow-up</div>
-      <div>${followUp}</div>
-    `;
-  }
-
-  function printAiReport() {
-    if (!REPORT_DATA) {
-      alert("Report data not loaded yet.");
-      return;
-    }
-
-    const ai = safeParseAI(REPORT_DATA.ai_results);
-    const canonical = getCanonicalFromAI(ai) || {};
-    const routes = ai.routes || ai.route || (ai.ai_results && ai.ai_results.routes) || {};
-    const summaryImpression = routes.summary || (ai.summary && ai.summary.impression) || "No overall impression provided.";
-    const nextSteps = routes.next_steps || ai.summary && ai.summary.suggested_follow_up || [];
-    const createdAt  = REPORT_DATA.created_at ? new Date(REPORT_DATA.created_at).toLocaleString() : "";
-
-    const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(REPORT_DATA.id)}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
-
-    // build cbc rows from canonical or legacy array
-    let cbcRowsHtml = "";
-    if (Object.keys(canonical).length > 0) {
-      let idx = 1;
-      for (const k of Object.keys(canonical)) {
-        const it = canonical[k];
-        const refLow  = it.reference_low != null ? it.reference_low : "";
-        const refHigh = it.reference_high != null ? it.reference_high : "";
-        const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
-        cbcRowsHtml += `<tr>
-          <td>${idx++}</td>
-          <td>${k}</td>
-          <td>${it.value != null ? it.value : ""}</td>
-          <td>${it.units || ""}</td>
-          <td>${refRange}</td>
-          <td>${(it.value!=null && it.reference_low!=null && it.reference_high!=null) ? ((it.value < it.reference_low) ? 'low' : (it.value > it.reference_high ? 'high' : 'normal')) : '—'}</td>
-        </tr>`;
-      }
-    } else {
-      const legacy = ai.cbc || [];
-      cbcRowsHtml = legacy.map((item, idx) => {
-        const refLow  = item.reference_low  != null ? item.reference_low  : "";
-        const refHigh = item.reference_high != null ? item.reference_high : "";
-        const refRange = refLow || refHigh ? `${refLow}–${refHigh}` : "";
-        return `<tr>
-          <td>${idx + 1}</td>
-          <td>${item.analyte || ""}</td>
-          <td>${item.value != null ? item.value : ""}</td>
-          <td>${item.units || ""}</td>
-          <td>${refRange}</td>
-          <td>${item.flag || "normal"}</td>
-        </tr>`;
-      }).join("");
-    }
-
-    const name = REPORT_DATA.name || "Unknown";
-    const age  = REPORT_DATA.age != null ? REPORT_DATA.age : "–";
-    const sex  = REPORT_DATA.sex || "–";
-
-    const win = window.open("", "_blank");
-
-    win.document.write(`
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>AMI Health — AI Interpretation Report</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      margin: 40px;
-      color: #111827;
-      font-size: 13px;
-    }
-    .header {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      border-bottom:2px solid #00a2ff;
-      padding-bottom:10px;
-      margin-bottom:16px;
-    }
-    .header-left {
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .header-left img {
-      height:32px;
-    }
-    .header-title {
-      font-size:18px;
-      font-weight:700;
-    }
-    .header-sub {
-      font-size:11px;
-      color:#4b5563;
-    }
-    .header-right {
-      text-align:right;
-      font-size:11px;
-      color:#4b5563;
-    }
-    h2 {
-      font-size:16px;
-      margin:18px 0 6px;
-    }
-    table {
-      width:100%;
-      border-collapse:collapse;
-      margin-top:6px;
-      font-size:12px;
-    }
-    th, td {
-      border:1px solid #d1d5db;
-      padding:4px 6px;
-      text-align:left;
-    }
-    th {
-      background:#f3f4f6;
-    }
-    .section-label {
-      font-weight:600;
-      margin-top:8px;
-    }
-    .footer {
-      margin-top:18px;
-      font-size:10px;
-      color:#6b7280;
-      border-top:1px solid #e5e7eb;
-      padding-top:6px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    .signature-block {
-      margin-top:20px;
-      font-size:12px;
-    }
-    .signature-line {
-      margin-top:24px;
-      border-bottom:1px solid #111827;
-      width:260px;
-    }
-    .qr-block {
-      text-align:right;
-      font-size:10px;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="header">
-    <div class="header-left">
-      <img src="/logo.png" alt="AMI Logo" />
-      <div>
-        <div class="header-title">AMI Health — AI Interpretation Report</div>
-        <div class="header-sub">
-          Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za
-        </div>
-      </div>
-    </div>
-    <div class="header-right">
-      <div>AMI Report</div>
-      <div>${createdAt}</div>
-    </div>
+<!-- FOOTER + QR -->
+<div style="display:flex; justify-content:space-between; margin-top:12px;">
+  <div style="font-size:10px; color:#6b7280; max-width:60%;">
+    This AI interpretation supports clinical judgement and does not replace a medical diagnosis.
+    Treatment decisions must always be made by a licensed medical professional.
   </div>
 
-  <div style="font-size:13px;">
-    <div class="section-label">Patient</div>
-    <div>Name: <b>${name}</b> &nbsp;&nbsp; Age: <b>${age}</b> &nbsp;&nbsp; Sex: <b>${sex}</b></div>
-
-    <h2>Complete Blood Count (CBC) Overview</h2>
-    ${cbcRowsHtml ? `
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Analyte</th>
-            <th>Result</th>
-            <th>Units</th>
-            <th>Reference Range</th>
-            <th>Flag</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${cbcRowsHtml}
-        </tbody>
-      </table>
-    ` : `<div>No structured CBC data available in this AI report.</div>`}
-
-    <h2>AI Summary</h2>
-    <div class="section-label">Impression</div>
-    <div>${summaryImpression}</div>
-
-    <div class="section-label">Suggested follow-up</div>
-    <div>${Array.isArray(nextSteps) ? nextSteps.join(' | ') : (nextSteps || '')}</div>
-
-    <div class="signature-block">
-      <div class="signature-line"></div>
-      <div>Signed by: Dr ________________________________</div>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-      <div style="font-size:10px; color:#6b7280;">
-        This AI-generated interpretation is intended to support clinical judgement and does not
-        replace a medical diagnosis. Final diagnostic and treatment decisions must always be made
-        by a licensed medical professional.
-      </div>
-      <div class="qr-block">
-        <div>Scan to verify this report</div>
-        <img src="${qrUrl}" alt="Verification QR" />
-        <div><a href="${verifyUrl}">${verifyUrl}</a></div>
-      </div>
-    </div>
+  <div class="qr-block">
+    <div>Scan to verify this report</div>
+    <img src="{{QR_URL}}" />
+    <div><a href="{{VERIFY_URL}}">{{VERIFY_URL}}</a></div>
   </div>
+</div>
 
-  <div class="footer">
-    <span>AMI Health — Artificial Medical Intelligence (Pty) Ltd</span>
-    <span>Page 1 of 1</span>
-  </div>
-
-</body>
-</html>
-    `);
-
-    win.document.close();
-    win.focus();
-    win.print();
-  }
-
-  (async () => {
-    const session = await requireAuth();
-    if (!session) return;
-
-    await loadReport();
-    document.getElementById("printAiBtn").addEventListener("click", printAiReport);
-  })();
-</script>
+<div class="footer">
+  <span>AMI Health — Artificial Medical Intelligence (Pty) Ltd</span>
+  <span>Page 1 of 1</span>
+</div>
 
 </body>
 </html>
