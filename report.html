@@ -12,6 +12,10 @@
       --muted:#96a0b8;
       --accent:#00e0b8;
       --white:#eaf6ff;
+
+      --low:#f59e0b;
+      --high:#b91c1c;
+      --normal:#ffffff;
     }
 
     body {
@@ -107,15 +111,21 @@
       font-size:14px;
     }
 
-    .cbc-row { padding:2px 0; }
-    .flag-normal { color:#ffffff; }
-    .flag-low { color:#f59e0b; }
-    .flag-high { color:#b91c1c; }
+    .cbc-row {
+      padding:3px 0;
+      display:flex;
+      justify-content:space-between;
+    }
+
+    .flag-high { color:var(--high); }
+    .flag-low { color:var(--low); }
+    .flag-normal { color:var(--normal); }
 
     .ai-section-title {
       margin-top:14px;
       font-size:14px;
       font-weight:600;
+      opacity:0.9;
     }
 
     .severity-badge {
@@ -124,8 +134,8 @@
       border-radius:999px;
       font-weight:700;
       color:#001821;
+      margin-bottom:12px;
     }
-
   </style>
 </head>
 
@@ -171,6 +181,7 @@
   </div>
 </div>
 
+
 <script type="module">
 
 // =======================
@@ -208,8 +219,9 @@ async function loadReport(){
   renderAI(rpt.ai_results);
 }
 
+
 // =======================
-// CBC RENDERING (FIXED)
+// CBC RENDERING — FLAG MODE
 // =======================
 function renderCBC(ai){
   const box = document.getElementById("cbcContent");
@@ -217,21 +229,19 @@ function renderCBC(ai){
 
   let html = "";
 
-  Object.keys(deco).forEach(key=>{
+  Object.keys(deco).forEach(key => {
     const d = deco[key] || {};
-    const val = (d.value !== null && d.value !== undefined) ? d.value : "—";
-    const unit = d.unit ? d.unit : "";
-    const flag = d.flag || "normal";
-    const color = d.color || "#ffffff";
+    const v = d.value ?? "—";
+    const flag = d.severity_text ?? "normal";
 
-    const cls =
-      flag === "high" ? "flag-high" :
-      flag === "low"  ? "flag-low"  :
-      "flag-normal";
+    let cls = "flag-normal";
+    if (flag === "high" || flag === "severe") cls = "flag-high";
+    else if (flag === "low" || flag === "mild") cls = "flag-low";
 
     html += `
-      <div class="row cbc-row ${cls}" style="color:${color}">
-        <b>${key}:</b> ${val}${unit ? " " + unit : ""} — ${flag}
+      <div class="row cbc-row ${cls}">
+        <span><b>${key}:</b></span>
+        <span>${v} — ${flag}</span>
       </div>
     `;
   });
@@ -239,60 +249,72 @@ function renderCBC(ai){
   box.innerHTML = html;
 }
 
+
 // =======================
-// AI INTERPRETATION
+// AI INTERPRETATION RENDERING
 // =======================
 function renderAI(ai){
   const box = document.getElementById("aiContent");
   const r = ai.routes || {};
 
   const sev = r.severity_text || "normal";
-  const badgeColor = r.color || "#10b981";
 
-  const diag = r.diagnostic_possibilities || [];
-  const patt = r.patterns || [];
+  // severity colors
+  const sevColor =
+    sev === "severe" ? "#b91c1c" :
+    sev === "moderate" ? "#f59e0b" :
+    sev === "mild" ? "#facc15" :
+    "#10b981";
+
+  const patterns = r.patterns || [];
   const ddx = r.differential || [];
   const steps = r.next_steps || [];
+  const summary = r.summary || "—";
+  const poss = r.possible_indicators || r.diagnostic_possibilities || [];
 
   let html = `
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
-      <div class="severity-badge" style="background:${badgeColor}">${sev.toUpperCase()}</div>
+    <div class="severity-badge" style="background:${sevColor}">
+      ${sev.toUpperCase()}
     </div>
 
-    <div class="ai-section-title">Diagnostic possibilities</div>
-    ${diag.map(d=>`<div class="row">• ${d}</div>`).join("")}
-
     <div class="ai-section-title">Summary</div>
-    <div>${r.summary || "—"}</div>
-
-    ${patt.length ? `
-      <div class="ai-section-title">Patterns</div>
-      ${patt.map(p=>`<div class="row">• <b>${p.pattern}</b>: ${p.reason}</div>`).join("")}
-    ` : ""}
-
-    ${ddx.length ? `
-      <div class="ai-section-title">Differential diagnoses</div>
-      ${ddx.map(d=>`<div class="row">• ${d}</div>`).join("")}
-    ` : ""}
-
-    ${steps.length ? `
-      <div class="ai-section-title">Immediate suggested actions</div>
-      ${steps.map(s=>`<div class="row">• ${s}</div>`).join("")}
-    ` : ""}
+    <div class="row">${summary}</div>
   `;
+
+  if (patterns.length){
+    html += `
+      <div class="ai-section-title">Patterns</div>
+      ${patterns.map(p=>`<div class="row">• <b>${p.pattern}</b>: ${p.reason}</div>`).join("")}
+    `;
+  }
+
+  if (ddx.length){
+    html += `
+      <div class="ai-section-title">Differential considerations</div>
+      ${ddx.map(d=>`<div class="row">• ${d}</div>`).join("")}
+    `;
+  }
+
+  if (steps.length){
+    html += `
+      <div class="ai-section-title">Suggested actions</div>
+      ${steps.map(s=>`<div class="row">• ${s}</div>`).join("")}
+    `;
+  }
 
   box.innerHTML = html;
 }
 
+
 // =======================
-// PRINT
+// PRINT HANDLER
 // =======================
 document.getElementById("printAiBtn").addEventListener("click", ()=>{
   window.print();
 });
 
-loadReport();
 
+loadReport();
 </script>
 
 </body>
