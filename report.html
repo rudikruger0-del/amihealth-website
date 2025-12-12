@@ -209,29 +209,29 @@ async function loadReport(){
 }
 
 // =======================
-// CBC RENDERING
+// CBC RENDERING (FIXED)
 // =======================
 function renderCBC(ai){
   const box = document.getElementById("cbcContent");
-  const canon = ai.canonical || {};
   const deco = ai.decorated || {};
 
   let html = "";
 
-  Object.keys(canon).forEach(key=>{
+  Object.keys(deco).forEach(key=>{
     const d = deco[key] || {};
-    const val = d.value ?? canon[key].value ?? "—";
-    const unit = d.unit ?? canon[key].unit ?? "";
-    const flag = d.flag ?? "normal";
-    const color = d.color ?? "#ffffff";
+    const val = (d.value !== null && d.value !== undefined) ? d.value : "—";
+    const unit = d.unit ? d.unit : "";
+    const flag = d.flag || "normal";
+    const color = d.color || "#ffffff";
 
-    const cls = flag === "high" ? "flag-high"
-              : flag === "low"  ? "flag-low"
-              : "flag-normal";
+    const cls =
+      flag === "high" ? "flag-high" :
+      flag === "low"  ? "flag-low"  :
+      "flag-normal";
 
     html += `
       <div class="row cbc-row ${cls}" style="color:${color}">
-        <b>${key}:</b> ${val} ${unit} — ${flag}
+        <b>${key}:</b> ${val}${unit ? " " + unit : ""} — ${flag}
       </div>
     `;
   });
@@ -283,7 +283,6 @@ function renderAI(ai){
 
   box.innerHTML = html;
 }
-
 
 // =======================
 // PRINT
