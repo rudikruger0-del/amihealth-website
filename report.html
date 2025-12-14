@@ -74,12 +74,8 @@
     }
 
     @media (max-width:900px){
-      .container {
-        grid-template-columns:1fr;
-      }
-      .left-viewer {
-        height:60vh;
-      }
+      .container { grid-template-columns:1fr; }
+      .left-viewer { height:60vh; }
     }
 
     .left-viewer {
@@ -90,7 +86,7 @@
       border:1px solid rgba(255,255,255,0.08);
     }
 
-    iframe { width:100%; height:100%; border:none;}
+    iframe { width:100%; height:100%; border:none; }
 
     .panel {
       background:var(--card);
@@ -112,13 +108,13 @@
     }
 
     .cbc-row {
-      padding:3px 0;
+      padding:4px 0;
       display:flex;
       justify-content:space-between;
     }
 
-    .flag-high { color:var(--high); }
-    .flag-low { color:var(--low); }
+    .flag-high { color:var(--high); font-weight:700; }
+    .flag-low { color:var(--low); font-weight:600; }
     .flag-normal { color:var(--normal); }
 
     .ai-section-title {
@@ -160,7 +156,7 @@
 
   <div>
 
-    <div class="panel" id="patientPanel">
+    <div class="panel">
       <h2>Patient Info</h2>
       <div class="row"><b>Name:</b> <span id="name"></span></div>
       <div class="row"><b>Age:</b> <span id="age"></span></div>
@@ -168,12 +164,12 @@
       <div class="row"><b>Date:</b> <span id="date"></span></div>
     </div>
 
-    <div class="panel" id="cbcPanel">
+    <div class="panel">
       <h2>CBC Results</h2>
       <div id="cbcContent"></div>
     </div>
 
-    <div class="panel" id="aiPanel">
+    <div class="panel">
       <h2>AI Interpretation</h2>
       <div id="aiContent"></div>
     </div>
@@ -181,12 +177,8 @@
   </div>
 </div>
 
-
 <script type="module">
 
-// =======================
-// LOAD REPORT
-// =======================
 let REPORT_DATA = null;
 let PDF_URL = null;
 
@@ -219,29 +211,43 @@ async function loadReport(){
   renderAI(rpt.ai_results);
 }
 
-
 // =======================
-// CBC RENDERING — FLAG MODE
+// CBC RENDERING — CLINICAL MODE (FIXED)
 // =======================
 function renderCBC(ai){
   const box = document.getElementById("cbcContent");
-  const deco = ai.decorated || {};
+  const perKey = ai?.routes?.per_key || {};
+
+  if (!Object.keys(perKey).length){
+    box.innerHTML = "<div class='row'>No CBC values detected</div>";
+    return;
+  }
 
   let html = "";
 
-  Object.keys(deco).forEach(key => {
-    const d = deco[key] || {};
-    const v = d.value ?? "—";
-    const flag = d.severity_text ?? "normal";
+  Object.entries(perKey).forEach(([key, d]) => {
+    const value = d.value ?? "—";
+    const units = d.units ?? "";
+    const sev = d.severity ?? 1;
 
     let cls = "flag-normal";
-    if (flag === "high" || flag === "severe") cls = "flag-high";
-    else if (flag === "low" || flag === "mild") cls = "flag-low";
+    let label = "NORMAL";
+
+    if (sev >= 5){
+      cls = "flag-high";
+      label = "CRITICAL";
+    } else if (sev === 4){
+      cls = "flag-high";
+      label = "SEVERE";
+    } else if (sev === 3){
+      cls = "flag-low";
+      label = "MODERATE";
+    }
 
     html += `
       <div class="row cbc-row ${cls}">
-        <span><b>${key}:</b></span>
-        <span>${v} — ${flag}</span>
+        <span><b>${key}</b></span>
+        <span>${value} ${units} — ${label}</span>
       </div>
     `;
   });
@@ -249,70 +255,47 @@ function renderCBC(ai){
   box.innerHTML = html;
 }
 
-
 // =======================
-// AI INTERPRETATION RENDERING
+// AI INTERPRETATION
 // =======================
 function renderAI(ai){
   const box = document.getElementById("aiContent");
   const r = ai.routes || {};
 
   const sev = r.severity_text || "normal";
-
-  // severity colors
   const sevColor =
-    sev === "severe" ? "#b91c1c" :
+    sev === "critical" ? "#b91c1c" :
+    sev === "severe" ? "#f97316" :
     sev === "moderate" ? "#f59e0b" :
-    sev === "mild" ? "#facc15" :
     "#10b981";
-
-  const patterns = r.patterns || [];
-  const ddx = r.differential || [];
-  const steps = r.next_steps || [];
-  const summary = r.summary || "—";
-  const poss = r.possible_indicators || r.diagnostic_possibilities || [];
 
   let html = `
     <div class="severity-badge" style="background:${sevColor}">
       ${sev.toUpperCase()}
     </div>
-
     <div class="ai-section-title">Summary</div>
-    <div class="row">${summary}</div>
+    <div class="row">${r.summary || "—"}</div>
   `;
 
-  if (patterns.length){
-    html += `
-      <div class="ai-section-title">Patterns</div>
-      ${patterns.map(p=>`<div class="row">• <b>${p.pattern}</b>: ${p.reason}</div>`).join("")}
-    `;
+  if (r.patterns?.length){
+    html += `<div class="ai-section-title">Patterns</div>` +
+      r.patterns.map(p=>`<div class="row">• <b>${p.pattern}</b>: ${p.reason}</div>`).join("");
   }
 
-  if (ddx.length){
-    html += `
-      <div class="ai-section-title">Differential considerations</div>
-      ${ddx.map(d=>`<div class="row">• ${d}</div>`).join("")}
-    `;
+  if (r.differential?.length){
+    html += `<div class="ai-section-title">Differential considerations</div>` +
+      r.differential.map(d=>`<div class="row">• ${d}</div>`).join("");
   }
 
-  if (steps.length){
-    html += `
-      <div class="ai-section-title">Suggested actions</div>
-      ${steps.map(s=>`<div class="row">• ${s}</div>`).join("")}
-    `;
+  if (r.next_steps?.length){
+    html += `<div class="ai-section-title">Suggested actions</div>` +
+      r.next_steps.map(s=>`<div class="row">• ${s}</div>`).join("");
   }
 
   box.innerHTML = html;
 }
 
-
-// =======================
-// PRINT HANDLER
-// =======================
-document.getElementById("printAiBtn").addEventListener("click", ()=>{
-  window.print();
-});
-
+document.getElementById("printAiBtn").addEventListener("click", () => window.print());
 
 loadReport();
 </script>
