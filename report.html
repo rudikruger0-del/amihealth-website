@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>AMI — Report</title>
+  <title>AMI — Clinical Report</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <style>
@@ -14,13 +14,14 @@
       --white:#eaf6ff;
 
       --low:#f59e0b;
-      --high:#b91c1c;
+      --high:#dc2626;
+      --critical:#991b1b;
       --normal:#ffffff;
     }
 
     body {
       margin:0;
-      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family:Inter, system-ui, sans-serif;
       background:#02040e;
       color:var(--white);
     }
@@ -32,36 +33,6 @@
       justify-content:space-between;
       background:#050a16;
       border-bottom:1px solid rgba(255,255,255,0.08);
-    }
-
-    .header-left {
-      display:flex;
-      align-items:center;
-      gap:16px;
-    }
-
-    header img { height:40px; }
-
-    .btn {
-      padding:10px 18px;
-      border-radius:999px;
-      border:none;
-      cursor:pointer;
-      font-size:14px;
-      font-weight:600;
-      display:inline-flex;
-      align-items:center;
-    }
-
-    .btn.primary {
-      background:linear-gradient(90deg,#00e0b8,#00b7ff);
-      color:#001821;
-    }
-
-    .btn.secondary {
-      background:transparent;
-      border:1px solid rgba(255,255,255,0.28);
-      color:var(--white);
     }
 
     .container {
@@ -96,63 +67,72 @@
       margin-bottom:18px;
     }
 
-    h2 {
-      margin:0;
-      font-size:20px;
-      font-weight:700;
-    }
+    h2 { margin:0 0 10px; font-size:20px; }
 
-    .row {
-      margin:4px 0;
-      font-size:14px;
-    }
+    .row { margin:6px 0; font-size:14px; }
 
     .cbc-row {
-      padding:4px 0;
       display:flex;
       justify-content:space-between;
+      padding:4px 0;
+      border-bottom:1px dashed rgba(255,255,255,0.06);
     }
 
     .flag-high { color:var(--high); font-weight:700; }
     .flag-low { color:var(--low); font-weight:600; }
     .flag-normal { color:var(--normal); }
 
-    .ai-section-title {
-      margin-top:14px;
-      font-size:14px;
-      font-weight:600;
-      opacity:0.9;
-    }
-
     .severity-badge {
       display:inline-flex;
-      padding:6px 12px;
+      padding:6px 14px;
       border-radius:999px;
-      font-weight:700;
-      color:#001821;
+      font-weight:800;
+      color:#fff;
       margin-bottom:12px;
     }
+
+    .severity-critical { background:var(--critical); }
+    .severity-high { background:var(--high); }
+    .severity-moderate { background:var(--low); }
+    .severity-low { background:#10b981; }
+
+    .section-title {
+      margin-top:14px;
+      font-size:13px;
+      font-weight:700;
+      text-transform:uppercase;
+      opacity:0.85;
+    }
+
+    button {
+      padding:10px 18px;
+      border-radius:999px;
+      border:none;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    .primary { background:linear-gradient(90deg,#00e0b8,#00b7ff); }
+    .secondary { background:transparent; border:1px solid rgba(255,255,255,0.3); color:#fff; }
   </style>
 </head>
 
 <body>
 
 <header>
-  <div class="header-left">
-    <a href="/dashboard.html" style="color:#00d4ff;text-decoration:none;font-size:14px">← Back</a>
-    <img src="/logo.png" alt="AMI Health Logo" />
-  </div>
-
   <div>
-    <button id="printAiBtn" class="btn primary">Print / Save AI Report</button>
-    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">
-      Download Original PDF
-    </a>
+    <button class="secondary" onclick="history.back()">← Back</button>
+  </div>
+  <div>
+    <button id="printBtn" class="primary">Print / Save AI Report</button>
+    <a id="downloadBtn" class="secondary" target="_blank">Download Original PDF</a>
   </div>
 </header>
 
 <div class="container">
-  <div class="left-viewer"><iframe id="pdfFrame"></iframe></div>
+  <div class="left-viewer">
+    <iframe id="pdfFrame"></iframe>
+  </div>
 
   <div>
 
@@ -165,13 +145,13 @@
     </div>
 
     <div class="panel">
-      <h2>CBC Results</h2>
-      <div id="cbcContent"></div>
+      <h2>CBC & Chemistry</h2>
+      <div id="cbcBox"></div>
     </div>
 
     <div class="panel">
       <h2>AI Interpretation</h2>
-      <div id="aiContent"></div>
+      <div id="aiBox"></div>
     </div>
 
   </div>
@@ -180,12 +160,11 @@
 <script type="module">
 
 async function loadReport(){
-  const params = new URLSearchParams(window.location.search);
-  const id = params.get("id");
-
+  const id = new URLSearchParams(location.search).get("id");
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const json = await res.json();
   const rpt = json.report || {};
+  const ai = rpt.ai_results || {};
 
   document.getElementById("name").textContent = rpt.name ?? "—";
   document.getElementById("age").textContent = rpt.age ?? "—";
@@ -194,94 +173,70 @@ async function loadReport(){
     rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
 
   if (rpt.file_path){
-    const p = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
-    const pj = await p.json();
-    if (pj.url){
-      document.getElementById("pdfFrame").src = pj.url;
-      document.getElementById("downloadOriginalBtn").href = pj.url;
+    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+    const fj = await f.json();
+    if (fj.url){
+      document.getElementById("pdfFrame").src = fj.url;
+      document.getElementById("downloadBtn").href = fj.url;
     }
   }
 
-  renderCBC(rpt.ai_results || {});
-  renderAI(rpt.ai_results || {});
+  renderCBC(ai);
+  renderAI(ai);
 }
 
-/* ============================
-   CBC RENDERING — FIXED
-   ============================ */
 function renderCBC(ai){
-  const box = document.getElementById("cbcContent");
-  const per =
-    ai?.routes?.per_key ||
-    ai?.routes?.per_analyte ||
-    {};
+  const box = document.getElementById("cbcBox");
+  const cbc = ai._canonical_cbc || {};
+  const keys = Object.keys(cbc).filter(k => !k.startsWith("_"));
 
-  if (!Object.keys(per).length){
-    box.innerHTML =
-      "<div class='row'>⚠ CBC not available — interpretation limited to chemistry only</div>";
+  if (!keys.length){
+    box.innerHTML = "<div class='row'>⚠ CBC not available</div>";
     return;
   }
 
-  let html = "";
-
-  Object.entries(per).forEach(([key, d]) => {
-    const value = d.value ?? "—";
-    const units = d.units ?? "";
-    const sev = d.severity ?? "normal";
-
+  box.innerHTML = keys.map(k => {
+    const d = cbc[k];
+    const v = d.value ?? "—";
+    const u = d.units ?? "";
     let cls = "flag-normal";
-    let label = sev.toUpperCase();
 
-    if (sev === "critical" || sev === "severe"){
-      cls = "flag-high";
-    } else if (sev === "moderate" || sev === "mild"){
-      cls = "flag-low";
-    }
+    if (d.flag === "H") cls = "flag-high";
+    if (d.flag === "L") cls = "flag-low";
 
-    html += `
-      <div class="row cbc-row ${cls}">
-        <span><b>${key}</b></span>
-        <span>${value} ${units} — ${label}</span>
+    return `
+      <div class="cbc-row ${cls}">
+        <span><b>${k}</b></span>
+        <span>${v} ${u}</span>
       </div>
     `;
-  });
-
-  box.innerHTML = html;
+  }).join("");
 }
 
-/* ============================
-   AI INTERPRETATION — FIXED
-   ============================ */
 function renderAI(ai){
-  const box = document.getElementById("aiContent");
-  const routes = ai.routes || {};
-  const summary = ai.summary || {};
-
-  const sev =
-    summary.severity_text ||
-    routes.overall_severity ||
-    "normal";
-
-  const sevColor =
-    sev === "critical" ? "#b91c1c" :
-    sev === "severe" ? "#f97316" :
-    sev === "moderate" ? "#f59e0b" :
-    "#10b981";
+  const box = document.getElementById("aiBox");
+  const sev = ai._severity?.severity || "low";
+  const summary = ai.summary?.impression || "—";
+  const flags = ai._severity?.urgency_flags || [];
 
   box.innerHTML = `
-    <div class="severity-badge" style="background:${sevColor}">
+    <div class="severity-badge severity-${sev}">
       ${sev.toUpperCase()}
     </div>
-    <div class="ai-section-title">Summary</div>
-    <div class="row">${summary.summary || routes.summary || "—"}</div>
+
+    <div class="section-title">Summary</div>
+    <div class="row">${summary}</div>
+
+    ${flags.length ? `
+      <div class="section-title">Urgency Flags</div>
+      ${flags.map(f => `<div class="row">⚠ ${f.reason}</div>`).join("")}
+    ` : ""}
   `;
 }
 
-document.getElementById("printAiBtn")
-  .addEventListener("click", () => window.print());
-
+document.getElementById("printBtn").onclick = () => window.print();
 loadReport();
-</script>
 
+</script>
 </body>
 </html>
