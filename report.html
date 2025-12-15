@@ -52,7 +52,6 @@
       background:transparent;
       border:1px solid rgba(255,255,255,0.3);
       color:#fff;
-      text-decoration:none;
     }
 
     .container {
@@ -95,6 +94,7 @@
     .row {
       margin:6px 0;
       font-size:14px;
+      line-height:1.5;
     }
 
     .cbc-row {
@@ -136,7 +136,8 @@
     }
 
     li {
-      margin-bottom:6px;
+      margin:4px 0;
+      font-size:14px;
     }
   </style>
 </head>
@@ -207,9 +208,6 @@ async function loadReport(){
   renderAI(ai);
 }
 
-/* =========================
-   LAB RENDERING
-   ========================= */
 function renderCBC(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
@@ -220,13 +218,7 @@ function renderCBC(ai){
     return;
   }
 
-  const hasCBC = ["Hb","WBC","Platelets"].some(k => labs[k]);
-  const scopeNote = hasCBC
-    ? "CBC and chemistry values detected"
-    : "CBC not included — interpretation based on chemistry only";
-
-  let html = `<div class="row" style="opacity:0.8;font-size:13px">${scopeNote}</div>`;
-
+  let html = "";
   keys.forEach(key => {
     const d = labs[key] || {};
     const value = d.value ?? "—";
@@ -246,9 +238,6 @@ function renderCBC(ai){
   box.innerHTML = html;
 }
 
-/* =========================
-   AI INTERPRETATION
-   ========================= */
 function renderAI(ai){
   const box = document.getElementById("aiBox");
   const severity = ai._severity?.severity || "low";
@@ -266,18 +255,22 @@ function renderAI(ai){
     <div class="row">${summary}</div>
 
     ${flags.length ? `
-      <div class="section-title">Urgency flags</div>
+      <div class="section-title">Urgency Flags</div>
       ${flags.map(f => `<div class="row">⚠ ${f.reason}</div>`).join("")}
     ` : ""}
 
     ${context.length ? `
-      <div class="section-title">Clinical context considerations</div>
-      <ul>${context.map(c => `<li>${c}</li>`).join("")}</ul>
+      <div class="section-title">Clinical Context Considerations</div>
+      <ul>
+        ${context.map(c => `<li>${c}</li>`).join("")}
+      </ul>
     ` : ""}
 
     ${nextSteps.length ? `
-      <div class="section-title">Suggested next steps (conservative)</div>
-      <ul>${nextSteps.map(s => `<li>${s}</li>`).join("")}</ul>
+      <div class="section-title">Suggested Next Steps (Optional)</div>
+      <ul>
+        ${nextSteps.map(s => `<li>${s}</li>`).join("")}
+      </ul>
     ` : ""}
   `;
 }
@@ -288,3 +281,4 @@ loadReport();
 </script>
 </body>
 </html>
+
