@@ -1,16 +1,191 @@
-<script type="module">
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>AMI — Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-let REPORT_DATA = null;
-let PDF_URL = null;
+  <style>
+    :root {
+      --bg:#030414;
+      --card:#0b1020;
+      --muted:#96a0b8;
+      --accent:#00e0b8;
+      --white:#eaf6ff;
+
+      --low:#f59e0b;
+      --high:#b91c1c;
+      --normal:#ffffff;
+    }
+
+    body {
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:#02040e;
+      color:var(--white);
+    }
+
+    header {
+      padding:18px 24px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:#050a16;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+
+    .header-left {
+      display:flex;
+      align-items:center;
+      gap:16px;
+    }
+
+    header img { height:40px; }
+
+    .btn {
+      padding:10px 18px;
+      border-radius:999px;
+      border:none;
+      cursor:pointer;
+      font-size:14px;
+      font-weight:600;
+      display:inline-flex;
+      align-items:center;
+    }
+
+    .btn.primary {
+      background:linear-gradient(90deg,#00e0b8,#00b7ff);
+      color:#001821;
+    }
+
+    .btn.secondary {
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.28);
+      color:var(--white);
+    }
+
+    .container {
+      max-width:1200px;
+      margin:20px auto;
+      padding:0 20px 30px;
+      display:grid;
+      grid-template-columns:1.2fr 1fr;
+      gap:20px;
+    }
+
+    @media (max-width:900px){
+      .container { grid-template-columns:1fr; }
+      .left-viewer { height:60vh; }
+    }
+
+    .left-viewer {
+      background:#000;
+      border-radius:12px;
+      overflow:hidden;
+      height:85vh;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+
+    iframe { width:100%; height:100%; border:none; }
+
+    .panel {
+      background:var(--card);
+      padding:20px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.07);
+      margin-bottom:18px;
+    }
+
+    h2 {
+      margin:0;
+      font-size:20px;
+      font-weight:700;
+    }
+
+    .row {
+      margin:4px 0;
+      font-size:14px;
+    }
+
+    .cbc-row {
+      padding:4px 0;
+      display:flex;
+      justify-content:space-between;
+    }
+
+    .flag-high { color:var(--high); font-weight:700; }
+    .flag-low { color:var(--low); font-weight:600; }
+    .flag-normal { color:var(--normal); }
+
+    .ai-section-title {
+      margin-top:14px;
+      font-size:14px;
+      font-weight:600;
+      opacity:0.9;
+    }
+
+    .severity-badge {
+      display:inline-flex;
+      padding:6px 12px;
+      border-radius:999px;
+      font-weight:700;
+      color:#001821;
+      margin-bottom:12px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="/dashboard.html" style="color:#00d4ff;text-decoration:none;font-size:14px">← Back</a>
+    <img src="/logo.png" alt="AMI Health Logo" />
+  </div>
+
+  <div>
+    <button id="printAiBtn" class="btn primary">Print / Save AI Report</button>
+    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">
+      Download Original PDF
+    </a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="left-viewer"><iframe id="pdfFrame"></iframe></div>
+
+  <div>
+
+    <div class="panel">
+      <h2>Patient Info</h2>
+      <div class="row"><b>Name:</b> <span id="name"></span></div>
+      <div class="row"><b>Age:</b> <span id="age"></span></div>
+      <div class="row"><b>Sex:</b> <span id="sex"></span></div>
+      <div class="row"><b>Date:</b> <span id="date"></span></div>
+    </div>
+
+    <div class="panel">
+      <h2>CBC Results</h2>
+      <div id="cbcContent"></div>
+    </div>
+
+    <div class="panel">
+      <h2>AI Interpretation</h2>
+      <div id="aiContent"></div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
 
 async function loadReport(){
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
-  const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const data = await res.json();
 
-  REPORT_DATA = data.report;
-  const rpt = REPORT_DATA;
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
+  const json = await res.json();
+  const rpt = json.report || {};
 
   document.getElementById("name").textContent = rpt.name ?? "—";
   document.getElementById("age").textContent = rpt.age ?? "—";
@@ -22,36 +197,34 @@ async function loadReport(){
     const p = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const pj = await p.json();
     if (pj.url){
-      PDF_URL = pj.url;
       document.getElementById("pdfFrame").src = pj.url;
       document.getElementById("downloadOriginalBtn").href = pj.url;
     }
   }
 
-  renderCBC(rpt.ai_results);
-  renderAI(rpt.ai_results);
+  renderCBC(rpt.ai_results || {});
+  renderAI(rpt.ai_results || {});
 }
 
-// =======================
-// CBC RENDERING — FIXED
-// =======================
+/* ============================
+   CBC RENDERING — FIXED
+   ============================ */
 function renderCBC(ai){
   const box = document.getElementById("cbcContent");
-  const per = ai?.routes?.per_analyte || {};
+  const per =
+    ai?.routes?.per_key ||
+    ai?.routes?.per_analyte ||
+    {};
 
   if (!Object.keys(per).length){
     box.innerHTML =
-      "<div class='row'>⚠️ CBC not available — interpretation limited to chemistry only</div>";
+      "<div class='row'>⚠ CBC not available — interpretation limited to chemistry only</div>";
     return;
   }
 
   let html = "";
 
   Object.entries(per).forEach(([key, d]) => {
-    if (!["Hb","WBC","Platelets","MCV","RDW","Neutrophils","Lymphocytes"].includes(key)) {
-      return;
-    }
-
     const value = d.value ?? "—";
     const units = d.units ?? "";
     const sev = d.severity ?? "normal";
@@ -59,8 +232,11 @@ function renderCBC(ai){
     let cls = "flag-normal";
     let label = sev.toUpperCase();
 
-    if (sev === "critical" || sev === "severe") cls = "flag-high";
-    else if (sev === "moderate" || sev === "mild") cls = "flag-low";
+    if (sev === "critical" || sev === "severe"){
+      cls = "flag-high";
+    } else if (sev === "moderate" || sev === "mild"){
+      cls = "flag-low";
+    }
 
     html += `
       <div class="row cbc-row ${cls}">
@@ -70,41 +246,42 @@ function renderCBC(ai){
     `;
   });
 
-  box.innerHTML = html || "<div class='row'>No CBC values detected</div>";
+  box.innerHTML = html;
 }
 
-// =======================
-// AI INTERPRETATION — FIXED
-// =======================
+/* ============================
+   AI INTERPRETATION — FIXED
+   ============================ */
 function renderAI(ai){
   const box = document.getElementById("aiContent");
+  const routes = ai.routes || {};
+  const summary = ai.summary || {};
 
-  const summary = ai?.summary || {};
-  const sev = summary.severity_text || "clinically stable";
+  const sev =
+    summary.severity_text ||
+    routes.overall_severity ||
+    "normal";
 
   const sevColor =
-    sev.includes("critical") ? "#b91c1c" :
-    sev.includes("severe") ? "#f97316" :
-    sev.includes("moderate") ? "#f59e0b" :
+    sev === "critical" ? "#b91c1c" :
+    sev === "severe" ? "#f97316" :
+    sev === "moderate" ? "#f59e0b" :
     "#10b981";
 
-  let html = `
+  box.innerHTML = `
     <div class="severity-badge" style="background:${sevColor}">
       ${sev.toUpperCase()}
     </div>
     <div class="ai-section-title">Summary</div>
-    <div class="row">${summary.summary || "—"}</div>
+    <div class="row">${summary.summary || routes.summary || "—"}</div>
   `;
-
-  if (summary.suggested_follow_up?.length){
-    html += `<div class="ai-section-title">Suggested follow-up</div>` +
-      summary.suggested_follow_up.map(s=>`<div class="row">• ${s}</div>`).join("");
-  }
-
-  box.innerHTML = html;
 }
 
-document.getElementById("printAiBtn").addEventListener("click", () => window.print());
-loadReport();
+document.getElementById("printAiBtn")
+  .addEventListener("click", () => window.print());
 
+loadReport();
 </script>
+
+</body>
+</html>
