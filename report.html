@@ -94,6 +94,7 @@
     .row {
       margin:6px 0;
       font-size:14px;
+      line-height:1.5;
     }
 
     .cbc-row {
@@ -127,6 +128,12 @@
       font-weight:700;
       text-transform:uppercase;
       opacity:0.85;
+    }
+
+    ul {
+      margin:6px 0 0 18px;
+      padding:0;
+      font-size:14px;
     }
   </style>
 </head>
@@ -193,35 +200,29 @@ async function loadReport(){
     }
   }
 
-  renderCBC(ai);
+  renderLabs(ai);
   renderAI(ai);
 }
 
 /* =========================
-   LAB RENDERING (CBC + CHEM)
+   LAB RENDERING
    ========================= */
-function renderCBC(ai){
+function renderLabs(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
-  const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
+  const keys = Object.keys(labs);
 
   if (!keys.length){
-    box.innerHTML =
-      "<div class='row'>No structured laboratory values available</div>";
+    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
     return;
   }
 
   const hasCBC = ["Hb", "WBC", "Platelets"].some(k => labs[k]);
-
   const scopeNote = hasCBC
     ? "CBC and chemistry values detected"
-    : "CBC not included — interpretation based on chemistry only";
+    : "CBC not available — interpretation based on chemistry only";
 
-  let html = `
-    <div class="row" style="opacity:0.8;font-size:13px;margin-bottom:8px">
-      ${scopeNote}
-    </div>
-  `;
+  let html = `<div class="row" style="opacity:0.8;font-size:13px">${scopeNote}</div>`;
 
   keys.forEach(key => {
     const d = labs[key] || {};
@@ -249,20 +250,33 @@ function renderCBC(ai){
 function renderAI(ai){
   const box = document.getElementById("aiBox");
   const severity = ai._severity?.severity || "low";
-  const summary = ai.summary?.impression || "—";
+  const summary = ai._overall_status || ai.summary?.impression || "—";
   const flags = ai._severity?.urgency_flags || [];
+
+  const context = ai._chemistry_context || [];
+  const nextSteps = ai._chemistry_next_steps || [];
 
   box.innerHTML = `
     <div class="severity-badge severity-${severity}">
       ${severity.toUpperCase()}
     </div>
 
-    <div class="section-title">Summary</div>
+    <div class="section-title">Clinical Summary</div>
     <div class="row">${summary}</div>
 
     ${flags.length ? `
       <div class="section-title">Urgency Flags</div>
       ${flags.map(f => `<div class="row">⚠ ${f.reason}</div>`).join("")}
+    ` : ""}
+
+    ${context.length ? `
+      <div class="section-title">Clinical Context Considerations</div>
+      <ul>${context.map(c => `<li>${c}</li>`).join("")}</ul>
+    ` : ""}
+
+    ${nextSteps.length ? `
+      <div class="section-title">Suggested Next Steps (Conservative)</div>
+      <ul>${nextSteps.map(s => `<li>${s}</li>`).join("")}</ul>
     ` : ""}
   `;
 }
