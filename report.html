@@ -52,6 +52,7 @@
       background:transparent;
       border:1px solid rgba(255,255,255,0.3);
       color:#fff;
+      text-decoration:none;
     }
 
     .container {
@@ -94,7 +95,6 @@
     .row {
       margin:6px 0;
       font-size:14px;
-      line-height:1.5;
     }
 
     .cbc-row {
@@ -133,7 +133,10 @@
     ul {
       margin:6px 0 0 18px;
       padding:0;
-      font-size:14px;
+    }
+
+    li {
+      margin-bottom:6px;
     }
   </style>
 </head>
@@ -200,14 +203,14 @@ async function loadReport(){
     }
   }
 
-  renderLabs(ai);
+  renderCBC(ai);
   renderAI(ai);
 }
 
 /* =========================
    LAB RENDERING
    ========================= */
-function renderLabs(ai){
+function renderCBC(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
   const keys = Object.keys(labs);
@@ -217,10 +220,10 @@ function renderLabs(ai){
     return;
   }
 
-  const hasCBC = ["Hb", "WBC", "Platelets"].some(k => labs[k]);
+  const hasCBC = ["Hb","WBC","Platelets"].some(k => labs[k]);
   const scopeNote = hasCBC
     ? "CBC and chemistry values detected"
-    : "CBC not available — interpretation based on chemistry only";
+    : "CBC not included — interpretation based on chemistry only";
 
   let html = `<div class="row" style="opacity:0.8;font-size:13px">${scopeNote}</div>`;
 
@@ -229,9 +232,8 @@ function renderLabs(ai){
     const value = d.value ?? "—";
     const units = d.units ?? "";
     let cls = "flag-normal";
-
-    if (d.flag === "H" || d.flag === "high") cls = "flag-high";
-    if (d.flag === "L" || d.flag === "low") cls = "flag-low";
+    if (d.flag === "high" || d.flag === "H") cls = "flag-high";
+    if (d.flag === "low" || d.flag === "L") cls = "flag-low";
 
     html += `
       <div class="cbc-row ${cls}">
@@ -250,32 +252,31 @@ function renderLabs(ai){
 function renderAI(ai){
   const box = document.getElementById("aiBox");
   const severity = ai._severity?.severity || "low";
-  const summary = ai._overall_status || ai.summary?.impression || "—";
+  const summary = ai.summary?.impression || "—";
   const flags = ai._severity?.urgency_flags || [];
-
-  const context = ai._chemistry_context || [];
-  const nextSteps = ai._chemistry_next_steps || [];
+  const context = ai._clinical_context || [];
+  const nextSteps = ai._suggested_next_steps || [];
 
   box.innerHTML = `
     <div class="severity-badge severity-${severity}">
       ${severity.toUpperCase()}
     </div>
 
-    <div class="section-title">Clinical Summary</div>
+    <div class="section-title">Summary</div>
     <div class="row">${summary}</div>
 
     ${flags.length ? `
-      <div class="section-title">Urgency Flags</div>
+      <div class="section-title">Urgency flags</div>
       ${flags.map(f => `<div class="row">⚠ ${f.reason}</div>`).join("")}
     ` : ""}
 
     ${context.length ? `
-      <div class="section-title">Clinical Context Considerations</div>
+      <div class="section-title">Clinical context considerations</div>
       <ul>${context.map(c => `<li>${c}</li>`).join("")}</ul>
     ` : ""}
 
     ${nextSteps.length ? `
-      <div class="section-title">Suggested Next Steps (Conservative)</div>
+      <div class="section-title">Suggested next steps (conservative)</div>
       <ul>${nextSteps.map(s => `<li>${s}</li>`).join("")}</ul>
     ` : ""}
   `;
