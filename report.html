@@ -13,10 +13,10 @@
       --accent:#00e0b8;
       --white:#eaf6ff;
 
-      --low:#10b981;
-      --moderate:#f59e0b;
+      --low:#f59e0b;
       --high:#f97316;
       --critical:#dc2626;
+      --normal:#eaf6ff;
     }
 
     body {
@@ -88,12 +88,14 @@
     .cbc-row {
       display:flex;
       justify-content:space-between;
-      padding:4px 0;
+      padding:6px 0;
       border-bottom:1px dashed rgba(255,255,255,0.06);
+      font-size:14px;
     }
 
     .flag-high { color:var(--high); font-weight:700; }
-    .flag-low { color:var(--moderate); font-weight:600; }
+    .flag-low { color:var(--low); font-weight:700; }
+    .flag-normal { color:var(--normal); }
 
     .severity-badge {
       display:inline-flex;
@@ -104,10 +106,10 @@
       margin-bottom:12px;
     }
 
-    .severity-low { background:var(--low); }
-    .severity-moderate { background:var(--moderate); }
-    .severity-high { background:var(--high); }
-    .severity-critical { background:var(--critical); }
+    .severity-low { background:#10b981; }
+    .severity-moderate { background:#f59e0b; }
+    .severity-high { background:#f97316; }
+    .severity-critical { background:#dc2626; }
 
     .section-title {
       margin-top:14px;
@@ -191,10 +193,33 @@ function renderCBC(ai){
 
   box.innerHTML = keys.map(k => {
     const d = labs[k] || {};
+    const val = Number(d.value);
+    const lo = Number(d.reference_low);
+    const hi = Number(d.reference_high);
+
+    let cls = "flag-normal";
+    let flag = "";
+
+    if (!isNaN(val)) {
+      if (!isNaN(hi) && val > hi) {
+        cls = "flag-high";
+        flag = " ↑";
+      } else if (!isNaN(lo) && val < lo) {
+        cls = "flag-low";
+        flag = " ↓";
+      } else if (d.flag === "H") {
+        cls = "flag-high";
+        flag = " ↑";
+      } else if (d.flag === "L") {
+        cls = "flag-low";
+        flag = " ↓";
+      }
+    }
+
     return `
-      <div class="cbc-row">
+      <div class="cbc-row ${cls}">
         <span><b>${k}</b></span>
-        <span>${d.value ?? "—"} ${d.units ?? ""}</span>
+        <span>${d.value ?? "—"} ${d.units ?? ""}${flag}</span>
       </div>`;
   }).join("");
 }
