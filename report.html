@@ -63,11 +63,6 @@
       gap:20px;
     }
 
-    @media (max-width:900px){
-      .container { grid-template-columns:1fr; }
-      .left-viewer { height:60vh; }
-    }
-
     .left-viewer {
       background:#000;
       border-radius:12px;
@@ -86,16 +81,9 @@
       margin-bottom:18px;
     }
 
-    h2 {
-      margin:0 0 10px;
-      font-size:20px;
-    }
+    h2 { margin:0 0 10px; font-size:20px; }
 
-    .row {
-      margin:6px 0;
-      font-size:14px;
-      line-height:1.5;
-    }
+    .row { margin:6px 0; font-size:14px; }
 
     .cbc-row {
       display:flex;
@@ -106,7 +94,6 @@
 
     .flag-high { color:var(--high); font-weight:700; }
     .flag-low { color:var(--moderate); font-weight:600; }
-    .flag-normal { color:var(--white); }
 
     .severity-badge {
       display:inline-flex;
@@ -130,15 +117,8 @@
       opacity:0.85;
     }
 
-    ul {
-      margin:6px 0 0 18px;
-      padding:0;
-    }
-
-    li {
-      margin:4px 0;
-      font-size:14px;
-    }
+    ul { margin:6px 0 0 18px; padding:0; }
+    li { margin:4px 0; font-size:14px; }
   </style>
 </head>
 
@@ -146,10 +126,7 @@
 
 <header>
   <button class="secondary" onclick="history.back()">← Back</button>
-  <div>
-    <button id="printBtn" class="primary">Print / Save AI Report</button>
-    <a id="downloadBtn" class="secondary" target="_blank">Download Original PDF</a>
-  </div>
+  <button id="printBtn" class="primary">Print / Save AI Report</button>
 </header>
 
 <div class="container">
@@ -158,7 +135,6 @@
   </div>
 
   <div>
-
     <div class="panel">
       <h2>Patient Info</h2>
       <div class="row"><b>Name:</b> <span id="name"></span></div>
@@ -176,12 +152,10 @@
       <h2>AI Interpretation</h2>
       <div id="aiBox"></div>
     </div>
-
   </div>
 </div>
 
 <script type="module">
-
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
   const res = await fetch(`/api/get-ai-report?id=${id}`);
@@ -198,87 +172,38 @@ async function loadReport(){
   if (rpt.file_path){
     const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj = await f.json();
-    if (fj.url){
-      document.getElementById("pdfFrame").src = fj.url;
-      document.getElementById("downloadBtn").href = fj.url;
-    }
+    if (fj.url) document.getElementById("pdfFrame").src = fj.url;
   }
 
   renderCBC(ai);
   renderAI(ai);
 }
 
-/* =========================
-   LAB RENDERING (CLEAN)
-   ========================= */
 function renderCBC(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
+  const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
 
-  const HIDDEN_KEYS = new Set([
-    "_patient_age",
-    "_patient_sex",
-    "_patient_name"
-  ]);
-
-  const seen = new Set();
-
-  const entries = Object.entries(labs)
-    .filter(([key, val]) => {
-      if (key.startsWith("_")) return false;
-      if (HIDDEN_KEYS.has(key)) return false;
-      if (!val || typeof val !== "object") return false;
-      return true;
-    });
-
-  if (!entries.length){
+  if (!keys.length){
     box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
     return;
   }
 
-  let html = "";
-
-  entries.forEach(([key, d]) => {
-    const norm = key.toLowerCase();
-    if (seen.has(norm)) return;
-    seen.add(norm);
-
-    let rawValue = d.value ?? "—";
-
-    // Clean OCR artefacts (e.g. "17 / 32")
-    if (typeof rawValue === "string" && rawValue.includes("/")) {
-      rawValue = rawValue.split("/")[0].trim();
-    }
-
-    const units = d.units ?? "";
-    let cls = "flag-normal";
-    if (d.flag === "high" || d.flag === "H") cls = "flag-high";
-    if (d.flag === "low" || d.flag === "L") cls = "flag-low";
-
-    html += `
-      <div class="cbc-row ${cls}">
-        <span><b>${key}</b></span>
-        <span>${rawValue} ${units}</span>
-      </div>
-    `;
-  });
-
-  box.innerHTML = html;
+  box.innerHTML = keys.map(k => {
+    const d = labs[k] || {};
+    return `
+      <div class="cbc-row">
+        <span><b>${k}</b></span>
+        <span>${d.value ?? "—"} ${d.units ?? ""}</span>
+      </div>`;
+  }).join("");
 }
 
-/* =========================
-   AI INTERPRETATION
-   ========================= */
 function renderAI(ai){
   const box = document.getElementById("aiBox");
-
   const severity = ai._severity?.severity || "low";
   const summary = ai.summary?.impression || "—";
-  const flags = ai._severity?.urgency_flags || [];
-
-  let context = ai._clinical_context || [];
-  context = [...new Set(context)];
-
+  const context = ai._clinical_context || [];
   const nextSteps = ai._suggested_next_steps || [];
 
   box.innerHTML = `
@@ -289,30 +214,20 @@ function renderAI(ai){
     <div class="section-title">Summary</div>
     <div class="row">${summary}</div>
 
-    ${flags.length ? `
-      <div class="section-title">Urgency Flags</div>
-      ${flags.map(f => `<div class="row">⚠ ${f.reason}</div>`).join("")}
-    ` : ""}
-
     ${context.length ? `
       <div class="section-title">Clinical Context</div>
-      <ul>
-        ${context.map(c => `<li>${c}</li>`).join("")}
-      </ul>
+      <ul>${context.map(c => `<li>${c}</li>`).join("")}</ul>
     ` : ""}
 
     ${nextSteps.length ? `
       <div class="section-title">Suggested Next Steps (Optional)</div>
-      <ul>
-        ${nextSteps.map(s => `<li>${s}</li>`).join("")}
-      </ul>
+      <ul>${nextSteps.map(s => `<li>${s}</li>`).join("")}</ul>
     ` : ""}
   `;
 }
 
 document.getElementById("printBtn").onclick = () => window.print();
 loadReport();
-
 </script>
 </body>
 </html>
