@@ -103,14 +103,15 @@
     }
 
     .row {
-      margin:4px 0;
+      margin:6px 0;
       font-size:14px;
     }
 
     .cbc-row {
-      padding:4px 0;
+      padding:6px 0;
       display:flex;
       justify-content:space-between;
+      border-bottom:1px solid rgba(255,255,255,0.06);
     }
 
     .flag-high { color:var(--high); font-weight:700; }
@@ -131,6 +132,7 @@
       font-weight:700;
       color:#001821;
       margin-bottom:12px;
+      text-transform:uppercase;
     }
   </style>
 </head>
@@ -179,17 +181,14 @@
 
 <script type="module">
 
-let REPORT_DATA = null;
-let PDF_URL = null;
-
 async function loadReport(){
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
+
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const data = await res.json();
-
-  REPORT_DATA = data.report;
-  const rpt = REPORT_DATA;
+  const rpt = data.report;
+  const ai = rpt.ai_results;
 
   document.getElementById("name").textContent = rpt.name ?? "—";
   document.getElementById("age").textContent = rpt.age ?? "—";
@@ -201,53 +200,43 @@ async function loadReport(){
     const p = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const pj = await p.json();
     if (pj.url){
-      PDF_URL = pj.url;
       document.getElementById("pdfFrame").src = pj.url;
       document.getElementById("downloadOriginalBtn").href = pj.url;
     }
   }
 
-  renderCBC(rpt.ai_results);
-  renderAI(rpt.ai_results);
+  renderCBC(ai);
+  renderAI(ai);
 }
 
 // =======================
-// CBC RENDERING — CLINICAL MODE (FIXED)
+// CBC RENDERING — FIXED
 // =======================
 function renderCBC(ai){
   const box = document.getElementById("cbcContent");
-  const perKey = ai?.routes?.per_key || {};
+  const per = ai?.routes?.per_analyte || {};
 
-  if (!Object.keys(perKey).length){
-    box.innerHTML = "<div class='row'>No CBC values detected</div>";
+  if (!Object.keys(per).length){
+    box.innerHTML =
+      "<div class='row'>⚠️ CBC not available — interpretation limited to chemistry only</div>";
     return;
   }
 
   let html = "";
 
-  Object.entries(perKey).forEach(([key, d]) => {
+  Object.entries(per).forEach(([key, d]) => {
     const value = d.value ?? "—";
     const units = d.units ?? "";
-    const sev = d.severity ?? 1;
+    const sev = d.severity || "normal";
 
     let cls = "flag-normal";
-    let label = "NORMAL";
-
-    if (sev >= 5){
-      cls = "flag-high";
-      label = "CRITICAL";
-    } else if (sev === 4){
-      cls = "flag-high";
-      label = "SEVERE";
-    } else if (sev === 3){
-      cls = "flag-low";
-      label = "MODERATE";
-    }
+    if (sev === "critical" || sev === "severe") cls = "flag-high";
+    else if (sev === "moderate" || sev === "mild") cls = "flag-low";
 
     html += `
       <div class="row cbc-row ${cls}">
         <span><b>${key}</b></span>
-        <span>${value} ${units} — ${label}</span>
+        <span>${value} ${units} — ${sev.toUpperCase()}</span>
       </div>
     `;
   });
@@ -256,40 +245,31 @@ function renderCBC(ai){
 }
 
 // =======================
-// AI INTERPRETATION
+// AI INTERPRETATION — FIXED
 // =======================
 function renderAI(ai){
   const box = document.getElementById("aiContent");
-  const r = ai.routes || {};
+  const summary = ai?.summary || {};
 
-  const sev = r.severity_text || "normal";
+  const sev = summary.severity_text || "clinically stable";
   const sevColor =
-    sev === "critical" ? "#b91c1c" :
-    sev === "severe" ? "#f97316" :
-    sev === "moderate" ? "#f59e0b" :
+    sev.includes("critical") ? "#b91c1c" :
+    sev.includes("severe") ? "#f97316" :
+    sev.includes("moderate") || sev.includes("mild") ? "#f59e0b" :
     "#10b981";
 
   let html = `
     <div class="severity-badge" style="background:${sevColor}">
-      ${sev.toUpperCase()}
+      ${sev}
     </div>
+
     <div class="ai-section-title">Summary</div>
-    <div class="row">${r.summary || "—"}</div>
+    <div class="row">${summary.summary || "—"}</div>
   `;
 
-  if (r.patterns?.length){
-    html += `<div class="ai-section-title">Patterns</div>` +
-      r.patterns.map(p=>`<div class="row">• <b>${p.pattern}</b>: ${p.reason}</div>`).join("");
-  }
-
-  if (r.differential?.length){
-    html += `<div class="ai-section-title">Differential considerations</div>` +
-      r.differential.map(d=>`<div class="row">• ${d}</div>`).join("");
-  }
-
-  if (r.next_steps?.length){
-    html += `<div class="ai-section-title">Suggested actions</div>` +
-      r.next_steps.map(s=>`<div class="row">• ${s}</div>`).join("");
+  if (summary.suggested_follow_up?.length){
+    html += `<div class="ai-section-title">Suggested follow-up</div>` +
+      summary.suggested_follow_up.map(s=>`<div class="row">• ${s}</div>`).join("");
   }
 
   box.innerHTML = html;
