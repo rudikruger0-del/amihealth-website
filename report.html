@@ -13,10 +13,10 @@
       --accent:#00e0b8;
       --white:#eaf6ff;
 
-      --low:#f59e0b;
-      --high:#dc2626;
-      --critical:#991b1b;
-      --normal:#ffffff;
+      --low:#10b981;
+      --moderate:#f59e0b;
+      --high:#f97316;
+      --critical:#dc2626;
     }
 
     body {
@@ -33,6 +33,25 @@
       justify-content:space-between;
       background:#050a16;
       border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+
+    button {
+      padding:10px 18px;
+      border-radius:999px;
+      border:none;
+      cursor:pointer;
+      font-weight:600;
+    }
+
+    .primary {
+      background:linear-gradient(90deg,#00e0b8,#00b7ff);
+      color:#001821;
+    }
+
+    .secondary {
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.3);
+      color:#fff;
     }
 
     .container {
@@ -67,9 +86,15 @@
       margin-bottom:18px;
     }
 
-    h2 { margin:0 0 10px; font-size:20px; }
+    h2 {
+      margin:0 0 10px;
+      font-size:20px;
+    }
 
-    .row { margin:6px 0; font-size:14px; }
+    .row {
+      margin:6px 0;
+      font-size:14px;
+    }
 
     .cbc-row {
       display:flex;
@@ -79,8 +104,8 @@
     }
 
     .flag-high { color:var(--high); font-weight:700; }
-    .flag-low { color:var(--low); font-weight:600; }
-    .flag-normal { color:var(--normal); }
+    .flag-low { color:var(--moderate); font-weight:600; }
+    .flag-normal { color:var(--white); }
 
     .severity-badge {
       display:inline-flex;
@@ -91,10 +116,10 @@
       margin-bottom:12px;
     }
 
-    .severity-critical { background:var(--critical); }
+    .severity-low { background:var(--low); }
+    .severity-moderate { background:var(--moderate); }
     .severity-high { background:var(--high); }
-    .severity-moderate { background:var(--low); }
-    .severity-low { background:#10b981; }
+    .severity-critical { background:var(--critical); }
 
     .section-title {
       margin-top:14px;
@@ -103,26 +128,13 @@
       text-transform:uppercase;
       opacity:0.85;
     }
-
-    button {
-      padding:10px 18px;
-      border-radius:999px;
-      border:none;
-      font-weight:600;
-      cursor:pointer;
-    }
-
-    .primary { background:linear-gradient(90deg,#00e0b8,#00b7ff); }
-    .secondary { background:transparent; border:1px solid rgba(255,255,255,0.3); color:#fff; }
   </style>
 </head>
 
 <body>
 
 <header>
-  <div>
-    <button class="secondary" onclick="history.back()">← Back</button>
-  </div>
+  <button class="secondary" onclick="history.back()">← Back</button>
   <div>
     <button id="printBtn" class="primary">Print / Save AI Report</button>
     <a id="downloadBtn" class="secondary" target="_blank">Download Original PDF</a>
@@ -145,7 +157,7 @@
     </div>
 
     <div class="panel">
-      <h2>CBC & Chemistry</h2>
+      <h2>Laboratory Findings</h2>
       <div id="cbcBox"></div>
     </div>
 
@@ -185,43 +197,64 @@ async function loadReport(){
   renderAI(ai);
 }
 
+/* =========================
+   LAB RENDERING (CBC + CHEM)
+   ========================= */
 function renderCBC(ai){
   const box = document.getElementById("cbcBox");
-  const cbc = ai._canonical_cbc || {};
-  const keys = Object.keys(cbc).filter(k => !k.startsWith("_"));
+  const labs = ai._canonical_cbc || {};
+  const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
 
   if (!keys.length){
-    box.innerHTML = "<div class='row'>⚠ CBC not available</div>";
+    box.innerHTML =
+      "<div class='row'>No structured laboratory values available</div>";
     return;
   }
 
-  box.innerHTML = keys.map(k => {
-    const d = cbc[k];
-    const v = d.value ?? "—";
-    const u = d.units ?? "";
+  const hasCBC = ["Hb", "WBC", "Platelets"].some(k => labs[k]);
+
+  const scopeNote = hasCBC
+    ? "CBC and chemistry values detected"
+    : "CBC not included — interpretation based on chemistry only";
+
+  let html = `
+    <div class="row" style="opacity:0.8;font-size:13px;margin-bottom:8px">
+      ${scopeNote}
+    </div>
+  `;
+
+  keys.forEach(key => {
+    const d = labs[key] || {};
+    const value = d.value ?? "—";
+    const units = d.units ?? "";
     let cls = "flag-normal";
 
-    if (d.flag === "H") cls = "flag-high";
-    if (d.flag === "L") cls = "flag-low";
+    if (d.flag === "H" || d.flag === "high") cls = "flag-high";
+    if (d.flag === "L" || d.flag === "low") cls = "flag-low";
 
-    return `
+    html += `
       <div class="cbc-row ${cls}">
-        <span><b>${k}</b></span>
-        <span>${v} ${u}</span>
+        <span><b>${key}</b></span>
+        <span>${value} ${units}</span>
       </div>
     `;
-  }).join("");
+  });
+
+  box.innerHTML = html;
 }
 
+/* =========================
+   AI INTERPRETATION
+   ========================= */
 function renderAI(ai){
   const box = document.getElementById("aiBox");
-  const sev = ai._severity?.severity || "low";
+  const severity = ai._severity?.severity || "low";
   const summary = ai.summary?.impression || "—";
   const flags = ai._severity?.urgency_flags || [];
 
   box.innerHTML = `
-    <div class="severity-badge severity-${sev}">
-      ${sev.toUpperCase()}
+    <div class="severity-badge severity-${severity}">
+      ${severity.toUpperCase()}
     </div>
 
     <div class="section-title">Summary</div>
