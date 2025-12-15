@@ -9,8 +9,6 @@
 :root{
   --bg:#030414;
   --card:#0b1020;
-  --muted:#96a0b8;
-  --accent:#00e0b8;
   --white:#eaf6ff;
   --low:#f59e0b;
   --high:#b91c1c;
@@ -26,13 +24,12 @@ body{
   padding:20px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.07);
-  margin-bottom:18px;
+  margin:20px;
 }
-.row{font-size:14px;margin:4px 0}
+.row{font-size:14px;margin:6px 0}
 .cbc-row{
   display:flex;
   justify-content:space-between;
-  padding:4px 0;
 }
 .flag-high{color:var(--high);font-weight:700}
 .flag-low{color:var(--low);font-weight:600}
@@ -50,19 +47,39 @@ body{
 
 <body>
 
-<div class="container">
-  <div class="panel">
-    <h2>CBC Results</h2>
-    <div id="cbcContent"></div>
-  </div>
+<div class="panel">
+  <h2>CBC Results</h2>
+  <div id="cbcContent"></div>
+</div>
 
-  <div class="panel">
-    <h2>AI Interpretation</h2>
-    <div id="aiContent"></div>
-  </div>
+<div class="panel">
+  <h2>AI Interpretation</h2>
+  <div id="aiContent"></div>
 </div>
 
 <script>
+async function loadReport(){
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+
+  if (!id){
+    document.getElementById("aiContent").innerText = "Missing report ID";
+    return;
+  }
+
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
+  const json = await res.json();
+
+  if (!json?.report?.ai_results){
+    document.getElementById("aiContent").innerText = "No AI results available";
+    return;
+  }
+
+  const ai = json.report.ai_results;
+  renderCBC(ai);
+  renderAI(ai);
+}
+
 function renderCBC(ai){
   const box = document.getElementById("cbcContent");
   const per = ai?.routes?.per_analyte || {};
@@ -86,7 +103,7 @@ function renderCBC(ai){
     else if (sev==="mild"){cls="flag-low";label="MILD";}
 
     html += `
-      <div class="cbc-row ${cls}">
+      <div class="row cbc-row ${cls}">
         <span><b>${key}</b></span>
         <span>${v} ${u} — ${label}</span>
       </div>
@@ -124,6 +141,8 @@ function renderAI(ai){
 
   box.innerHTML = html;
 }
+
+loadReport();
 </script>
 
 </body>
