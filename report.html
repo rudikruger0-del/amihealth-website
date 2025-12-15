@@ -1,149 +1,110 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>AMI — Report</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<script type="module">
 
-<style>
-:root{
-  --bg:#030414;
-  --card:#0b1020;
-  --white:#eaf6ff;
-  --low:#f59e0b;
-  --high:#b91c1c;
-}
-body{
-  margin:0;
-  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  background:#02040e;
-  color:var(--white);
-}
-.panel{
-  background:var(--card);
-  padding:20px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.07);
-  margin:20px;
-}
-.row{font-size:14px;margin:6px 0}
-.cbc-row{
-  display:flex;
-  justify-content:space-between;
-}
-.flag-high{color:var(--high);font-weight:700}
-.flag-low{color:var(--low);font-weight:600}
-.flag-normal{color:#fff}
-.severity-badge{
-  display:inline-flex;
-  padding:6px 14px;
-  border-radius:999px;
-  font-weight:800;
-  margin-bottom:12px;
-  color:#001821;
-}
-</style>
-</head>
+let REPORT_DATA = null;
+let PDF_URL = null;
 
-<body>
-
-<div class="panel">
-  <h2>CBC Results</h2>
-  <div id="cbcContent"></div>
-</div>
-
-<div class="panel">
-  <h2>AI Interpretation</h2>
-  <div id="aiContent"></div>
-</div>
-
-<script>
 async function loadReport(){
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
-
-  if (!id){
-    document.getElementById("aiContent").innerText = "Missing report ID";
-    return;
-  }
-
   const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const json = await res.json();
+  const data = await res.json();
 
-  if (!json?.report?.ai_results){
-    document.getElementById("aiContent").innerText = "No AI results available";
-    return;
+  REPORT_DATA = data.report;
+  const rpt = REPORT_DATA;
+
+  document.getElementById("name").textContent = rpt.name ?? "—";
+  document.getElementById("age").textContent = rpt.age ?? "—";
+  document.getElementById("sex").textContent = rpt.sex ?? "—";
+  document.getElementById("date").textContent =
+    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
+
+  if (rpt.file_path){
+    const p = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+    const pj = await p.json();
+    if (pj.url){
+      PDF_URL = pj.url;
+      document.getElementById("pdfFrame").src = pj.url;
+      document.getElementById("downloadOriginalBtn").href = pj.url;
+    }
   }
 
-  const ai = json.report.ai_results;
-  renderCBC(ai);
-  renderAI(ai);
+  renderCBC(rpt.ai_results);
+  renderAI(rpt.ai_results);
 }
 
+// =======================
+// CBC RENDERING — FIXED
+// =======================
 function renderCBC(ai){
   const box = document.getElementById("cbcContent");
   const per = ai?.routes?.per_analyte || {};
 
   if (!Object.keys(per).length){
     box.innerHTML =
-      "⚠️ CBC not available — interpretation limited to chemistry only";
+      "<div class='row'>⚠️ CBC not available — interpretation limited to chemistry only</div>";
     return;
   }
 
   let html = "";
-  for (const [key,d] of Object.entries(per)){
-    const v = d.value ?? "—";
-    const u = d.units ?? "";
+
+  Object.entries(per).forEach(([key, d]) => {
+    if (!["Hb","WBC","Platelets","MCV","RDW","Neutrophils","Lymphocytes"].includes(key)) {
+      return;
+    }
+
+    const value = d.value ?? "—";
+    const units = d.units ?? "";
     const sev = d.severity ?? "normal";
 
-    let cls="flag-normal", label="NORMAL";
-    if (sev==="critical"){cls="flag-high";label="CRITICAL";}
-    else if (sev==="severe"){cls="flag-high";label="SEVERE";}
-    else if (sev==="moderate"){cls="flag-low";label="MODERATE";}
-    else if (sev==="mild"){cls="flag-low";label="MILD";}
+    let cls = "flag-normal";
+    let label = sev.toUpperCase();
+
+    if (sev === "critical" || sev === "severe") cls = "flag-high";
+    else if (sev === "moderate" || sev === "mild") cls = "flag-low";
 
     html += `
       <div class="row cbc-row ${cls}">
         <span><b>${key}</b></span>
-        <span>${v} ${u} — ${label}</span>
+        <span>${value} ${units} — ${label}</span>
       </div>
     `;
-  }
-  box.innerHTML = html;
+  });
+
+  box.innerHTML = html || "<div class='row'>No CBC values detected</div>";
 }
 
+// =======================
+// AI INTERPRETATION — FIXED
+// =======================
 function renderAI(ai){
   const box = document.getElementById("aiContent");
-  const r = ai.routes || {};
-  const s = ai.summary || {};
 
-  const sev = s.severity_text || r.overall_severity || "clinically stable";
+  const summary = ai?.summary || {};
+  const sev = summary.severity_text || "clinically stable";
 
-  const color =
+  const sevColor =
     sev.includes("critical") ? "#b91c1c" :
     sev.includes("severe") ? "#f97316" :
     sev.includes("moderate") ? "#f59e0b" :
     "#10b981";
 
   let html = `
-    <div class="severity-badge" style="background:${color}">
+    <div class="severity-badge" style="background:${sevColor}">
       ${sev.toUpperCase()}
     </div>
-    <div class="row">${s.summary || r.summary || "—"}</div>
+    <div class="ai-section-title">Summary</div>
+    <div class="row">${summary.summary || "—"}</div>
   `;
 
-  if (s.suggested_follow_up?.length){
-    html += "<div class='row'><b>Suggested follow-up:</b></div>";
-    s.suggested_follow_up.forEach(x=>{
-      html += `<div class="row">• ${x}</div>`;
-    });
+  if (summary.suggested_follow_up?.length){
+    html += `<div class="ai-section-title">Suggested follow-up</div>` +
+      summary.suggested_follow_up.map(s=>`<div class="row">• ${s}</div>`).join("");
   }
 
   box.innerHTML = html;
 }
 
+document.getElementById("printAiBtn").addEventListener("click", () => window.print());
 loadReport();
-</script>
 
-</body>
-</html>
+</script>
