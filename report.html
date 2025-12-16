@@ -14,6 +14,7 @@
       --white:#eaf6ff;
 
       --low:#f59e0b;
+      --moderate:#f59e0b;
       --high:#f97316;
       --critical:#dc2626;
       --normal:#eaf6ff;
@@ -104,6 +105,7 @@
       font-weight:800;
       color:#fff;
       margin-bottom:12px;
+      letter-spacing:0.5px;
     }
 
     .severity-low { background:#10b981; }
@@ -118,6 +120,18 @@
       text-transform:uppercase;
       opacity:0.85;
     }
+
+    .route-block {
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:10px;
+      background:#050a18;
+      border-left:4px solid #444;
+    }
+
+    .route-primary { border-left-color:#dc2626; }
+    .route-secondary { border-left-color:#f59e0b; }
+    .route-contextual { border-left-color:#60a5fa; }
 
     ul { margin:6px 0 0 18px; padding:0; }
     li { margin:4px 0; font-size:14px; }
@@ -151,7 +165,7 @@
     </div>
 
     <div class="panel">
-      <h2>AI Interpretation</h2>
+      <h2>AI Clinical Interpretation</h2>
       <div id="aiBox"></div>
     </div>
   </div>
@@ -202,17 +216,9 @@ function renderCBC(ai){
 
     if (!isNaN(val)) {
       if (!isNaN(hi) && val > hi) {
-        cls = "flag-high";
-        flag = " ↑";
+        cls = "flag-high"; flag = " ↑";
       } else if (!isNaN(lo) && val < lo) {
-        cls = "flag-low";
-        flag = " ↓";
-      } else if (d.flag === "H") {
-        cls = "flag-high";
-        flag = " ↑";
-      } else if (d.flag === "L") {
-        cls = "flag-low";
-        flag = " ↓";
+        cls = "flag-low"; flag = " ↓";
       }
     }
 
@@ -230,6 +236,8 @@ function renderAI(ai){
   const summary = ai.summary?.impression || "—";
   const context = ai._clinical_context || [];
   const nextSteps = ai._suggested_next_steps || [];
+  const patterns = ai._clinical_patterns || [];
+  const routes = ai._routes || [];
 
   box.innerHTML = `
     <div class="severity-badge severity-${severity}">
@@ -238,6 +246,22 @@ function renderAI(ai){
 
     <div class="section-title">Summary</div>
     <div class="row">${summary}</div>
+
+    ${patterns.length ? `
+      <div class="section-title">Clinical Patterns Identified</div>
+      <ul>${patterns.map(p => `<li>${p}</li>`).join("")}</ul>
+    ` : ""}
+
+    ${routes.length ? `
+      <div class="section-title">Clinical Reasoning & Routes</div>
+      ${routes.map(r => `
+        <div class="route-block route-${r.priority || "secondary"}">
+          <b>${r.pattern}</b><br/>
+          ${r.route}
+          ${r.next_steps?.length ? `<ul>${r.next_steps.map(s => `<li>${s}</li>`).join("")}</ul>` : ""}
+        </div>
+      `).join("")}
+    ` : ""}
 
     ${context.length ? `
       <div class="section-title">Clinical Context</div>
@@ -256,3 +280,4 @@ loadReport();
 </script>
 </body>
 </html>
+
