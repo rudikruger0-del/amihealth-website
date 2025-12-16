@@ -1,58 +1,58 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8"/>
 <title>AMI — Clinical Report</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 
 <style>
-:root {
-  --bg:#02040e;
+:root{
+  --bg:#030414;
   --card:#0b1020;
   --muted:#96a0b8;
+  --accent:#00e0b8;
   --white:#eaf6ff;
-
   --low:#10b981;
   --moderate:#f59e0b;
   --high:#f97316;
   --critical:#dc2626;
 }
 
-body {
+body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  background:var(--bg);
+  background:#02040e;
   color:var(--white);
 }
 
-header {
-  padding:18px 24px;
+header{
+  padding:16px 24px;
   display:flex;
   justify-content:space-between;
   background:#050a16;
   border-bottom:1px solid rgba(255,255,255,.08);
 }
 
-button {
+button{
   padding:10px 18px;
   border-radius:999px;
-  font-weight:700;
-  cursor:pointer;
   border:none;
+  font-weight:600;
+  cursor:pointer;
 }
 
-.primary {
+.primary{
   background:linear-gradient(90deg,#00e0b8,#00b7ff);
   color:#001821;
 }
 
-.secondary {
+.secondary{
   background:transparent;
-  border:1px solid rgba(255,255,255,.25);
+  border:1px solid rgba(255,255,255,.3);
   color:#fff;
 }
 
-.container {
+.container{
   max-width:1200px;
   margin:20px auto;
   padding:0 20px 30px;
@@ -61,7 +61,7 @@ button {
   gap:20px;
 }
 
-.left-viewer {
+.left-viewer{
   background:#000;
   border-radius:12px;
   overflow:hidden;
@@ -69,9 +69,9 @@ button {
   border:1px solid rgba(255,255,255,.08);
 }
 
-iframe { width:100%; height:100%; border:none; }
+iframe{width:100%;height:100%;border:none;}
 
-.panel {
+.panel{
   background:var(--card);
   padding:20px;
   border-radius:12px;
@@ -79,59 +79,58 @@ iframe { width:100%; height:100%; border:none; }
   margin-bottom:18px;
 }
 
-h2 { margin:0 0 10px; }
+h2{margin:0 0 10px;font-size:20px;}
 
-.cbc-row {
+.row{margin:6px 0;font-size:14px;}
+
+.cbc-row{
   display:flex;
   justify-content:space-between;
   padding:6px 0;
   border-bottom:1px dashed rgba(255,255,255,.06);
+  font-size:14px;
 }
 
-.flag-high { color:var(--high); font-weight:700; }
-.flag-low { color:var(--moderate); font-weight:700; }
-.flag-normal { color:var(--white); }
+.flag-high{color:var(--high);font-weight:700;}
+.flag-low{color:var(--moderate);font-weight:700;}
+.flag-normal{color:var(--white);}
 
-.severity-badge {
-  display:inline-block;
-  padding:8px 16px;
+.severity-badge{
+  display:inline-flex;
+  padding:6px 14px;
   border-radius:999px;
-  font-weight:900;
-  margin-bottom:10px;
+  font-weight:800;
+  color:#fff;
+  margin-bottom:12px;
 }
 
-.severity-low { background:var(--low); }
-.severity-moderate { background:var(--moderate); }
-.severity-high { background:var(--high); }
-.severity-critical { background:var(--critical); }
+.severity-low{background:var(--low);}
+.severity-moderate{background:var(--moderate);}
+.severity-high{background:var(--high);}
+.severity-critical{background:var(--critical);}
 
-.section-title {
+.section-title{
   margin-top:14px;
   font-size:13px;
-  font-weight:800;
+  font-weight:700;
   text-transform:uppercase;
   opacity:.85;
 }
 
-.route-block {
+.route-block{
   margin-top:10px;
-  padding:12px;
+  padding:10px 12px;
   border-radius:10px;
   background:#050a18;
-  border-left:5px solid #444;
+  border-left:4px solid #444;
 }
 
-.route-primary { border-left-color:var(--critical); }
-.route-secondary { border-left-color:var(--moderate); }
-.route-contextual { border-left-color:#60a5fa; }
+.route-primary{border-left-color:#dc2626;}
+.route-secondary{border-left-color:#f59e0b;}
+.route-contextual{border-left-color:#60a5fa;}
 
-.urgent {
-  color:#fca5a5;
-  font-weight:700;
-}
-
-ul { margin:6px 0 0 18px; padding:0; }
-li { margin:4px 0; }
+ul{margin:6px 0 0 18px;padding:0;}
+li{margin:4px 0;font-size:14px;}
 </style>
 </head>
 
@@ -139,7 +138,7 @@ li { margin:4px 0; }
 
 <header>
   <button class="secondary" onclick="history.back()">← Back</button>
-  <button id="printBtn" class="primary">Print / Save AI Report</button>
+  <button class="primary" onclick="window.print()">Print / Save AI Report</button>
 </header>
 
 <div class="container">
@@ -150,10 +149,10 @@ li { margin:4px 0; }
   <div>
     <div class="panel">
       <h2>Patient Info</h2>
-      <div><b>Name:</b> <span id="name"></span></div>
-      <div><b>Age:</b> <span id="age"></span></div>
-      <div><b>Sex:</b> <span id="sex"></span></div>
-      <div><b>Date:</b> <span id="date"></span></div>
+      <div class="row"><b>Name:</b> <span id="name">—</span></div>
+      <div class="row"><b>Age:</b> <span id="age">—</span></div>
+      <div class="row"><b>Sex:</b> <span id="sex">—</span></div>
+      <div class="row"><b>Date:</b> <span id="date">—</span></div>
     </div>
 
     <div class="panel">
@@ -175,16 +174,18 @@ async function loadReport(){
   const json=await res.json();
   const rpt=json.report||{};
   const ai=rpt.ai_results||{};
+  const patient=ai.patient||{};
 
-  name.textContent=rpt.name??"—";
-  age.textContent=rpt.age??"—";
-  sex.textContent=rpt.sex??"—";
-  date.textContent=rpt.created_at?new Date(rpt.created_at).toLocaleString():"—";
+  document.getElementById("name").textContent=patient.name??"—";
+  document.getElementById("age").textContent=patient.age??"—";
+  document.getElementById("sex").textContent=patient.sex??"—";
+  document.getElementById("date").textContent=
+    rpt.created_at?new Date(rpt.created_at).toLocaleString():"—";
 
   if(rpt.file_path){
     const f=await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj=await f.json();
-    if(fj.url) pdfFrame.src=fj.url;
+    if(fj.url) document.getElementById("pdfFrame").src=fj.url;
   }
 
   renderCBC(ai);
@@ -192,62 +193,65 @@ async function loadReport(){
 }
 
 function renderCBC(ai){
-  const box=cbcBox;
+  const box=document.getElementById("cbcBox");
   const labs=ai._canonical_cbc||{};
   const keys=Object.keys(labs).filter(k=>!k.startsWith("_"));
 
   if(!keys.length){
-    box.innerHTML="No structured laboratory values available";
+    box.innerHTML="<div class='row'>No structured laboratory values available</div>";
     return;
   }
 
   box.innerHTML=keys.map(k=>{
     const d=labs[k]||{};
-    const v=Number(d.value), lo=Number(d.reference_low), hi=Number(d.reference_high);
-    let cls="flag-normal", flag="";
+    const v=Number(d.value);
+    const lo=Number(d.reference_low);
+    const hi=Number(d.reference_high);
+
+    let cls="flag-normal",flag="";
     if(!isNaN(v)){
       if(!isNaN(hi)&&v>hi){cls="flag-high";flag=" ↑";}
       else if(!isNaN(lo)&&v<lo){cls="flag-low";flag=" ↓";}
     }
-    return `<div class="cbc-row ${cls}">
-      <b>${k}</b><span>${d.value??"—"} ${d.units??""}${flag}</span>
-    </div>`;
+
+    return `
+      <div class="cbc-row ${cls}">
+        <span><b>${k}</b></span>
+        <span>${d.value??"—"} ${d.units??""}${flag}</span>
+      </div>`;
   }).join("");
 }
 
 function renderAI(ai){
-  const s=ai._severity||{};
+  const box=document.getElementById("aiBox");
+  const sev=ai._severity?.severity||"low";
+  const summary=ai.summary?.impression||"—";
+  const patterns=ai._clinical_patterns||[];
   const routes=ai._routes||[];
-  const diffs=ai._differential_trees||{};
-  const flags=s.urgency_flags||[];
 
-  aiBox.innerHTML=`
-    <div class="severity-badge severity-${s.severity||"low"}">${(s.severity||"low").toUpperCase()}</div>
+  box.innerHTML=`
+    <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
 
-    ${flags.length?`
-      <div class="section-title">Urgency Flags</div>
-      <ul>${flags.map(f=>`<li class="urgent">${f.reason}</li>`).join("")}</ul>
-    `:""}
+    <div class="section-title">Summary</div>
+    <div class="row">${summary}</div>
 
-    <div class="section-title">Clinical Reasoning & Routes</div>
-    ${routes.map(r=>`
-      <div class="route-block route-${r.priority}">
-        <b>${r.pattern}</b><br>${r.route}
-        ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
-      </div>
-    `).join("")}
+    ${patterns.length?`
+      <div class="section-title">Clinical Patterns</div>
+      <ul>${patterns.map(p=>`<li>${p}</li>`).join("")}</ul>`:""}
 
-    ${Object.keys(diffs).length?`
-      <div class="section-title">Differential Considerations</div>
-      ${Object.entries(diffs).map(([k,v])=>`
-        <b>${k}</b><ul>${v.map(x=>`<li>${x}</li>`).join("")}</ul>
-      `).join("")}
-    `:""}
+    ${routes.length?`
+      <div class="section-title">Clinical Reasoning & Routes</div>
+      ${routes.map(r=>`
+        <div class="route-block route-${r.priority}">
+          <b>${r.pattern}</b><br/>
+          ${r.route}
+          ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
+        </div>`).join("")}`:""}
   `;
 }
 
-printBtn.onclick=()=>window.print();
 loadReport();
 </script>
+
 </body>
 </html>
