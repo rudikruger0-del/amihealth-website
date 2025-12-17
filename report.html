@@ -151,15 +151,40 @@ h2 { margin:0 0 10px; font-size:20px; }
 <script type="module">
 let REPORT_DATA = null;
 
+/* =====================================================
+   NORMALIZATION LAYER — SINGLE SOURCE OF TRUTH
+   ===================================================== */
+function normalizeAI(raw){
+  const ai = typeof raw === "string" ? JSON.parse(raw) : (raw || {});
+  return {
+    severity_text: ai.severity_text || ai._severity?.severity || "normal",
+    labs: [
+      ...(Array.isArray(ai.cbc) ? ai.cbc : []),
+      ...(Array.isArray(ai.chemistry) ? ai.chemistry : [])
+    ],
+    summary: {
+      impression:
+        ai.summary?.impression ||
+        ai.impression ||
+        "No summary provided.",
+      suggested_follow_up:
+        ai.summary?.suggested_follow_up ||
+        ai.follow_up ||
+        "No follow-up provided."
+    }
+  };
+}
+
+/* ===============================
+   LOAD REPORT
+   =============================== */
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
   const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
   const json = await res.json();
   REPORT_DATA = json.report;
 
-  const ai = typeof REPORT_DATA.ai_results === "string"
-    ? JSON.parse(REPORT_DATA.ai_results)
-    : REPORT_DATA.ai_results;
+  const ai = normalizeAI(REPORT_DATA.ai_results);
 
   document.getElementById("name").textContent = REPORT_DATA.name;
   document.getElementById("age").textContent = REPORT_DATA.age;
@@ -175,12 +200,16 @@ async function loadReport(){
   renderAI(ai);
 }
 
+/* ===============================
+   UI RENDERING
+   =============================== */
 function renderLabs(ai){
   const box = document.getElementById("cbcBox");
-  const labs = [...(ai.cbc||[]), ...(ai.chemistry||[])];
-
-  box.innerHTML = labs.map(l => `
-    <div class="cbc-row ${l.flag === "high" ? "flag-high" : l.flag === "low" ? "flag-low" : ""}">
+  box.innerHTML = ai.labs.map(l => `
+    <div class="cbc-row ${
+      l.flag === "high" ? "flag-high" :
+      l.flag === "low" ? "flag-low" : ""
+    }">
       <span><b>${l.analyte}</b></span>
       <span>${l.value} ${l.units} (ref ${l.reference_low}–${l.reference_high})</span>
     </div>
@@ -193,22 +222,17 @@ function renderAI(ai){
       ${ai.severity_text.toUpperCase()}
     </div>
     <div class="section-title">Summary</div>
-    <div class="row">${ai.summary?.impression || "—"}</div>
+    <div class="row">${ai.summary.impression}</div>
   `;
 }
 
 /* ===============================
-   PRINT — EXACT ORIGINAL FORMAT
+   PRINT — ORIGINAL TRUSTED FORMAT
    =============================== */
 function printAiReport(){
-  const ai = typeof REPORT_DATA.ai_results === "string"
-    ? JSON.parse(REPORT_DATA.ai_results)
-    : REPORT_DATA.ai_results;
+  const ai = normalizeAI(REPORT_DATA.ai_results);
 
-  const labs = [...(ai.cbc||[]), ...(ai.chemistry||[])];
-  const s = ai.summary || {};
-
-  const rows = labs.map((l,i)=>`
+  const rows = ai.labs.map((l,i)=>`
     <tr>
       <td>${i+1}</td>
       <td>${l.analyte}</td>
@@ -261,10 +285,10 @@ ${rows}
 </table>
 
 <h3>AI Summary</h3>
-<p>${s.impression}</p>
+<p>${ai.summary.impression}</p>
 
 <h3>Suggested Follow-up</h3>
-<p>${s.suggested_follow_up}</p>
+<p>${ai.summary.suggested_follow_up}</p>
 
 <div class="footer">
 This AI-generated interpretation supports clinical judgement and does not replace a diagnosis.<br/>
