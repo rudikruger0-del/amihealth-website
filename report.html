@@ -6,6 +6,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 
 <style>
+/* =========================
+   SCREEN (NEW UI)
+========================= */
 :root {
   --card:#0b1020;
   --white:#eaf6ff;
@@ -66,11 +69,7 @@ button {
   border:1px solid rgba(255,255,255,0.08);
 }
 
-iframe {
-  width:100%;
-  height:100%;
-  border:none;
-}
+iframe { width:100%; height:100%; border:none; }
 
 .panel {
   background:var(--card);
@@ -101,16 +100,51 @@ h2 { margin:0 0 10px; font-size:20px; }
   color:#fff;
 }
 
-.severity-normal { background:var(--low); }
-.severity-mild { background:var(--moderate); }
-.severity-moderate { background:var(--high); }
-.severity-severe { background:var(--critical); }
+.severity-low { background:var(--low); }
+.severity-moderate { background:var(--moderate); }
+.severity-high { background:var(--high); }
+.severity-critical { background:var(--critical); }
 
-.section-title {
-  margin-top:14px;
-  font-size:13px;
-  font-weight:700;
-  text-transform:uppercase;
+/* =========================
+   PRINT (OLD MEDICAL FORMAT)
+========================= */
+@media print {
+
+  header,
+  .container {
+    display:none !important;
+  }
+
+  body {
+    background:#fff;
+    color:#111;
+  }
+
+  #print-root {
+    display:block;
+    padding:40px;
+    font-family:system-ui,sans-serif;
+    font-size:13px;
+  }
+
+  table {
+    width:100%;
+    border-collapse:collapse;
+  }
+
+  th, td {
+    border:1px solid #ccc;
+    padding:4px 6px;
+  }
+
+  th {
+    background:#f3f4f6;
+  }
+}
+
+/* hidden on screen */
+#print-root {
+  display:none;
 }
 </style>
 </head>
@@ -119,13 +153,11 @@ h2 { margin:0 0 10px; font-size:20px; }
 
 <header>
   <button class="secondary" onclick="history.back()">← Back</button>
-  <button class="primary" id="printBtn">Print / Save AI Report</button>
+  <button class="primary" onclick="window.print()">Print / Save AI Report</button>
 </header>
 
 <div class="container">
-  <div class="left-viewer">
-    <iframe id="pdfFrame"></iframe>
-  </div>
+  <div class="left-viewer"><iframe id="pdfFrame"></iframe></div>
 
   <div>
     <div class="panel">
@@ -148,161 +180,58 @@ h2 { margin:0 0 10px; font-size:20px; }
   </div>
 </div>
 
+<!-- =========================
+     PRINT ROOT (OLD FORMAT)
+========================= -->
+<div id="print-root">
+  <img src="/logo.png" height="36" />
+  <h2>AMI Health — AI Clinical Report</h2>
+
+  <p>
+    Name: <b id="p-name"></b> |
+    Age: <b id="p-age"></b> |
+    Sex: <b id="p-sex"></b>
+  </p>
+
+  <h3>Laboratory Summary</h3>
+  <table id="p-labs"></table>
+
+  <h3>AI Summary</h3>
+  <div id="p-summary"></div>
+
+  <p style="font-size:11px;margin-top:20px;">
+    This AI-generated interpretation supports clinical judgement and does not replace diagnosis.
+  </p>
+
+  <img id="p-qr" height="90" />
+</div>
+
 <script type="module">
-let REPORT_DATA = null;
-
-/* =====================================================
-   NORMALIZATION LAYER — SINGLE SOURCE OF TRUTH
-   ===================================================== */
-function normalizeAI(raw){
-  const ai = typeof raw === "string" ? JSON.parse(raw) : (raw || {});
-  return {
-    severity_text: ai.severity_text || ai._severity?.severity || "normal",
-    labs: [
-      ...(Array.isArray(ai.cbc) ? ai.cbc : []),
-      ...(Array.isArray(ai.chemistry) ? ai.chemistry : [])
-    ],
-    summary: {
-      impression:
-        ai.summary?.impression ||
-        ai.impression ||
-        "No summary provided.",
-      suggested_follow_up:
-        ai.summary?.suggested_follow_up ||
-        ai.follow_up ||
-        "No follow-up provided."
-    }
-  };
-}
-
-/* ===============================
-   LOAD REPORT
-   =============================== */
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
-  const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
   const json = await res.json();
-  REPORT_DATA = json.report;
 
-  const ai = normalizeAI(REPORT_DATA.ai_results);
+  const rpt = json.report || {};
+  const ai = rpt.ai_results || {};
 
-  document.getElementById("name").textContent = REPORT_DATA.name;
-  document.getElementById("age").textContent = REPORT_DATA.age;
-  document.getElementById("sex").textContent = REPORT_DATA.sex;
-  document.getElementById("date").textContent =
-    new Date(REPORT_DATA.created_at).toLocaleString();
+  document.getElementById("name").textContent = rpt.name || "—";
+  document.getElementById("age").textContent = rpt.age ?? "—";
+  document.getElementById("sex").textContent = rpt.sex || "—";
+  document.getElementById("date").textContent = new Date(rpt.created_at).toLocaleString();
 
-  const pdf = await fetch(`/api/get-file-url?path=${encodeURIComponent(REPORT_DATA.file_path)}`);
-  const pj = await pdf.json();
-  document.getElementById("pdfFrame").src = pj.url;
+  // PRINT
+  document.getElementById("p-name").textContent = rpt.name || "—";
+  document.getElementById("p-age").textContent = rpt.age ?? "—";
+  document.getElementById("p-sex").textContent = rpt.sex || "—";
+  document.getElementById("p-summary").textContent =
+    ai.summary?.impression || "—";
 
-  renderLabs(ai);
-  renderAI(ai);
+  const verifyUrl = `https://amihealth.co.za/verify?id=${rpt.id}`;
+  document.getElementById("p-qr").src =
+    `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 }
 
-/* ===============================
-   UI RENDERING
-   =============================== */
-function renderLabs(ai){
-  const box = document.getElementById("cbcBox");
-  box.innerHTML = ai.labs.map(l => `
-    <div class="cbc-row ${
-      l.flag === "high" ? "flag-high" :
-      l.flag === "low" ? "flag-low" : ""
-    }">
-      <span><b>${l.analyte}</b></span>
-      <span>${l.value} ${l.units} (ref ${l.reference_low}–${l.reference_high})</span>
-    </div>
-  `).join("");
-}
-
-function renderAI(ai){
-  document.getElementById("aiBox").innerHTML = `
-    <div class="severity-badge severity-${ai.severity_text}">
-      ${ai.severity_text.toUpperCase()}
-    </div>
-    <div class="section-title">Summary</div>
-    <div class="row">${ai.summary.impression}</div>
-  `;
-}
-
-/* ===============================
-   PRINT — ORIGINAL TRUSTED FORMAT
-   =============================== */
-function printAiReport(){
-  const ai = normalizeAI(REPORT_DATA.ai_results);
-
-  const rows = ai.labs.map((l,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${l.analyte}</td>
-      <td>${l.value}</td>
-      <td>${l.units}</td>
-      <td>${l.reference_low}–${l.reference_high}</td>
-      <td>${l.flag || "normal"}</td>
-    </tr>
-  `).join("");
-
-  const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT_DATA.id}`;
-
-  const w = window.open("", "_blank");
-  w.document.write(`
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>AMI Health — AI Interpretation Report</title>
-<style>
-body{font-family:system-ui;margin:40px;font-size:13px;color:#111}
-.header{display:flex;justify-content:space-between}
-.title{text-align:center;font-weight:700}
-hr{border:none;border-top:2px solid #0ea5e9;margin:8px 0 18px}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #bbb;padding:5px}
-th{background:#f3f4f6}
-.footer{margin-top:18px;font-size:10px;color:#555}
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div>${new Date(REPORT_DATA.created_at).toLocaleString()}</div>
-  <div class="title">
-    AMI Health — AI Interpretation Report<br/>
-    <span style="font-weight:400">Artificial Medical Intelligence (Pty) Ltd</span>
-  </div>
-  <div></div>
-</div>
-
-<hr/>
-
-<p><b>Patient:</b> ${REPORT_DATA.name} | <b>Age:</b> ${REPORT_DATA.age} | <b>Sex:</b> ${REPORT_DATA.sex}</p>
-
-<h3>Laboratory Overview</h3>
-<table>
-<tr><th>#</th><th>Analyte</th><th>Value</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
-${rows}
-</table>
-
-<h3>AI Summary</h3>
-<p>${ai.summary.impression}</p>
-
-<h3>Suggested Follow-up</h3>
-<p>${ai.summary.suggested_follow_up}</p>
-
-<div class="footer">
-This AI-generated interpretation supports clinical judgement and does not replace a diagnosis.<br/>
-${verifyUrl}
-</div>
-
-</body>
-</html>
-`);
-  w.document.close();
-  w.print();
-}
-
-document.getElementById("printBtn").addEventListener("click", printAiReport);
 loadReport();
 </script>
 
