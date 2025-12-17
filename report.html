@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 
 <style>
-/* ================= SCREEN THEME (UNCHANGED) ================= */
 :root {
   --card:#0b1020;
   --white:#eaf6ff;
@@ -22,6 +21,8 @@ body {
   background:#02040e;
   color:var(--white);
 }
+
+/* ================= SCREEN UI (UNCHANGED) ================= */
 
 header {
   padding:18px 24px;
@@ -137,14 +138,12 @@ li { margin:4px 0; font-size:14px; }
     padding:40px;
     font-family:system-ui;
     font-size:13px;
-    color:#111;
   }
 
   table {
     width:100%;
     border-collapse:collapse;
     margin-top:8px;
-    font-size:12px;
   }
 
   th, td {
@@ -179,7 +178,6 @@ li { margin:4px 0; font-size:14px; }
     padding-top:6px;
     display:flex;
     justify-content:space-between;
-    align-items:center;
   }
 }
 </style>
@@ -216,12 +214,12 @@ li { margin:4px 0; font-size:14px; }
   </div>
 </div>
 
-<!-- ================= PRINT CONTENT ================= -->
+<!-- ================= PRINT ROOT ================= -->
 
 <div id="print-root">
   <div class="print-header">
     <div class="print-header-left">
-      <img src="/logo.png" alt="AMI Logo" />
+      <img src="/logo.png" />
       <div>
         <div style="font-weight:700;font-size:18px;">AMI Health — AI Interpretation Report</div>
         <div style="font-size:11px;color:#4b5563;">
@@ -229,13 +227,10 @@ li { margin:4px 0; font-size:14px; }
         </div>
       </div>
     </div>
-    <div style="font-size:11px;color:#4b5563;">
-      <div>AMI Report</div>
-      <div id="printDate"></div>
-    </div>
+    <div style="font-size:11px;color:#4b5563;" id="printDate"></div>
   </div>
 
-  <div><b>Patient:</b> <span id="p_name"></span> | <span id="p_age"></span> | <span id="p_sex"></span></div>
+  <div><b>Patient:</b> <span id="pName"></span> | <span id="pAge"></span> | <span id="pSex"></span></div>
 
   <h2>Complete Blood Count (CBC)</h2>
   <table>
@@ -245,14 +240,14 @@ li { margin:4px 0; font-size:14px; }
         <th>Reference Range</th><th>Flag</th>
       </tr>
     </thead>
-    <tbody id="printCbc"></tbody>
+    <tbody id="printCBC"></tbody>
   </table>
 
   <h2>AI Summary</h2>
   <div id="printSummary"></div>
 
   <h3>Suggested follow-up</h3>
-  <div id="printFollowup"></div>
+  <ul id="printFollow"></ul>
 
   <div style="margin-top:20px;">
     <div style="border-bottom:1px solid #111;width:260px;"></div>
@@ -279,112 +274,33 @@ li { margin:4px 0; font-size:14px; }
 <script type="module">
 const $ = id => document.getElementById(id);
 
-const el = {
-  name: $("name"),
-  age: $("age"),
-  sex: $("sex"),
-  date: $("date"),
-  pdfFrame: $("pdfFrame"),
-  cbcBox: $("cbcBox"),
-  aiBox: $("aiBox"),
-
-  p_name: $("p_name"),
-  p_age: $("p_age"),
-  p_sex: $("p_sex"),
-  printDate: $("printDate"),
-  printCbc: $("printCbc"),
-  printSummary: $("printSummary"),
-  printFollowup: $("printFollowup"),
-  qrImg: $("qrImg"),
-  verifyUrl: $("verifyUrl"),
-};
-
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
-  if (!id) return;
-
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const json = await res.json();
 
-  const rpt = json.report || {};
+  const rpt = json.report;
   const ai = rpt.ai_results || {};
-  const patient = ai.patient || {};
 
-  el.name.textContent = patient.name || rpt.name || "—";
-  el.age.textContent  = patient.age ?? rpt.age ?? "—";
-  el.sex.textContent  = patient.sex || rpt.sex || "Unknown";
-  el.date.textContent =
-    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
+  $("name").textContent = rpt.name || "—";
+  $("age").textContent = rpt.age ?? "—";
+  $("sex").textContent = rpt.sex || "Unknown";
+  $("date").textContent = new Date(rpt.created_at).toLocaleString();
 
   if (rpt.file_path){
     const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj = await f.json();
-    if (fj.url) el.pdfFrame.src = fj.url;
+    $("pdfFrame").src = fj.url;
   }
 
-  renderCBC(ai);
-  renderAI(ai);
-  populatePrint(rpt, ai);
-}
-
-function renderCBC(ai){
-  const labs = ai._canonical_cbc || {};
-  const keys = Object.keys(labs);
-
-  if (!keys.length){
-    el.cbcBox.innerHTML =
-      "<div class='row'>No structured laboratory values available</div>";
-    return;
-  }
-
-  el.cbcBox.innerHTML = keys.map(k=>{
-    const d = labs[k];
-    let cls="", arrow="";
-    if (d.flag === "high"){ cls="flag-high"; arrow=" ↑"; }
-    if (d.flag === "low"){ cls="flag-low"; arrow=" ↓"; }
-
-    return `<div class="cbc-row ${cls}">
-      <span><b>${k}</b></span>
-      <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
-    </div>`;
-  }).join("");
-}
-
-function renderAI(ai){
-  const sev = ai._severity?.severity || "low";
-
-  el.aiBox.innerHTML = `
-    <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
-
-    <div class="section-title">Summary</div>
-    <div class="row">${ai.summary?.impression || "—"}</div>
-
-    ${ai._follow_up?.length ? `
-      <div class="section-title">Follow-up (Clinical)</div>
-      <ul>${ai._follow_up.map(x=>`<li>${x}</li>`).join("")}</ul>
-    ` : ""}
-
-    ${ai._routes?.length ? `
-      <div class="section-title">Clinical Reasoning & Routes</div>
-      ${ai._routes.map(r=>`
-        <div class="route-block route-${r.priority||"secondary"}">
-          <b>${r.pattern}</b><br/>
-          ${r.route}
-        </div>
-      `).join("")}
-    ` : ""}
-  `;
-}
-
-function populatePrint(rpt, ai){
-  el.p_name.textContent = rpt.name || "—";
-  el.p_age.textContent  = rpt.age ?? "—";
-  el.p_sex.textContent  = rpt.sex || "—";
-  el.printDate.textContent =
-    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "";
+  // PRINT DATA
+  $("pName").textContent = rpt.name || "—";
+  $("pAge").textContent = rpt.age ?? "—";
+  $("pSex").textContent = rpt.sex || "—";
+  $("printDate").textContent = new Date(rpt.created_at).toLocaleString();
 
   const cbc = ai._canonical_cbc || {};
-  el.printCbc.innerHTML = Object.keys(cbc).map((k,i)=>`
+  $("printCBC").innerHTML = Object.keys(cbc).map((k,i)=>`
     <tr>
       <td>${i+1}</td>
       <td>${k}</td>
@@ -395,13 +311,13 @@ function populatePrint(rpt, ai){
     </tr>
   `).join("");
 
-  el.printSummary.textContent = ai.summary?.impression || "";
-  el.printFollowup.textContent =
-    ai.summary?.suggested_follow_up || ai.summary?.follow_up || "";
+  $("printSummary").textContent = ai.summary?.impression || "—";
+
+  $("printFollow").innerHTML = (ai._follow_up || []).map(x=>`<li>${x}</li>`).join("");
 
   const verify = `https://amihealth.co.za/verify?id=${rpt.id}`;
-  el.verifyUrl.textContent = verify;
-  el.qrImg.src =
+  $("verifyUrl").textContent = verify;
+  $("qrImg").src =
     `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
 }
 
