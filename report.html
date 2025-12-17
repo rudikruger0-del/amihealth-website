@@ -111,7 +111,7 @@ li { margin:4px 0; font-size:14px; }
 
 <header>
   <button class="secondary" onclick="history.back()">← Back</button>
-  <button class="primary" onclick="printAiReport()">Print / Save AI Report</button>
+  <button class="primary" onclick="window.print()">Print / Save AI Report</button>
 </header>
 
 <div class="container">
@@ -138,25 +138,44 @@ li { margin:4px 0; font-size:14px; }
   </div>
 </div>
 
-<script>
-let REPORT = null;
-
+<script type="module">
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
-  const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
   const json = await res.json();
 
-  REPORT = json.report;
-  const ai = REPORT.ai_results || {};
+  const rpt = json.report || {};
+  const ai = rpt.ai_results || {};
+  const patient = ai.patient || {};
 
-  document.getElementById("name").textContent = REPORT.name || "Unknown";
-  document.getElementById("age").textContent = REPORT.age ?? "—";
-  document.getElementById("sex").textContent = REPORT.sex || "—";
+  document.getElementById("name").textContent =
+    patient.name || rpt.name || "—";
+
+  document.getElementById("age").textContent =
+    patient.age ?? rpt.age ?? "—";
+
+  function cleanSex(v){
+    if (!v) return null;
+    const s = String(v).toLowerCase();
+    if (s === "unknown" || s === "u") return null;
+    if (s.startsWith("m")) return "Male";
+    if (s.startsWith("f")) return "Female";
+    return v;
+  }
+
+  const sex =
+    cleanSex(patient.sex) ||
+    cleanSex(patient.gender) ||
+    cleanSex(rpt.sex) ||
+    cleanSex(rpt.gender);
+
+  document.getElementById("sex").textContent = sex || "Unknown";
+
   document.getElementById("date").textContent =
-    REPORT.created_at ? new Date(REPORT.created_at).toLocaleString() : "—";
+    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
 
-  if (REPORT.file_path){
-    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(REPORT.file_path)}`);
+  if (rpt.file_path){
+    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj = await f.json();
     if (fj.url) document.getElementById("pdfFrame").src = fj.url;
   }
@@ -170,81 +189,57 @@ function renderCBC(ai){
   const labs = ai._canonical_cbc || {};
   const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
 
+  if (!keys.length){
+    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
+    return;
+  }
+
   box.innerHTML = keys.map(k=>{
-    const d = labs[k];
-    const v = Number(d.value);
-    let cls = "";
-    if (v > d.reference_high) cls="flag-high";
-    if (v < d.reference_low) cls="flag-low";
-    return `
-      <div class="cbc-row ${cls}">
-        <span><b>${k}</b></span>
-        <span>${d.value} ${d.units || ""}</span>
-      </div>`;
+    const d=labs[k]||{};
+    const val=Number(d.value),lo=Number(d.reference_low),hi=Number(d.reference_high);
+    let cls="",arrow="";
+    if(!isNaN(val)){
+      if(!isNaN(hi)&&val>hi){cls="flag-high";arrow=" ↑";}
+      else if(!isNaN(lo)&&val<lo){cls="flag-low";arrow=" ↓";}
+    }
+    return `<div class="cbc-row ${cls}">
+      <span><b>${k}</b></span>
+      <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
+    </div>`;
   }).join("");
 }
 
 function renderAI(ai){
-  const box = document.getElementById("aiBox");
+  const box=document.getElementById("aiBox");
+
   const sev = ai._severity?.severity || "low";
-  box.innerHTML = `
+  const summary = ai.summary?.impression || "—";
+  const routes = ai._routes || [];
+  const followUp = ai._follow_up || null;
+
+  box.innerHTML=`
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
+
     <div class="section-title">Summary</div>
-    <div class="row">${ai.summary?.impression || "—"}</div>
+    <div class="row">${summary}</div>
+
+    ${followUp ? `
+      <div class="section-title">Follow-up (Clinical)</div>
+      <ul>
+        ${followUp.map(item => `<li>${item}</li>`).join("")}
+      </ul>
+    ` : ""}
+
+    ${routes.length?`
+      <div class="section-title">Clinical Reasoning & Routes</div>
+      ${routes.map(r=>`
+        <div class="route-block route-${r.priority||"secondary"}">
+          <b>${r.pattern}</b><br/>
+          ${r.route}
+          ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
+        </div>`).join("")}
+    `:""}
   `;
-}
-
-async function printAiReport(){
-  if (!REPORT) return alert("Report not loaded");
-
-  const ai = REPORT.ai_results || {};
-  const labs = ai._canonical_cbc || {};
-
-  const rows = Object.entries(labs).map(([k,v],i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${k}</td>
-      <td>${v.value}</td>
-      <td>${v.units||""}</td>
-      <td>${v.reference_low||""}–${v.reference_high||""}</td>
-      <td>${v.flag||"normal"}</td>
-    </tr>`).join("");
-
-  const verify = `https://amihealth.co.za/verify?id=${REPORT.id}`;
-  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
-
-  const win = window.open("", "_blank");
-  win.document.write(`
-<!doctype html>
-<html><head><meta charset="utf-8"/>
-<title>AMI Health — AI Report</title>
-<style>
-body{font-family:system-ui;margin:40px;color:#111;font-size:13px}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:4px}
-th{background:#f3f4f6}
-.footer{margin-top:20px;font-size:10px;color:#666;display:flex;justify-content:space-between}
-</style>
-</head>
-<body>
-<h2>AMI Health — AI Interpretation Report</h2>
-<b>${REPORT.name}</b> • Age ${REPORT.age} • ${REPORT.sex}<br/><br/>
-<table><thead>
-<tr><th>#</th><th>Analyte</th><th>Result</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
-</thead><tbody>${rows}</tbody></table>
-
-<h3>AI Summary</h3>
-${ai.summary?.impression || ""}
-
-<div class="footer">
-<div>This AI report supports clinical judgement.</div>
-<div><img src="${qr}"/></div>
-</div>
-</body></html>
-  `);
-  win.document.close();
-  win.focus();
-  win.print();
 }
 
 loadReport();
