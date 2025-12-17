@@ -112,7 +112,6 @@ h2 {
 .severity-mild { background:var(--moderate); }
 .severity-moderate { background:var(--high); }
 .severity-severe { background:var(--critical); }
-.severity-critical { background:#7f1d1d; }
 
 .section-title {
   margin-top:14px;
@@ -173,9 +172,6 @@ li { margin:4px 0; font-size:14px; }
 <script type="module">
 let REPORT_DATA = null;
 
-/* ===============================
-   LOAD REPORT
-   =============================== */
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
   if (!id) return alert("Missing report id");
@@ -188,7 +184,7 @@ async function loadReport(){
   REPORT_DATA = rpt;
   const ai = typeof rpt.ai_results === "string"
     ? JSON.parse(rpt.ai_results)
-    : (rpt.ai_results || {});
+    : rpt.ai_results || {};
 
   document.getElementById("name").textContent = rpt.name || "—";
   document.getElementById("age").textContent = rpt.age ?? "—";
@@ -206,141 +202,115 @@ async function loadReport(){
   renderAI(ai);
 }
 
-/* ===============================
-   RENDER LABS (CBC + CHEMISTRY)
-   =============================== */
 function renderLabs(ai){
   const box = document.getElementById("cbcBox");
-
-  const cbc = Array.isArray(ai.cbc) ? ai.cbc : [];
-  const chem = Array.isArray(ai.chemistry) ? ai.chemistry : [];
-  const labs = [...cbc, ...chem];
+  const labs = [...(ai.cbc||[]), ...(ai.chemistry||[])];
 
   if (!labs.length){
-    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
+    box.innerHTML = "<div class='row'>No lab data</div>";
     return;
   }
 
-  box.innerHTML = labs.map(item=>{
-    const flagClass =
-      item.flag === "high" ? "flag-high" :
-      item.flag === "low" ? "flag-low" : "";
-
-    const ref =
-      item.reference_low != null || item.reference_high != null
-        ? ` (ref ${item.reference_low ?? ""}–${item.reference_high ?? ""})`
-        : "";
-
-    return `
-      <div class="cbc-row ${flagClass}">
-        <span><b>${item.analyte}</b></span>
-        <span>${item.value ?? "—"} ${item.units ?? ""}${ref}</span>
-      </div>`;
-  }).join("");
+  box.innerHTML = labs.map(l=>`
+    <div class="cbc-row ${l.flag==='high'?'flag-high':l.flag==='low'?'flag-low':''}">
+      <span><b>${l.analyte}</b></span>
+      <span>${l.value} ${l.units} (ref ${l.reference_low}–${l.reference_high})</span>
+    </div>
+  `).join("");
 }
 
-/* ===============================
-   RENDER AI
-   =============================== */
 function renderAI(ai){
   const box = document.getElementById("aiBox");
-  const sev = ai.severity_text || "normal";
-  const summary = ai.summary?.impression || "—";
-  const routes = ai.routes || [];
-
   box.innerHTML = `
-    <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
-
+    <div class="severity-badge severity-${ai.severity_text||'normal'}">
+      ${(ai.severity_text||'normal').toUpperCase()}
+    </div>
     <div class="section-title">Summary</div>
-    <div class="row">${summary}</div>
-
-    ${routes.length ? `
-      <div class="section-title">Clinical Reasoning & Routes</div>
-      ${routes.map(r=>`
-        <div class="route-block route-${r.priority || "secondary"}">
-          <b>${r.pattern}</b><br/>
-          ${r.route}
-          ${r.next_steps?.length
-            ? `<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`
-            : ""}
-        </div>
-      `).join("")}
-    ` : ""}
+    <div class="row">${ai.summary?.impression || "—"}</div>
   `;
 }
 
 /* ===============================
-   PRINT (PROVEN VERSION)
+   PRINT — EXACT OLD FORMAT
    =============================== */
 function printAiReport(){
-  if (!REPORT_DATA) return alert("Report not loaded");
-
   const ai = typeof REPORT_DATA.ai_results === "string"
     ? JSON.parse(REPORT_DATA.ai_results)
     : REPORT_DATA.ai_results;
 
-  const cbc = [...(ai.cbc || []), ...(ai.chemistry || [])];
-  const summary = ai.summary || {};
-
-  const name = REPORT_DATA.name || "Unknown";
-  const age = REPORT_DATA.age ?? "—";
-  const sex = REPORT_DATA.sex || "—";
-  const createdAt = REPORT_DATA.created_at
-    ? new Date(REPORT_DATA.created_at).toLocaleString()
-    : "";
+  const labs = [...(ai.cbc||[]), ...(ai.chemistry||[])];
+  const s = ai.summary || {};
 
   const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT_DATA.id}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 
-  const rows = cbc.map((i,n)=>`
+  const rows = labs.map((l,i)=>`
     <tr>
-      <td>${n+1}</td>
-      <td>${i.analyte}</td>
-      <td>${i.value}</td>
-      <td>${i.units || ""}</td>
-      <td>${i.reference_low ?? ""}–${i.reference_high ?? ""}</td>
-      <td>${i.flag || "normal"}</td>
-    </tr>`).join("");
+      <td>${i+1}</td>
+      <td>${l.analyte}</td>
+      <td>${l.value}</td>
+      <td>${l.units}</td>
+      <td>${l.reference_low}–${l.reference_high}</td>
+      <td>${l.flag||'normal'}</td>
+    </tr>
+  `).join("");
 
-  const win = window.open("", "_blank");
-  win.document.write(`
+  const w = window.open("", "_blank");
+  w.document.write(`
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8" />
-<title>AMI Health — AI Interpretation</title>
+<meta charset="utf-8">
+<title>AMI Health — AI Interpretation Report</title>
 <style>
 body{font-family:system-ui;margin:40px;font-size:13px;color:#111}
+.header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00b7ff;padding-bottom:10px}
+.header-left{display:flex;gap:12px;align-items:center}
+.header-left img{height:36px}
+h2{margin:20px 0 6px}
 table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:4px}
+th,td{border:1px solid #ccc;padding:5px}
 th{background:#f3f4f6}
-.footer{margin-top:20px;font-size:10px;color:#666}
+.footer{margin-top:18px;font-size:10px;color:#555;display:flex;justify-content:space-between}
 </style>
 </head>
 <body>
 
-<h2>AMI Health — AI Interpretation Report</h2>
-<div><b>Patient:</b> ${name} | Age ${age} | Sex ${sex}</div>
-<div><b>Date:</b> ${createdAt}</div>
+<div class="header">
+  <div class="header-left">
+    <img src="/logo.png">
+    <div>
+      <b>AMI Health — AI Interpretation Report</b><br/>
+      Artificial Medical Intelligence (Pty) Ltd
+    </div>
+  </div>
+  <div>${new Date(REPORT_DATA.created_at).toLocaleString()}</div>
+</div>
 
-<h3>Laboratory Overview</h3>
+<p>
+<b>Patient:</b> ${REPORT_DATA.name} |
+<b>Age:</b> ${REPORT_DATA.age} |
+<b>Sex:</b> ${REPORT_DATA.sex}
+</p>
+
+<h2>Laboratory Overview</h2>
 <table>
-<tr><th>#</th><th>Analyte</th><th>Value</th><th>Units</th><th>Ref</th><th>Flag</th></tr>
-${rows || "<tr><td colspan='6'>No lab data</td></tr>"}
+<tr><th>#</th><th>Analyte</th><th>Value</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
+${rows}
 </table>
 
-<h3>AI Summary</h3>
-<div>${summary.impression || "—"}</div>
+<h2>AI Summary</h2>
+<p>${s.impression || "—"}</p>
 
-<h3>Suggested Follow-up</h3>
-<div>${summary.suggested_follow_up || "—"}</div>
+<h2>Suggested Follow-up</h2>
+<p>${s.suggested_follow_up || "—"}</p>
 
-<div style="margin-top:20px;display:flex;justify-content:space-between">
-  <div class="footer">
+<div class="footer">
+  <div>
     This AI-generated interpretation supports clinical judgement and does not replace a diagnosis.
   </div>
   <div>
-    <img src="${qrUrl}" /><br/>
+    <img src="${qrUrl}"><br/>
     <small>${verifyUrl}</small>
   </div>
 </div>
@@ -348,8 +318,8 @@ ${rows || "<tr><td colspan='6'>No lab data</td></tr>"}
 </body>
 </html>
 `);
-  win.document.close();
-  win.print();
+  w.document.close();
+  w.print();
 }
 
 document.getElementById("printBtn").addEventListener("click", printAiReport);
