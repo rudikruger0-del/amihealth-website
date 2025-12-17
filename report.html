@@ -228,15 +228,15 @@ function renderAI(ai){
   `;
 }
 
-/* ✅ PRINT — SERVER-RENDERED (SAFE) */
-function printReport(){
+/* ✅ FIX: expose print function to HTML */
+window.printReport = function(){
   const id = new URLSearchParams(location.search).get("id");
   if(!id){
     alert("Missing report ID");
     return;
   }
   window.location.href = `/print-report?id=${encodeURIComponent(id)}`;
-}
+};
 
 loadReport();
 </script>
