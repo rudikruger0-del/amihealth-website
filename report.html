@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 
 <style>
-/* ================= SCREEN (UNCHANGED) ================= */
+/* ================= SCREEN THEME (UNCHANGED) ================= */
 :root {
   --card:#0b1020;
   --white:#eaf6ff;
@@ -15,12 +15,14 @@
   --high:#f97316;
   --critical:#dc2626;
 }
+
 body {
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:#02040e;
   color:var(--white);
 }
+
 header {
   padding:18px 24px;
   display:flex;
@@ -28,6 +30,7 @@ header {
   background:#050a16;
   border-bottom:1px solid rgba(255,255,255,0.08);
 }
+
 button {
   padding:10px 18px;
   border-radius:999px;
@@ -35,15 +38,18 @@ button {
   font-weight:600;
   cursor:pointer;
 }
+
 .primary {
   background:linear-gradient(90deg,#00e0b8,#00b7ff);
   color:#001821;
 }
+
 .secondary {
   background:transparent;
   border:1px solid rgba(255,255,255,0.3);
   color:#fff;
 }
+
 .container {
   max-width:1200px;
   margin:20px auto;
@@ -52,6 +58,7 @@ button {
   grid-template-columns:1.2fr 1fr;
   gap:20px;
 }
+
 .left-viewer {
   background:#000;
   border-radius:12px;
@@ -59,7 +66,9 @@ button {
   height:85vh;
   border:1px solid rgba(255,255,255,0.08);
 }
+
 iframe { width:100%; height:100%; border:none; }
+
 .panel {
   background:var(--card);
   padding:20px;
@@ -67,16 +76,20 @@ iframe { width:100%; height:100%; border:none; }
   border:1px solid rgba(255,255,255,0.07);
   margin-bottom:18px;
 }
+
 h2 { margin:0 0 10px; font-size:20px; }
 .row { margin:6px 0; font-size:14px; }
+
 .cbc-row {
   display:flex;
   justify-content:space-between;
   padding:6px 0;
   border-bottom:1px dashed rgba(255,255,255,0.06);
 }
+
 .flag-high { color:var(--high); font-weight:700; }
 .flag-low { color:var(--moderate); font-weight:700; }
+
 .severity-badge {
   display:inline-flex;
   padding:6px 14px;
@@ -84,16 +97,19 @@ h2 { margin:0 0 10px; font-size:20px; }
   font-weight:800;
   color:#fff;
 }
+
 .severity-low { background:var(--low); }
 .severity-moderate { background:var(--moderate); }
 .severity-high { background:var(--high); }
 .severity-critical { background:var(--critical); }
+
 .section-title {
   margin-top:14px;
   font-size:13px;
   font-weight:700;
   text-transform:uppercase;
 }
+
 .route-block {
   margin-top:10px;
   padding:10px 12px;
@@ -101,8 +117,10 @@ h2 { margin:0 0 10px; font-size:20px; }
   background:#050a18;
   border-left:4px solid #444;
 }
+
 .route-primary { border-left-color:#dc2626; }
 .route-secondary { border-left-color:#f59e0b; }
+
 ul { margin:6px 0 0 18px; padding:0; }
 li { margin:4px 0; font-size:14px; }
 
@@ -113,23 +131,29 @@ li { margin:4px 0; font-size:14px; }
 @media print {
   body { background:#fff; color:#111; }
   header, .container { display:none !important; }
+
   #print-root {
     display:block;
     padding:40px;
     font-family:system-ui;
     font-size:13px;
+    color:#111;
   }
+
   table {
     width:100%;
     border-collapse:collapse;
     margin-top:8px;
     font-size:12px;
   }
+
   th, td {
     border:1px solid #d1d5db;
     padding:4px 6px;
   }
+
   th { background:#f3f4f6; }
+
   .print-header {
     display:flex;
     justify-content:space-between;
@@ -138,12 +162,15 @@ li { margin:4px 0; font-size:14px; }
     padding-bottom:10px;
     margin-bottom:16px;
   }
+
   .print-header-left {
     display:flex;
     gap:10px;
     align-items:center;
   }
+
   .print-header img { height:32px; }
+
   .footer {
     margin-top:18px;
     font-size:10px;
@@ -167,6 +194,7 @@ li { margin:4px 0; font-size:14px; }
 
 <div class="container">
   <div class="left-viewer"><iframe id="pdfFrame"></iframe></div>
+
   <div>
     <div class="panel">
       <h2>Patient Info</h2>
@@ -193,11 +221,9 @@ li { margin:4px 0; font-size:14px; }
 <div id="print-root">
   <div class="print-header">
     <div class="print-header-left">
-      <img src="/logo.png" />
+      <img src="/logo.png" alt="AMI Logo" />
       <div>
-        <div style="font-weight:700;font-size:18px;">
-          AMI Health — AI Interpretation Report
-        </div>
+        <div style="font-weight:700;font-size:18px;">AMI Health — AI Interpretation Report</div>
         <div style="font-size:11px;color:#4b5563;">
           Artificial Medical Intelligence (Pty) Ltd • info@amihealth.co.za • www.amihealth.co.za
         </div>
@@ -205,13 +231,13 @@ li { margin:4px 0; font-size:14px; }
     </div>
     <div style="font-size:11px;color:#4b5563;">
       <div>AMI Report</div>
-      <div id="print-date"></div>
+      <div id="printDate"></div>
     </div>
   </div>
 
   <div><b>Patient:</b> <span id="p_name"></span> | <span id="p_age"></span> | <span id="p_sex"></span></div>
 
-  <h2>Complete Blood Count (CBC) Overview</h2>
+  <h2>Complete Blood Count (CBC)</h2>
   <table>
     <thead>
       <tr>
@@ -219,14 +245,14 @@ li { margin:4px 0; font-size:14px; }
         <th>Reference Range</th><th>Flag</th>
       </tr>
     </thead>
-    <tbody id="print-cbc"></tbody>
+    <tbody id="printCbc"></tbody>
   </table>
 
   <h2>AI Summary</h2>
-  <div id="print-summary"></div>
+  <div id="printSummary"></div>
 
   <h3>Suggested follow-up</h3>
-  <div id="print-followup"></div>
+  <div id="printFollowup"></div>
 
   <div style="margin-top:20px;">
     <div style="border-bottom:1px solid #111;width:260px;"></div>
@@ -251,8 +277,32 @@ li { margin:4px 0; font-size:14px; }
 </div>
 
 <script type="module">
+const $ = id => document.getElementById(id);
+
+const el = {
+  name: $("name"),
+  age: $("age"),
+  sex: $("sex"),
+  date: $("date"),
+  pdfFrame: $("pdfFrame"),
+  cbcBox: $("cbcBox"),
+  aiBox: $("aiBox"),
+
+  p_name: $("p_name"),
+  p_age: $("p_age"),
+  p_sex: $("p_sex"),
+  printDate: $("printDate"),
+  printCbc: $("printCbc"),
+  printSummary: $("printSummary"),
+  printFollowup: $("printFollowup"),
+  qrImg: $("qrImg"),
+  verifyUrl: $("verifyUrl"),
+};
+
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
+  if (!id) return;
+
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const json = await res.json();
 
@@ -260,15 +310,16 @@ async function loadReport(){
   const ai = rpt.ai_results || {};
   const patient = ai.patient || {};
 
-  name.textContent = patient.name || rpt.name || "—";
-  age.textContent  = patient.age ?? rpt.age ?? "—";
-  sex.textContent  = patient.sex || rpt.sex || "Unknown";
-  date.textContent = rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
+  el.name.textContent = patient.name || rpt.name || "—";
+  el.age.textContent  = patient.age ?? rpt.age ?? "—";
+  el.sex.textContent  = patient.sex || rpt.sex || "Unknown";
+  el.date.textContent =
+    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
 
   if (rpt.file_path){
     const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj = await f.json();
-    if (fj.url) pdfFrame.src = fj.url;
+    if (fj.url) el.pdfFrame.src = fj.url;
   }
 
   renderCBC(ai);
@@ -277,46 +328,63 @@ async function loadReport(){
 }
 
 function renderCBC(ai){
-  const box = cbcBox;
   const labs = ai._canonical_cbc || {};
   const keys = Object.keys(labs);
-  if(!keys.length){
-    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
+
+  if (!keys.length){
+    el.cbcBox.innerHTML =
+      "<div class='row'>No structured laboratory values available</div>";
     return;
   }
-  box.innerHTML = keys.map(k=>{
+
+  el.cbcBox.innerHTML = keys.map(k=>{
     const d = labs[k];
-    let cls="",arrow="";
-    if(d.flag==="high"){cls="flag-high";arrow=" ↑";}
-    if(d.flag==="low"){cls="flag-low";arrow=" ↓";}
+    let cls="", arrow="";
+    if (d.flag === "high"){ cls="flag-high"; arrow=" ↑"; }
+    if (d.flag === "low"){ cls="flag-low"; arrow=" ↓"; }
+
     return `<div class="cbc-row ${cls}">
       <span><b>${k}</b></span>
-      <span>${d.value} ${d.units||""}${arrow}</span>
+      <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
     </div>`;
   }).join("");
 }
 
 function renderAI(ai){
   const sev = ai._severity?.severity || "low";
-  aiBox.innerHTML = `
+
+  el.aiBox.innerHTML = `
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
+
     <div class="section-title">Summary</div>
     <div class="row">${ai.summary?.impression || "—"}</div>
+
     ${ai._follow_up?.length ? `
       <div class="section-title">Follow-up (Clinical)</div>
       <ul>${ai._follow_up.map(x=>`<li>${x}</li>`).join("")}</ul>
+    ` : ""}
+
+    ${ai._routes?.length ? `
+      <div class="section-title">Clinical Reasoning & Routes</div>
+      ${ai._routes.map(r=>`
+        <div class="route-block route-${r.priority||"secondary"}">
+          <b>${r.pattern}</b><br/>
+          ${r.route}
+        </div>
+      `).join("")}
     ` : ""}
   `;
 }
 
 function populatePrint(rpt, ai){
-  p_name.textContent = rpt.name || "—";
-  p_age.textContent  = rpt.age ?? "—";
-  p_sex.textContent  = rpt.sex || "—";
-  print-date.textContent = rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "";
+  el.p_name.textContent = rpt.name || "—";
+  el.p_age.textContent  = rpt.age ?? "—";
+  el.p_sex.textContent  = rpt.sex || "—";
+  el.printDate.textContent =
+    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "";
 
   const cbc = ai._canonical_cbc || {};
-  print-cbc.innerHTML = Object.keys(cbc).map((k,i)=>`
+  el.printCbc.innerHTML = Object.keys(cbc).map((k,i)=>`
     <tr>
       <td>${i+1}</td>
       <td>${k}</td>
@@ -327,12 +395,14 @@ function populatePrint(rpt, ai){
     </tr>
   `).join("");
 
-  print-summary.textContent = ai.summary?.impression || "";
-  print-followup.textContent = ai.summary?.suggested_follow_up || "";
+  el.printSummary.textContent = ai.summary?.impression || "";
+  el.printFollowup.textContent =
+    ai.summary?.suggested_follow_up || ai.summary?.follow_up || "";
 
   const verify = `https://amihealth.co.za/verify?id=${rpt.id}`;
-  verifyUrl.textContent = verify;
-  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
+  el.verifyUrl.textContent = verify;
+  el.qrImg.src =
+    `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
 }
 
 loadReport();
