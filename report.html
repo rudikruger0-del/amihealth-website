@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 
 <style>
-/* ================= THEME ================= */
 :root {
   --card:#0b1020;
   --white:#eaf6ff;
@@ -15,16 +14,12 @@
   --high:#f97316;
   --critical:#dc2626;
 }
-
 body {
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:#02040e;
   color:var(--white);
 }
-
-/* ================= SCREEN UI (UNCHANGED) ================= */
-
 header {
   padding:18px 24px;
   display:flex;
@@ -32,7 +27,6 @@ header {
   background:#050a16;
   border-bottom:1px solid rgba(255,255,255,0.08);
 }
-
 button {
   padding:10px 18px;
   border-radius:999px;
@@ -40,18 +34,15 @@ button {
   font-weight:600;
   cursor:pointer;
 }
-
 .primary {
   background:linear-gradient(90deg,#00e0b8,#00b7ff);
   color:#001821;
 }
-
 .secondary {
   background:transparent;
   border:1px solid rgba(255,255,255,0.3);
   color:#fff;
 }
-
 .container {
   max-width:1200px;
   margin:20px auto;
@@ -60,7 +51,6 @@ button {
   grid-template-columns:1.2fr 1fr;
   gap:20px;
 }
-
 .left-viewer {
   background:#000;
   border-radius:12px;
@@ -68,9 +58,7 @@ button {
   height:85vh;
   border:1px solid rgba(255,255,255,0.08);
 }
-
 iframe { width:100%; height:100%; border:none; }
-
 .panel {
   background:var(--card);
   padding:20px;
@@ -78,20 +66,16 @@ iframe { width:100%; height:100%; border:none; }
   border:1px solid rgba(255,255,255,0.07);
   margin-bottom:18px;
 }
-
 h2 { margin:0 0 10px; font-size:20px; }
 .row { margin:6px 0; font-size:14px; }
-
 .cbc-row {
   display:flex;
   justify-content:space-between;
   padding:6px 0;
   border-bottom:1px dashed rgba(255,255,255,0.06);
 }
-
 .flag-high { color:var(--high); font-weight:700; }
 .flag-low { color:var(--moderate); font-weight:700; }
-
 .severity-badge {
   display:inline-flex;
   padding:6px 14px;
@@ -99,19 +83,16 @@ h2 { margin:0 0 10px; font-size:20px; }
   font-weight:800;
   color:#fff;
 }
-
 .severity-low { background:var(--low); }
 .severity-moderate { background:var(--moderate); }
 .severity-high { background:var(--high); }
 .severity-critical { background:var(--critical); }
-
 .section-title {
   margin-top:14px;
   font-size:13px;
   font-weight:700;
   text-transform:uppercase;
 }
-
 .route-block {
   margin-top:10px;
   padding:10px 12px;
@@ -119,64 +100,10 @@ h2 { margin:0 0 10px; font-size:20px; }
   background:#050a18;
   border-left:4px solid #444;
 }
-
 .route-primary { border-left-color:#dc2626; }
 .route-secondary { border-left-color:#f59e0b; }
-
-/* ================= PRINT LAYOUT (OLD STYLE RESTORED) ================= */
-
-#print-report {
-  display:none;
-}
-
-@media print {
-
-  body {
-    background:#fff !important;
-    color:#000 !important;
-  }
-
-  header,
-  .container {
-    display:none !important;
-  }
-
-  #print-report {
-    display:block;
-    font-family:system-ui,sans-serif;
-    font-size:13px;
-    color:#111;
-    padding:40px;
-  }
-
-  h1 { font-size:18px; margin-bottom:10px; }
-  h2 { font-size:15px; margin-top:20px; }
-
-  table {
-    width:100%;
-    border-collapse:collapse;
-    margin-top:10px;
-  }
-
-  th, td {
-    border:1px solid #ccc;
-    padding:6px;
-    text-align:left;
-  }
-
-  th {
-    background:#f3f4f6;
-  }
-
-  .footer {
-    margin-top:30px;
-    font-size:10px;
-    color:#555;
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-  }
-}
+ul { margin:6px 0 0 18px; padding:0; }
+li { margin:4px 0; font-size:14px; }
 </style>
 </head>
 
@@ -189,6 +116,7 @@ h2 { margin:0 0 10px; font-size:20px; }
 
 <div class="container">
   <div class="left-viewer"><iframe id="pdfFrame"></iframe></div>
+
   <div>
     <div class="panel">
       <h2>Patient Info</h2>
@@ -210,121 +138,108 @@ h2 { margin:0 0 10px; font-size:20px; }
   </div>
 </div>
 
-<!-- ================= PRINT-ONLY CONTENT ================= -->
-
-<div id="print-report">
-  <img src="/logo.png" style="height:32px"/>
-
-  <h1>AMI Health — AI Interpretation Report</h1>
-  <div><b>Patient:</b> <span id="p_name"></span> | <span id="p_age"></span> | <span id="p_sex"></span></div>
-
-  <h2>CBC & Chemistry</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>#</th><th>Analyte</th><th>Result</th><th>Units</th><th>Reference</th><th>Flag</th>
-      </tr>
-    </thead>
-    <tbody id="print-cbc"></tbody>
-  </table>
-
-  <h2>AI Summary</h2>
-  <div id="print-summary"></div>
-
-  <h2>Follow-up</h2>
-  <div id="print-followup"></div>
-
-  <div class="footer">
-    <div>
-      This AI output supports clinical judgement and does not replace a diagnosis.
-    </div>
-    <div style="text-align:center">
-      <img id="qrImg"/><br/>Verify report
-    </div>
-  </div>
-</div>
-
-<script>
-let REPORT = null;
-
+<script type="module">
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const json = await res.json();
 
-  REPORT = json.report || {};
-  const ai = REPORT.ai_results || {};
+  const rpt = json.report || {};
+  const ai = rpt.ai_results || {};
   const patient = ai.patient || {};
 
-  document.getElementById("name").textContent = patient.name || REPORT.name || "—";
-  document.getElementById("age").textContent = patient.age ?? REPORT.age ?? "—";
-  document.getElementById("sex").textContent = (patient.sex || REPORT.sex || "Unknown");
-  document.getElementById("date").textContent =
-    REPORT.created_at ? new Date(REPORT.created_at).toLocaleString() : "—";
+  document.getElementById("name").textContent =
+    patient.name || rpt.name || "—";
 
-  if (REPORT.file_path){
-    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(REPORT.file_path)}`);
+  document.getElementById("age").textContent =
+    patient.age ?? rpt.age ?? "—";
+
+  function cleanSex(v){
+    if (!v) return null;
+    const s = String(v).toLowerCase();
+    if (s === "unknown" || s === "u") return null;
+    if (s.startsWith("m")) return "Male";
+    if (s.startsWith("f")) return "Female";
+    return v;
+  }
+
+  const sex =
+    cleanSex(patient.sex) ||
+    cleanSex(patient.gender) ||
+    cleanSex(rpt.sex) ||
+    cleanSex(rpt.gender);
+
+  document.getElementById("sex").textContent = sex || "Unknown";
+
+  document.getElementById("date").textContent =
+    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
+
+  if (rpt.file_path){
+    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj = await f.json();
     if (fj.url) document.getElementById("pdfFrame").src = fj.url;
   }
 
   renderCBC(ai);
   renderAI(ai);
-  populatePrint(ai);
 }
 
 function renderCBC(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
-  box.innerHTML = Object.keys(labs).map(k=>{
-    const d=labs[k];
+  const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
+
+  if (!keys.length){
+    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
+    return;
+  }
+
+  box.innerHTML = keys.map(k=>{
+    const d=labs[k]||{};
+    const val=Number(d.value),lo=Number(d.reference_low),hi=Number(d.reference_high);
     let cls="",arrow="";
-    if(d.flag==="high"){cls="flag-high";arrow=" ↑";}
-    if(d.flag==="low"){cls="flag-low";arrow=" ↓";}
+    if(!isNaN(val)){
+      if(!isNaN(hi)&&val>hi){cls="flag-high";arrow=" ↑";}
+      else if(!isNaN(lo)&&val<lo){cls="flag-low";arrow=" ↓";}
+    }
     return `<div class="cbc-row ${cls}">
       <span><b>${k}</b></span>
-      <span>${d.value} ${d.units||""}${arrow}</span>
+      <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
     </div>`;
   }).join("");
 }
 
 function renderAI(ai){
   const box=document.getElementById("aiBox");
-  const sev=ai._severity?.severity||"low";
+
+  const sev = ai._severity?.severity || "low";
+  const summary = ai.summary?.impression || "—";
+  const routes = ai._routes || [];
+  const followUp = ai._follow_up || null;
+
   box.innerHTML=`
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
+
     <div class="section-title">Summary</div>
-    <div class="row">${ai.summary?.impression||"—"}</div>
+    <div class="row">${summary}</div>
+
+    ${followUp ? `
+      <div class="section-title">Follow-up (Clinical)</div>
+      <ul>
+        ${followUp.map(item => `<li>${item}</li>`).join("")}
+      </ul>
+    ` : ""}
+
+    ${routes.length?`
+      <div class="section-title">Clinical Reasoning & Routes</div>
+      ${routes.map(r=>`
+        <div class="route-block route-${r.priority||"secondary"}">
+          <b>${r.pattern}</b><br/>
+          ${r.route}
+          ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
+        </div>`).join("")}
+    `:""}
   `;
-}
-
-function populatePrint(ai){
-  document.getElementById("p_name").textContent = REPORT.name || "—";
-  document.getElementById("p_age").textContent = REPORT.age || "—";
-  document.getElementById("p_sex").textContent = REPORT.sex || "—";
-
-  const cbc = ai._canonical_cbc || {};
-  document.getElementById("print-cbc").innerHTML =
-    Object.keys(cbc).map((k,i)=>`
-      <tr>
-        <td>${i+1}</td>
-        <td>${k}</td>
-        <td>${cbc[k].value}</td>
-        <td>${cbc[k].units||""}</td>
-        <td>${cbc[k].reference_low||""}–${cbc[k].reference_high||""}</td>
-        <td>${cbc[k].flag||"normal"}</td>
-      </tr>
-    `).join("");
-
-  document.getElementById("print-summary").textContent =
-    ai.summary?.impression || "";
-
-  document.getElementById("print-followup").textContent =
-    ai.summary?.follow_up || "Clinical correlation advised.";
-
-  const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT.id}`;
-  document.getElementById("qrImg").src =
-    `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 }
 
 loadReport();
