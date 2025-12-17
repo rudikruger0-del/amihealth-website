@@ -138,46 +138,32 @@ li { margin:4px 0; font-size:14px; }
   </div>
 </div>
 
-<script type="module">
+<script>
 let REPORT = null;
+let ORIGINAL_BODY = null;
 
-/* ---------- SAFE JSON PARSER (CRITICAL FIX) ---------- */
-function safeParseAI(ai){
-  if (!ai) return {};
-  if (typeof ai === "string") {
-    try { return JSON.parse(ai); }
-    catch { return {}; }
-  }
-  return ai;
-}
-
-/* ---------- LOAD REPORT ---------- */
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
-  if (!id) return;
-
   const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
   const json = await res.json();
 
-  const rpt = json.report || {};
-  REPORT = rpt;
-
-  const ai = safeParseAI(rpt.ai_results);
+  REPORT = json.report || {};
+  const ai = REPORT.ai_results || {};
   const patient = ai.patient || {};
 
-  document.getElementById("name").textContent = patient.name || rpt.name || "—";
-  document.getElementById("age").textContent = patient.age ?? rpt.age ?? "—";
+  document.getElementById("name").textContent = patient.name || REPORT.name || "—";
+  document.getElementById("age").textContent = patient.age ?? REPORT.age ?? "—";
 
-  const sexRaw = patient.sex || patient.gender || rpt.sex || rpt.gender || "";
+  const sex = (patient.sex || REPORT.sex || "").toLowerCase();
   document.getElementById("sex").textContent =
-    sexRaw.toLowerCase().startsWith("m") ? "Male" :
-    sexRaw.toLowerCase().startsWith("f") ? "Female" : "Unknown";
+    sex.startsWith("m") ? "Male" :
+    sex.startsWith("f") ? "Female" : "Unknown";
 
   document.getElementById("date").textContent =
-    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
+    REPORT.created_at ? new Date(REPORT.created_at).toLocaleString() : "—";
 
-  if (rpt.file_path){
-    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+  if (REPORT.file_path){
+    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(REPORT.file_path)}`);
     const fj = await f.json();
     if (fj.url) document.getElementById("pdfFrame").src = fj.url;
   }
@@ -186,129 +172,97 @@ async function loadReport(){
   renderAI(ai);
 }
 
-/* ---------- CBC ---------- */
 function renderCBC(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
   const keys = Object.keys(labs).filter(k=>!k.startsWith("_"));
 
-  if (!keys.length){
-    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
-    return;
-  }
-
   box.innerHTML = keys.map(k=>{
-    const d = labs[k] || {};
+    const d=labs[k];
     let cls="",arrow="";
-    if (d.flag === "high"){ cls="flag-high"; arrow=" ↑"; }
-    if (d.flag === "low"){ cls="flag-low"; arrow=" ↓"; }
-    return `
-      <div class="cbc-row ${cls}">
-        <span><b>${k}</b></span>
-        <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
-      </div>`;
+    if(d.flag==="high"){cls="flag-high";arrow=" ↑";}
+    if(d.flag==="low"){cls="flag-low";arrow=" ↓";}
+    return `<div class="cbc-row ${cls}">
+      <span><b>${k}</b></span>
+      <span>${d.value} ${d.units||""}${arrow}</span>
+    </div>`;
   }).join("");
 }
 
-/* ---------- AI INTERPRETATION ---------- */
 function renderAI(ai){
-  const box = document.getElementById("aiBox");
-  const sev = ai._severity?.severity || "low";
-  const summary = ai.summary?.impression || "—";
-  const followUp = ai._follow_up || [];
-
-  box.innerHTML = `
+  const box=document.getElementById("aiBox");
+  const sev=ai._severity?.severity||"low";
+  box.innerHTML=`
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
-
     <div class="section-title">Summary</div>
-    <div class="row">${summary}</div>
-
-    ${followUp.length ? `
-      <div class="section-title">Follow-up</div>
-      <ul>${followUp.map(i=>`<li>${i}</li>`).join("")}</ul>
-    ` : ""}
+    <div class="row">${ai.summary?.impression||"—"}</div>
   `;
 }
 
-/* ---------- PRINT OUTPUT (RESTORED EXACTLY) ---------- */
+/* ================= PRINT (PROVEN VERSION) ================= */
+
 function printAiReport(){
-  if (!REPORT) return;
+  if(!REPORT) return;
 
-  const ai = safeParseAI(REPORT.ai_results);
-  const cbc = ai.cbc || [];
-  const summary = ai.summary || {};
+  ORIGINAL_BODY = document.body.innerHTML;
 
+  const ai = REPORT.ai_results || {};
+  const cbc = ai._canonical_cbc || {};
   const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT.id}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 
-  const rows = cbc.map((r,i)=>`
+  const rows = Object.keys(cbc).map((k,i)=>`
     <tr>
       <td>${i+1}</td>
-      <td>${r.analyte||""}</td>
-      <td>${r.value||""}</td>
-      <td>${r.units||""}</td>
-      <td>${r.reference_low||""}–${r.reference_high||""}</td>
-      <td>${r.flag||"normal"}</td>
-    </tr>`).join("");
+      <td>${k}</td>
+      <td>${cbc[k].value}</td>
+      <td>${cbc[k].units||""}</td>
+      <td>${cbc[k].reference_low||""}–${cbc[k].reference_high||""}</td>
+      <td>${cbc[k].flag||"normal"}</td>
+    </tr>
+  `).join("");
 
-  const w = window.open("","_blank");
-  w.document.write(`
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<title>AMI Health — AI Interpretation Report</title>
-<style>
-body{font-family:system-ui;margin:40px;color:#111;font-size:13px}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:6px}
-th{background:#f3f4f6}
-.header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
-.footer{margin-top:20px;font-size:10px;color:#555;display:flex;justify-content:space-between}
-</style>
-</head>
-<body>
+  document.body.innerHTML = `
+  <style>
+    body{font-family:system-ui;margin:40px;color:#111;font-size:13px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #ccc;padding:6px}
+    th{background:#f3f4f6}
+    h1{font-size:18px}
+    .footer{margin-top:20px;font-size:10px;color:#555;display:flex;justify-content:space-between}
+  </style>
 
-<div class="header">
-  <div>
-    <img src="/logo.png" style="height:32px"/><br/>
-    <b>AMI Health — AI Interpretation Report</b><br/>
-    Artificial Medical Intelligence (Pty) Ltd
+  <img src="/logo.png" style="height:32px"/>
+
+  <h1>AMI Health — AI Interpretation Report</h1>
+  <div><b>Patient:</b> ${REPORT.name||"—"} | ${REPORT.age||"—"} | ${REPORT.sex||"—"}</div>
+
+  <h2>CBC & Chemistry</h2>
+  <table>
+    <tr><th>#</th><th>Analyte</th><th>Result</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
+    ${rows}
+  </table>
+
+  <h2>AI Summary</h2>
+  <div>${ai.summary?.impression||""}</div>
+
+  <h2>Follow-up</h2>
+  <div>${(ai._follow_up||[]).join("<br/>")}</div>
+
+  <div class="footer">
+    <div>
+      This AI output supports clinical judgement and does not replace a diagnosis.
+    </div>
+    <div style="text-align:center">
+      <img src="${qrUrl}"/><br/>
+      Verify report
+    </div>
   </div>
-  <div>${new Date(REPORT.created_at).toLocaleString()}</div>
-</div>
+  `;
 
-<h3>Patient</h3>
-<div>Name: <b>${REPORT.name||"—"}</b> | Age: ${REPORT.age||"—"} | Sex: ${REPORT.sex||"—"}</div>
-
-<h3>Complete Blood Count (CBC)</h3>
-<table>
-<tr><th>#</th><th>Analyte</th><th>Result</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
-${rows}
-</table>
-
-<h3>AI Summary</h3>
-<div>${summary.impression||""}</div>
-
-<h3>Suggested follow-up</h3>
-<div>${summary.suggested_follow_up||""}</div>
-
-<div class="footer">
-  <div>
-    This AI output supports clinical judgement and does not replace a diagnosis.
-  </div>
-  <div style="text-align:right">
-    <img src="${qrUrl}"/><br/>
-    Verify report
-  </div>
-</div>
-
-</body>
-</html>
-`);
-  w.document.close();
-  w.focus();
-  w.print();
+  window.print();
+  document.body.innerHTML = ORIGINAL_BODY;
+  loadReport();
 }
 
 loadReport();
