@@ -80,15 +80,8 @@ iframe {
   margin-bottom:18px;
 }
 
-h2 {
-  margin:0 0 10px;
-  font-size:20px;
-}
-
-.row {
-  margin:6px 0;
-  font-size:14px;
-}
+h2 { margin:0 0 10px; font-size:20px; }
+.row { margin:6px 0; font-size:14px; }
 
 .cbc-row {
   display:flex;
@@ -119,20 +112,6 @@ h2 {
   font-weight:700;
   text-transform:uppercase;
 }
-
-.route-block {
-  margin-top:10px;
-  padding:10px 12px;
-  border-radius:10px;
-  background:#050a18;
-  border-left:4px solid #444;
-}
-
-.route-primary { border-left-color:#dc2626; }
-.route-secondary { border-left-color:#f59e0b; }
-
-ul { margin:6px 0 0 18px; padding:0; }
-li { margin:4px 0; font-size:14px; }
 </style>
 </head>
 
@@ -174,29 +153,23 @@ let REPORT_DATA = null;
 
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
-  if (!id) return alert("Missing report id");
-
   const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
   const json = await res.json();
-  const rpt = json.report;
-  if (!rpt) return alert("Report not found");
+  REPORT_DATA = json.report;
 
-  REPORT_DATA = rpt;
-  const ai = typeof rpt.ai_results === "string"
-    ? JSON.parse(rpt.ai_results)
-    : rpt.ai_results || {};
+  const ai = typeof REPORT_DATA.ai_results === "string"
+    ? JSON.parse(REPORT_DATA.ai_results)
+    : REPORT_DATA.ai_results;
 
-  document.getElementById("name").textContent = rpt.name || "—";
-  document.getElementById("age").textContent = rpt.age ?? "—";
-  document.getElementById("sex").textContent = rpt.sex || "—";
+  document.getElementById("name").textContent = REPORT_DATA.name;
+  document.getElementById("age").textContent = REPORT_DATA.age;
+  document.getElementById("sex").textContent = REPORT_DATA.sex;
   document.getElementById("date").textContent =
-    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
+    new Date(REPORT_DATA.created_at).toLocaleString();
 
-  if (rpt.file_path){
-    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
-    const fj = await f.json();
-    if (fj.url) document.getElementById("pdfFrame").src = fj.url;
-  }
+  const pdf = await fetch(`/api/get-file-url?path=${encodeURIComponent(REPORT_DATA.file_path)}`);
+  const pj = await pdf.json();
+  document.getElementById("pdfFrame").src = pj.url;
 
   renderLabs(ai);
   renderAI(ai);
@@ -206,13 +179,8 @@ function renderLabs(ai){
   const box = document.getElementById("cbcBox");
   const labs = [...(ai.cbc||[]), ...(ai.chemistry||[])];
 
-  if (!labs.length){
-    box.innerHTML = "<div class='row'>No lab data</div>";
-    return;
-  }
-
-  box.innerHTML = labs.map(l=>`
-    <div class="cbc-row ${l.flag==='high'?'flag-high':l.flag==='low'?'flag-low':''}">
+  box.innerHTML = labs.map(l => `
+    <div class="cbc-row ${l.flag === "high" ? "flag-high" : l.flag === "low" ? "flag-low" : ""}">
       <span><b>${l.analyte}</b></span>
       <span>${l.value} ${l.units} (ref ${l.reference_low}–${l.reference_high})</span>
     </div>
@@ -220,10 +188,9 @@ function renderLabs(ai){
 }
 
 function renderAI(ai){
-  const box = document.getElementById("aiBox");
-  box.innerHTML = `
-    <div class="severity-badge severity-${ai.severity_text||'normal'}">
-      ${(ai.severity_text||'normal').toUpperCase()}
+  document.getElementById("aiBox").innerHTML = `
+    <div class="severity-badge severity-${ai.severity_text}">
+      ${ai.severity_text.toUpperCase()}
     </div>
     <div class="section-title">Summary</div>
     <div class="row">${ai.summary?.impression || "—"}</div>
@@ -231,7 +198,7 @@ function renderAI(ai){
 }
 
 /* ===============================
-   PRINT — EXACT OLD FORMAT
+   PRINT — EXACT ORIGINAL FORMAT
    =============================== */
 function printAiReport(){
   const ai = typeof REPORT_DATA.ai_results === "string"
@@ -241,9 +208,6 @@ function printAiReport(){
   const labs = [...(ai.cbc||[]), ...(ai.chemistry||[])];
   const s = ai.summary || {};
 
-  const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT_DATA.id}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
-
   const rows = labs.map((l,i)=>`
     <tr>
       <td>${i+1}</td>
@@ -251,9 +215,11 @@ function printAiReport(){
       <td>${l.value}</td>
       <td>${l.units}</td>
       <td>${l.reference_low}–${l.reference_high}</td>
-      <td>${l.flag||'normal'}</td>
+      <td>${l.flag || "normal"}</td>
     </tr>
   `).join("");
+
+  const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT_DATA.id}`;
 
   const w = window.open("", "_blank");
   w.document.write(`
@@ -264,55 +230,45 @@ function printAiReport(){
 <title>AMI Health — AI Interpretation Report</title>
 <style>
 body{font-family:system-ui;margin:40px;font-size:13px;color:#111}
-.header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #00b7ff;padding-bottom:10px}
-.header-left{display:flex;gap:12px;align-items:center}
-.header-left img{height:36px}
-h2{margin:20px 0 6px}
+.header{display:flex;justify-content:space-between}
+.title{text-align:center;font-weight:700}
+hr{border:none;border-top:2px solid #0ea5e9;margin:8px 0 18px}
 table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:5px}
+th,td{border:1px solid #bbb;padding:5px}
 th{background:#f3f4f6}
-.footer{margin-top:18px;font-size:10px;color:#555;display:flex;justify-content:space-between}
+.footer{margin-top:18px;font-size:10px;color:#555}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-left">
-    <img src="/logo.png">
-    <div>
-      <b>AMI Health — AI Interpretation Report</b><br/>
-      Artificial Medical Intelligence (Pty) Ltd
-    </div>
-  </div>
   <div>${new Date(REPORT_DATA.created_at).toLocaleString()}</div>
+  <div class="title">
+    AMI Health — AI Interpretation Report<br/>
+    <span style="font-weight:400">Artificial Medical Intelligence (Pty) Ltd</span>
+  </div>
+  <div></div>
 </div>
 
-<p>
-<b>Patient:</b> ${REPORT_DATA.name} |
-<b>Age:</b> ${REPORT_DATA.age} |
-<b>Sex:</b> ${REPORT_DATA.sex}
-</p>
+<hr/>
 
-<h2>Laboratory Overview</h2>
+<p><b>Patient:</b> ${REPORT_DATA.name} | <b>Age:</b> ${REPORT_DATA.age} | <b>Sex:</b> ${REPORT_DATA.sex}</p>
+
+<h3>Laboratory Overview</h3>
 <table>
 <tr><th>#</th><th>Analyte</th><th>Value</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
 ${rows}
 </table>
 
-<h2>AI Summary</h2>
-<p>${s.impression || "—"}</p>
+<h3>AI Summary</h3>
+<p>${s.impression}</p>
 
-<h2>Suggested Follow-up</h2>
-<p>${s.suggested_follow_up || "—"}</p>
+<h3>Suggested Follow-up</h3>
+<p>${s.suggested_follow_up}</p>
 
 <div class="footer">
-  <div>
-    This AI-generated interpretation supports clinical judgement and does not replace a diagnosis.
-  </div>
-  <div>
-    <img src="${qrUrl}"><br/>
-    <small>${verifyUrl}</small>
-  </div>
+This AI-generated interpretation supports clinical judgement and does not replace a diagnosis.<br/>
+${verifyUrl}
 </div>
 
 </body>
