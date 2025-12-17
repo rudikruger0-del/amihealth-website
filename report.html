@@ -111,7 +111,7 @@ li { margin:4px 0; font-size:14px; }
 
 <header>
   <button class="secondary" onclick="history.back()">← Back</button>
-  <button class="primary" onclick="printAiReport()">Print / Save AI Report</button>
+  <button id="printBtn" class="primary">Print / Save AI Report</button>
 </header>
 
 <div class="container">
@@ -145,15 +145,14 @@ async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
   const res = await fetch(`/api/get-ai-report?id=${id}`);
   const json = await res.json();
+
   const rpt = json.report || {};
+  const ai = rpt.ai_results || {};
   REPORT_DATA = rpt;
 
-  const ai = rpt.ai_results || {};
-  const patient = ai.patient || {};
-
-  document.getElementById("name").textContent = patient.name || rpt.name || "—";
-  document.getElementById("age").textContent = patient.age ?? rpt.age ?? "—";
-  document.getElementById("sex").textContent = patient.sex || rpt.sex || "Unknown";
+  document.getElementById("name").textContent = rpt.name || "—";
+  document.getElementById("age").textContent = rpt.age ?? "—";
+  document.getElementById("sex").textContent = rpt.sex || "—";
   document.getElementById("date").textContent =
     rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
 
@@ -172,11 +171,22 @@ function renderCBC(ai){
   const labs = ai._canonical_cbc || {};
   const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
 
+  if (!keys.length){
+    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
+    return;
+  }
+
   box.innerHTML = keys.map(k=>{
     const d=labs[k]||{};
-    return `<div class="cbc-row">
+    const val=Number(d.value),lo=Number(d.reference_low),hi=Number(d.reference_high);
+    let cls="",arrow="";
+    if(!isNaN(val)){
+      if(!isNaN(hi)&&val>hi){cls="flag-high";arrow=" ↑";}
+      else if(!isNaN(lo)&&val<lo){cls="flag-low";arrow=" ↓";}
+    }
+    return `<div class="cbc-row ${cls}">
       <span><b>${k}</b></span>
-      <span>${d.value ?? "—"} ${d.units ?? ""}</span>
+      <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
     </div>`;
   }).join("");
 }
@@ -191,84 +201,90 @@ function renderAI(ai){
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
     <div class="section-title">Summary</div>
     <div class="row">${summary}</div>
+    ${routes.length?`
+      <div class="section-title">Clinical Reasoning & Routes</div>
+      ${routes.map(r=>`
+        <div class="route-block route-${r.priority||"secondary"}">
+          <b>${r.pattern}</b><br/>
+          ${r.route}
+          ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
+        </div>`).join("")}
+    `:""}
   `;
 }
 
-/* =========================
-   PRINT — ORIGINAL FORMAT
-   ========================= */
+/* ============================
+   ORIGINAL PRINT TEMPLATE
+   ============================ */
 function printAiReport(){
-  if (!REPORT_DATA) return;
+  if(!REPORT_DATA) return alert("Report not loaded");
 
   const ai = REPORT_DATA.ai_results || {};
-  const cbc = ai.cbc || [];
-  const summary = ai.summary || {};
+  const cbc = Object.entries(ai._canonical_cbc || {});
+  const created = REPORT_DATA.created_at
+    ? new Date(REPORT_DATA.created_at).toLocaleString()
+    : "";
 
   const verifyUrl = `https://amihealth.co.za/verify?id=${REPORT_DATA.id}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`;
 
-  const win = window.open("", "_blank");
+  const rows = cbc.map(([k,v],i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${k}</td>
+      <td>${v.value ?? ""}</td>
+      <td>${v.units ?? ""}</td>
+      <td>${v.reference_low ?? ""}–${v.reference_high ?? ""}</td>
+      <td>${v.flag ?? "normal"}</td>
+    </tr>`).join("");
 
+  const win = window.open("", "_blank");
   win.document.write(`
 <!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>AMI Health — AI Interpretation Report</title>
+<html><head><meta charset="utf-8"/>
+<title>AMI Health — AI Interpretation</title>
 <style>
-body{font-family:system-ui;margin:40px;color:#111827;font-size:13px}
-.header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
+body{font-family:system-ui;margin:40px;color:#111}
 table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{border:1px solid #d1d5db;padding:4px}
-th{background:#f3f4f6}
-.footer{margin-top:20px;font-size:10px;color:#6b7280}
-</style>
-</head>
+th,td{border:1px solid #ccc;padding:4px}
+th{background:#eee}
+.header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
+</style></head>
 <body>
-
 <div class="header">
   <div>
-    <img src="/logo.png" height="32" />
-    <div><b>AMI Health — AI Interpretation Report</b></div>
+    <img src="/logo.png" height="32"/><br/>
+    <b>AMI Health — AI Interpretation</b>
   </div>
-  <div>${new Date(REPORT_DATA.created_at).toLocaleString()}</div>
+  <div>${created}</div>
 </div>
 
-<h2>Patient</h2>
-<div>Name: <b>${REPORT_DATA.name||"—"}</b>
-Age: <b>${REPORT_DATA.age||"—"}</b>
-Sex: <b>${REPORT_DATA.sex||"—"}</b></div>
+<h3>Patient</h3>
+<div>Name: <b>${REPORT_DATA.name||"—"}</b> | Age: <b>${REPORT_DATA.age??"—"}</b> | Sex: <b>${REPORT_DATA.sex||"—"}</b></div>
 
-<h2>CBC</h2>
+<h3>Complete Blood Count</h3>
 <table>
-<tr><th>Analyte</th><th>Value</th><th>Units</th><th>Flag</th></tr>
-${cbc.map(r=>`
-<tr>
-<td>${r.analyte||""}</td>
-<td>${r.value||""}</td>
-<td>${r.units||""}</td>
-<td>${r.flag||""}</td>
-</tr>`).join("")}
+<tr><th>#</th><th>Analyte</th><th>Value</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
+${rows}
 </table>
 
-<h2>AI Summary</h2>
-<div>${summary.impression||""}</div>
+<h3>AI Impression</h3>
+<div>${ai.summary?.impression||""}</div>
 
-<div class="footer">
-  <div>This AI-generated interpretation supports clinical judgement.</div>
-  <img src="${qrUrl}" />
+<br/><br/>
+<div style="display:flex;justify-content:space-between;align-items:center">
+  <div style="font-size:10px">This AI report supports but does not replace clinical judgement.</div>
+  <div style="text-align:right">
+    <img src="${qrUrl}"/><br/>
+    <small>${verifyUrl}</small>
+  </div>
 </div>
-
-</body>
-</html>
-  `);
-
+</body></html>`);
   win.document.close();
-  win.focus();
   win.print();
 }
 
-window.printAiReport = printAiReport;
+document.getElementById("printBtn").onclick = printAiReport;
 loadReport();
 </script>
 
