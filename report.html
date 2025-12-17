@@ -1,123 +1,168 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>AMI — Clinical Report</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>AMI — Clinical Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-<style>
-:root {
-  --card:#0b1020;
-  --white:#eaf6ff;
-  --low:#10b981;
-  --moderate:#f59e0b;
-  --high:#f97316;
-  --critical:#dc2626;
-}
-body {
-  margin:0;
-  font-family:Inter,system-ui,sans-serif;
-  background:#02040e;
-  color:var(--white);
-}
-header {
-  padding:18px 24px;
-  display:flex;
-  justify-content:space-between;
-  background:#050a16;
-  border-bottom:1px solid rgba(255,255,255,0.08);
-}
-button {
-  padding:10px 18px;
-  border-radius:999px;
-  border:none;
-  font-weight:600;
-  cursor:pointer;
-}
-.primary {
-  background:linear-gradient(90deg,#00e0b8,#00b7ff);
-  color:#001821;
-}
-.secondary {
-  background:transparent;
-  border:1px solid rgba(255,255,255,0.3);
-  color:#fff;
-}
-.container {
-  max-width:1200px;
-  margin:20px auto;
-  padding:0 20px 30px;
-  display:grid;
-  grid-template-columns:1.2fr 1fr;
-  gap:20px;
-}
-.left-viewer {
-  background:#000;
-  border-radius:12px;
-  overflow:hidden;
-  height:85vh;
-  border:1px solid rgba(255,255,255,0.08);
-}
-iframe { width:100%; height:100%; border:none; }
-.panel {
-  background:var(--card);
-  padding:20px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,0.07);
-  margin-bottom:18px;
-}
-h2 { margin:0 0 10px; font-size:20px; }
-.row { margin:6px 0; font-size:14px; }
-.cbc-row {
-  display:flex;
-  justify-content:space-between;
-  padding:6px 0;
-  border-bottom:1px dashed rgba(255,255,255,0.06);
-}
-.flag-high { color:var(--high); font-weight:700; }
-.flag-low { color:var(--moderate); font-weight:700; }
-.severity-badge {
-  display:inline-flex;
-  padding:6px 14px;
-  border-radius:999px;
-  font-weight:800;
-  color:#fff;
-}
-.severity-low { background:var(--low); }
-.severity-moderate { background:var(--moderate); }
-.severity-high { background:var(--high); }
-.severity-critical { background:var(--critical); }
-.section-title {
-  margin-top:14px;
-  font-size:13px;
-  font-weight:700;
-  text-transform:uppercase;
-}
-.route-block {
-  margin-top:10px;
-  padding:10px 12px;
-  border-radius:10px;
-  background:#050a18;
-  border-left:4px solid #444;
-}
-.route-primary { border-left-color:#dc2626; }
-.route-secondary { border-left-color:#f59e0b; }
-ul { margin:6px 0 0 18px; padding:0; }
-li { margin:4px 0; font-size:14px; }
-</style>
+  <style>
+    :root {
+      --bg:#030414;
+      --card:#0b1020;
+      --muted:#96a0b8;
+      --accent:#00e0b8;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:#02040e;
+      color:#eaf6ff;
+    }
+
+    header {
+      padding:18px 24px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:#050a16;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+
+    .header-left {
+      display:flex;
+      align-items:center;
+      gap:16px;
+    }
+
+    #backBtn {
+      color:#00d4ff;
+      text-decoration:none;
+      font-size:14px;
+    }
+
+    header img { height:40px; }
+
+    .header-actions {
+      display:flex;
+      gap:10px;
+    }
+
+    .btn {
+      padding:10px 18px;
+      border-radius:999px;
+      border:none;
+      cursor:pointer;
+      font-size:14px;
+      font-weight:600;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .btn.primary {
+      background:linear-gradient(90deg,#00e0b8,#00b7ff);
+      color:#001821;
+    }
+
+    .btn.secondary {
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.28);
+      color:#eaf6ff;
+    }
+
+    .container {
+      max-width:1200px;
+      margin:20px auto;
+      padding:0 20px 30px;
+      display:grid;
+      grid-template-columns:1.2fr 1fr;
+      gap:20px;
+    }
+
+    @media (max-width:900px){
+      .container {
+        grid-template-columns:1fr;
+      }
+      .left-viewer {
+        height:60vh;
+      }
+    }
+
+    .left-viewer {
+      background:#000;
+      border-radius:12px;
+      overflow:hidden;
+      height:85vh;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+
+    iframe { width:100%; height:100%; border:none;}
+
+    .panel {
+      background:var(--card);
+      padding:20px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.07);
+      margin-bottom:18px;
+    }
+
+    h2 {
+      margin-top:0;
+      font-size:20px;
+      font-weight:700;
+    }
+
+    .row {
+      margin:4px 0;
+      font-size:14px;
+    }
+
+    .cbc-row-flag-high { color:#ff8080; }
+    .cbc-row-flag-low  { color:#ffb347; }
+    .cbc-row-flag-normal { color:#eaf6ff; }
+
+    .disclaimer {
+      margin-top:20px;
+      text-align:center;
+      font-size:12px;
+      color:var(--muted);
+      padding:10px;
+    }
+
+    .ai-section-title {
+      margin-top:10px;
+      font-weight:600;
+      font-size:14px;
+    }
+  </style>
 </head>
 
 <body>
 
 <header>
-  <button class="secondary" onclick="history.back()">← Back</button>
-  <button class="primary" onclick="window.print()">Print / Save AI Report</button>
+  <div class="header-left">
+    <a id="backBtn" href="/dashboard.html">← Back</a>
+    <img src="/logo.png" alt="AMI Health Logo" />
+  </div>
+
+  <div class="header-actions">
+    <button id="printAiBtn" class="btn primary">Print / Save AI Report</button>
+    <a id="downloadOriginalBtn" class="btn secondary" href="#" target="_blank" rel="noopener">
+      Download Original PDF
+    </a>
+  </div>
 </header>
 
 <div class="container">
-  <div class="left-viewer"><iframe id="pdfFrame"></iframe></div>
+  <div class="left-viewer">
+    <iframe id="pdfFrame"></iframe>
+  </div>
 
   <div>
+
     <div class="panel">
       <h2>Patient Info</h2>
       <div class="row"><b>Name:</b> <span id="name">—</span></div>
@@ -127,113 +172,172 @@ li { margin:4px 0; font-size:14px; }
     </div>
 
     <div class="panel">
-      <h2>Laboratory Findings</h2>
-      <div id="cbcBox"></div>
+      <h2>CBC & Chemistry Results</h2>
+      <div id="cbcContent">Loading…</div>
     </div>
 
     <div class="panel">
-      <h2>AI Clinical Interpretation</h2>
-      <div id="aiBox"></div>
+      <h2>AI Interpretation</h2>
+      <div id="aiContent">Loading…</div>
     </div>
+
+    <div class="disclaimer">
+      This AI-generated interpretation supports clinical judgement and does not replace a medical diagnosis.
+      Final decisions remain the responsibility of a licensed medical professional.
+    </div>
+
   </div>
 </div>
 
 <script type="module">
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
-  const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const json = await res.json();
+  const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
+  const data = await res.json();
 
-  const rpt = json.report || {};
+  if (!data.report) return;
+
+  const rpt = data.report;
   const ai = rpt.ai_results || {};
   const patient = ai.patient || {};
 
-  // -------- NAME --------
-  document.getElementById("name").textContent =
-    patient.name || rpt.name || "—";
+  document.getElementById("name").textContent = patient.name || rpt.name || "—";
+  document.getElementById("age").textContent = patient.age ?? rpt.age ?? "—";
 
-  // -------- AGE --------
-  document.getElementById("age").textContent =
-    patient.age ?? rpt.age ?? "—";
+  const sexRaw = patient.sex || rpt.sex;
+  document.getElementById("sex").textContent =
+    sexRaw && sexRaw !== "Unknown" ? sexRaw : "Unknown";
 
-  // -------- SEX (FIXED) --------
-  function cleanSex(v){
-    if (!v) return null;
-    const s = String(v).toLowerCase();
-    if (s === "unknown" || s === "u") return null;
-    if (s.startsWith("m")) return "Male";
-    if (s.startsWith("f")) return "Female";
-    return v;
-  }
-
-  const sex =
-    cleanSex(patient.sex) ||
-    cleanSex(patient.gender) ||
-    cleanSex(rpt.sex) ||
-    cleanSex(rpt.gender);
-
-  document.getElementById("sex").textContent = sex || "Unknown";
-
-  // -------- DATE --------
   document.getElementById("date").textContent =
     rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
 
-  // -------- PDF --------
   if (rpt.file_path){
     const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj = await f.json();
-    if (fj.url) document.getElementById("pdfFrame").src = fj.url;
+    if (fj.url){
+      document.getElementById("pdfFrame").src = fj.url;
+      document.getElementById("downloadOriginalBtn").href = fj.url;
+    }
   }
 
   renderCBC(ai);
   renderAI(ai);
+
+  document.getElementById("printAiBtn").onclick = () => printAiReport(rpt, ai);
 }
 
 function renderCBC(ai){
-  const box = document.getElementById("cbcBox");
-  const labs = ai._canonical_cbc || {};
-  const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
+  const box = document.getElementById("cbcContent");
+  const cbc = ai.cbc || [];
 
-  if (!keys.length){
-    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
+  if (!cbc.length){
+    box.textContent = "No structured laboratory data available.";
     return;
   }
 
-  box.innerHTML = keys.map(k=>{
-    const d=labs[k]||{};
-    const val=Number(d.value),lo=Number(d.reference_low),hi=Number(d.reference_high);
-    let cls="",arrow="";
-    if(!isNaN(val)){
-      if(!isNaN(hi)&&val>hi){cls="flag-high";arrow=" ↑";}
-      else if(!isNaN(lo)&&val<lo){cls="flag-low";arrow=" ↓";}
-    }
-    return `<div class="cbc-row ${cls}">
-      <span><b>${k}</b></span>
-      <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
-    </div>`;
+  box.innerHTML = cbc.map(r=>{
+    const cls =
+      r.flag === "high" ? "cbc-row-flag-high" :
+      r.flag === "low" ? "cbc-row-flag-low" :
+      "cbc-row-flag-normal";
+
+    const ref =
+      r.reference_low || r.reference_high
+        ? ` (ref: ${r.reference_low ?? ""}–${r.reference_high ?? ""})`
+        : "";
+
+    return `
+      <div class="row ${cls}">
+        <b>${r.analyte}</b>: ${r.value ?? ""} ${r.units ?? ""}${ref}
+      </div>`;
   }).join("");
 }
 
 function renderAI(ai){
-  const box=document.getElementById("aiBox");
-  const sev=ai._severity?.severity||"low";
-  const summary=ai.summary?.impression||"—";
-  const routes=ai._routes||[];
+  const box = document.getElementById("aiContent");
+  const summary = ai.summary || {};
 
-  box.innerHTML=`
-    <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
-    <div class="section-title">Summary</div>
-    <div class="row">${summary}</div>
-    ${routes.length?`
-      <div class="section-title">Clinical Reasoning & Routes</div>
-      ${routes.map(r=>`
-        <div class="route-block route-${r.priority||"secondary"}">
-          <b>${r.pattern}</b><br/>
-          ${r.route}
-          ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
-        </div>`).join("")}
-    `:""}
+  box.innerHTML = `
+    <div class="ai-section-title">Summary</div>
+    <div>${summary.impression || "—"}</div>
+    <div class="ai-section-title">Suggested follow-up</div>
+    <div>${summary.suggested_follow_up || "—"}</div>
   `;
+}
+
+/* =========================
+   DOCTOR-GRADE PRINT REPORT
+   ========================= */
+function printAiReport(rpt, ai){
+  const cbc = ai.cbc || [];
+  const summary = ai.summary || {};
+
+  const name = rpt.name || "Unknown";
+  const age  = rpt.age ?? "—";
+  const sex  = rpt.sex || "—";
+  const created = rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "";
+
+  const rows = cbc.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.analyte}</td>
+      <td>${r.value ?? ""}</td>
+      <td>${r.units ?? ""}</td>
+      <td>${r.reference_low ?? ""}–${r.reference_high ?? ""}</td>
+      <td>${r.flag || "normal"}</td>
+    </tr>`).join("");
+
+  const win = window.open("", "_blank");
+  win.document.write(`
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AMI Health — AI Interpretation</title>
+<style>
+body { font-family:system-ui; margin:40px; font-size:13px; color:#111; }
+h1 { font-size:18px; margin-bottom:6px; }
+h2 { font-size:15px; margin-top:18px; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th,td { border:1px solid #ccc; padding:5px; }
+th { background:#f3f4f6; }
+.footer { margin-top:18px; font-size:10px; color:#555; }
+</style>
+</head>
+<body>
+
+<h1>AMI Health — AI Interpretation Report</h1>
+<div>Date: ${created}</div>
+
+<h2>Patient</h2>
+<div>Name: <b>${name}</b> &nbsp; Age: <b>${age}</b> &nbsp; Sex: <b>${sex}</b></div>
+
+<h2>CBC & Chemistry Overview</h2>
+<table>
+<tr><th>#</th><th>Analyte</th><th>Result</th><th>Units</th><th>Reference</th><th>Flag</th></tr>
+${rows || "<tr><td colspan='6'>No structured data</td></tr>"}
+</table>
+
+<h2>AI Summary</h2>
+<div>${summary.impression || "—"}</div>
+
+<h2>Suggested Follow-up</h2>
+<div>${summary.suggested_follow_up || "—"}</div>
+
+<div style="margin-top:30px;">
+  <div style="border-bottom:1px solid #000; width:250px;"></div>
+  <div>Clinician signature</div>
+</div>
+
+<div class="footer">
+This AI-generated interpretation supports clinical judgement and does not replace a medical diagnosis.
+</div>
+
+</body>
+</html>
+`);
+  win.document.close();
+  win.print();
 }
 
 loadReport();
