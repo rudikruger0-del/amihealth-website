@@ -108,10 +108,11 @@ h2 {
   color:#fff;
 }
 
-.severity-low { background:var(--low); }
-.severity-moderate { background:var(--moderate); }
-.severity-high { background:var(--high); }
-.severity-critical { background:var(--critical); }
+.severity-normal { background:var(--low); }
+.severity-mild { background:var(--moderate); }
+.severity-moderate { background:var(--high); }
+.severity-severe { background:var(--critical); }
+.severity-critical { background:#7f1d1d; }
 
 .section-title {
   margin-top:14px;
@@ -201,51 +202,51 @@ async function loadReport(){
     if (fj.url) document.getElementById("pdfFrame").src = fj.url;
   }
 
-  renderCBC(ai);
+  renderLabs(ai);
   renderAI(ai);
 }
 
 /* ===============================
-   RENDER CBC (NEW UI)
+   RENDER LABS (CBC + CHEMISTRY)
    =============================== */
-function renderCBC(ai){
+function renderLabs(ai){
   const box = document.getElementById("cbcBox");
-  const labs = ai._canonical_cbc || {};
-  const keys = Object.keys(labs);
 
-  if (!keys.length){
-    box.innerHTML = "<div class='row'>No structured laboratory values</div>";
+  const cbc = Array.isArray(ai.cbc) ? ai.cbc : [];
+  const chem = Array.isArray(ai.chemistry) ? ai.chemistry : [];
+  const labs = [...cbc, ...chem];
+
+  if (!labs.length){
+    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
     return;
   }
 
-  box.innerHTML = keys.map(k=>{
-    const d = labs[k];
-    const v = Number(d.value);
-    const lo = Number(d.reference_low);
-    const hi = Number(d.reference_high);
+  box.innerHTML = labs.map(item=>{
+    const flagClass =
+      item.flag === "high" ? "flag-high" :
+      item.flag === "low" ? "flag-low" : "";
 
-    let cls="", arrow="";
-    if (!isNaN(v)){
-      if (!isNaN(hi) && v > hi){ cls="flag-high"; arrow=" ↑"; }
-      else if (!isNaN(lo) && v < lo){ cls="flag-low"; arrow=" ↓"; }
-    }
+    const ref =
+      item.reference_low != null || item.reference_high != null
+        ? ` (ref ${item.reference_low ?? ""}–${item.reference_high ?? ""})`
+        : "";
 
     return `
-      <div class="cbc-row ${cls}">
-        <span><b>${k}</b></span>
-        <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
+      <div class="cbc-row ${flagClass}">
+        <span><b>${item.analyte}</b></span>
+        <span>${item.value ?? "—"} ${item.units ?? ""}${ref}</span>
       </div>`;
   }).join("");
 }
 
 /* ===============================
-   RENDER AI (NEW UI)
+   RENDER AI
    =============================== */
 function renderAI(ai){
   const box = document.getElementById("aiBox");
-  const sev = ai._severity?.severity || "low";
+  const sev = ai.severity_text || "normal";
   const summary = ai.summary?.impression || "—";
-  const routes = ai._routes || [];
+  const routes = ai.routes || [];
 
   box.innerHTML = `
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
@@ -269,7 +270,7 @@ function renderAI(ai){
 }
 
 /* ===============================
-   PRINT (OLD PROVEN VERSION)
+   PRINT (PROVEN VERSION)
    =============================== */
 function printAiReport(){
   if (!REPORT_DATA) return alert("Report not loaded");
@@ -278,8 +279,9 @@ function printAiReport(){
     ? JSON.parse(REPORT_DATA.ai_results)
     : REPORT_DATA.ai_results;
 
-  const cbc = ai.cbc || [];
+  const cbc = [...(ai.cbc || []), ...(ai.chemistry || [])];
   const summary = ai.summary || {};
+
   const name = REPORT_DATA.name || "Unknown";
   const age = REPORT_DATA.age ?? "—";
   const sex = REPORT_DATA.sex || "—";
@@ -321,10 +323,10 @@ th{background:#f3f4f6}
 <div><b>Patient:</b> ${name} | Age ${age} | Sex ${sex}</div>
 <div><b>Date:</b> ${createdAt}</div>
 
-<h3>CBC Overview</h3>
+<h3>Laboratory Overview</h3>
 <table>
 <tr><th>#</th><th>Analyte</th><th>Value</th><th>Units</th><th>Ref</th><th>Flag</th></tr>
-${rows || "<tr><td colspan='6'>No CBC data</td></tr>"}
+${rows || "<tr><td colspan='6'>No lab data</td></tr>"}
 </table>
 
 <h3>AI Summary</h3>
