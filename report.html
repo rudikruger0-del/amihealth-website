@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 
 <style>
+/* ================= SCREEN UI (UNCHANGED) ================= */
 :root {
   --card:#0b1020;
   --white:#eaf6ff;
@@ -21,8 +22,6 @@ body {
   background:#02040e;
   color:var(--white);
 }
-
-/* ================= SCREEN UI (UNCHANGED) ================= */
 
 header {
   padding:18px 24px;
@@ -110,20 +109,6 @@ h2 { margin:0 0 10px; font-size:20px; }
   font-weight:700;
   text-transform:uppercase;
 }
-
-.route-block {
-  margin-top:10px;
-  padding:10px 12px;
-  border-radius:10px;
-  background:#050a18;
-  border-left:4px solid #444;
-}
-
-.route-primary { border-left-color:#dc2626; }
-.route-secondary { border-left-color:#f59e0b; }
-
-ul { margin:6px 0 0 18px; padding:0; }
-li { margin:4px 0; font-size:14px; }
 
 /* ================= PRINT ================= */
 
@@ -214,7 +199,7 @@ li { margin:4px 0; font-size:14px; }
   </div>
 </div>
 
-<!-- ================= PRINT ROOT ================= -->
+<!-- ================= PRINT LAYOUT (OLD STYLE, NEW DATA) ================= -->
 
 <div id="print-root">
   <div class="print-header">
@@ -276,28 +261,26 @@ const $ = id => document.getElementById(id);
 
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
-  const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const json = await res.json();
+  const res = await fetch(`/api/get-ai-report?id=${encodeURIComponent(id)}`);
+  const { report } = await res.json();
 
-  const rpt = json.report;
-  const ai = rpt.ai_results || {};
+  const ai = report.ai_results || {};
 
-  $("name").textContent = rpt.name || "—";
-  $("age").textContent = rpt.age ?? "—";
-  $("sex").textContent = rpt.sex || "Unknown";
-  $("date").textContent = new Date(rpt.created_at).toLocaleString();
+  $("name").textContent = report.name || "—";
+  $("age").textContent = report.age ?? "—";
+  $("sex").textContent = report.sex || "Unknown";
+  $("date").textContent = new Date(report.created_at).toLocaleString();
 
-  if (rpt.file_path){
-    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+  $("pName").textContent = report.name || "—";
+  $("pAge").textContent = report.age ?? "—";
+  $("pSex").textContent = report.sex || "—";
+  $("printDate").textContent = new Date(report.created_at).toLocaleString();
+
+  if (report.file_path){
+    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(report.file_path)}`);
     const fj = await f.json();
     $("pdfFrame").src = fj.url;
   }
-
-  // PRINT DATA
-  $("pName").textContent = rpt.name || "—";
-  $("pAge").textContent = rpt.age ?? "—";
-  $("pSex").textContent = rpt.sex || "—";
-  $("printDate").textContent = new Date(rpt.created_at).toLocaleString();
 
   const cbc = ai._canonical_cbc || {};
   $("printCBC").innerHTML = Object.keys(cbc).map((k,i)=>`
@@ -312,10 +295,9 @@ async function loadReport(){
   `).join("");
 
   $("printSummary").textContent = ai.summary?.impression || "—";
-
   $("printFollow").innerHTML = (ai._follow_up || []).map(x=>`<li>${x}</li>`).join("");
 
-  const verify = `https://amihealth.co.za/verify?id=${rpt.id}`;
+  const verify = `https://amihealth.co.za/verify?id=${report.id}`;
   $("verifyUrl").textContent = verify;
   $("qrImg").src =
     `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
