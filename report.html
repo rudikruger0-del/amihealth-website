@@ -124,39 +124,24 @@ ul { margin:6px 0 0 18px; padding:0; }
 li { margin:4px 0; font-size:14px; }
 
 /* ==========================
-   PRINT FIX — DO NOT TOUCH LOGIC
+   PRINT OUTPUT — SAFE FIX
    ========================== */
 
 @media print {
 
-  /* Hide everything */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* Show only printable report */
-  #print-report,
-  #print-report * {
-    visibility: visible !important;
-  }
-
-  body {
+  /* Global print reset */
+  html, body {
     background:#ffffff !important;
     color:#000000 !important;
   }
 
+  /* Remove dark UI chrome */
   header,
   .left-viewer {
     display:none !important;
   }
 
-  #print-report {
-    position: static;
-    width:100%;
-    background:#ffffff !important;
-    color:#000000 !important;
-  }
-
+  /* Panels become clean paper cards */
   .panel {
     background:#ffffff !important;
     color:#000000 !important;
@@ -165,9 +150,15 @@ li { margin:4px 0; font-size:14px; }
     page-break-inside: avoid;
   }
 
+  /* Text hierarchy */
   h2 {
     color:#000 !important;
     font-weight:700;
+  }
+
+  .row,
+  li {
+    color:#000 !important;
   }
 
   .cbc-row {
@@ -180,26 +171,32 @@ li { margin:4px 0; font-size:14px; }
     font-weight:700;
   }
 
+  /* Severity prints clearly but neutrally */
   .severity-badge {
-    color:#000 !important;
-    background:#fff !important;
-    border:2px solid #000 !important;
+    background:#ffffff !important;
+    color:#000000 !important;
+    border:2px solid #000000 !important;
     font-size:14pt;
     margin-bottom:10pt;
   }
 
-  .section-title {
-    color:#000 !important;
-    margin-top:12pt;
-  }
-
+  /* Route blocks stay readable */
   .route-block {
-    background:#fff !important;
+    background:#ffffff !important;
+    color:#000000 !important;
     border:1px solid #ddd !important;
     border-left-width:4px;
     page-break-inside: avoid;
   }
 
+  /* IMPORTANT:
+     DO NOT hide images.
+     Logos and QR codes will print normally.
+  */
+  img {
+    max-width:100%;
+    page-break-inside: avoid;
+  }
 }
 </style>
 </head>
@@ -216,8 +213,7 @@ li { margin:4px 0; font-size:14px; }
     <iframe id="pdfFrame"></iframe>
   </div>
 
-  <!-- PRINTABLE AREA -->
-  <div id="print-report">
+  <div>
     <div class="panel">
       <h2>Patient Info</h2>
       <div class="row"><b>Name:</b> <span id="name">—</span></div>
@@ -239,8 +235,7 @@ li { margin:4px 0; font-size:14px; }
 </div>
 
 <script type="module">
-/* JS UNCHANGED — intentionally omitted here for brevity in explanation.
-   Use your existing script exactly as-is. */
+/* YOUR EXISTING JS — UNCHANGED */
 </script>
 
 </body>
