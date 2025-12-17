@@ -22,6 +22,8 @@ body {
   color:var(--white);
 }
 
+/* ================= SCREEN UI (UNCHANGED) ================= */
+
 header {
   padding:18px 24px;
   display:flex;
@@ -123,25 +125,20 @@ h2 { margin:0 0 10px; font-size:20px; }
 ul { margin:6px 0 0 18px; padding:0; }
 li { margin:4px 0; font-size:14px; }
 
-/* ==========================
-   PRINT OUTPUT — SAFE FIX
-   ========================== */
+/* ================= PRINT OUTPUT (SAFE, NO HIDING) ================= */
 
 @media print {
 
-  /* Global print reset */
-  html, body {
+  body {
     background:#ffffff !important;
     color:#000000 !important;
   }
 
-  /* Remove dark UI chrome */
   header,
   .left-viewer {
     display:none !important;
   }
 
-  /* Panels become clean paper cards */
   .panel {
     background:#ffffff !important;
     color:#000000 !important;
@@ -150,14 +147,7 @@ li { margin:4px 0; font-size:14px; }
     page-break-inside: avoid;
   }
 
-  /* Text hierarchy */
-  h2 {
-    color:#000 !important;
-    font-weight:700;
-  }
-
-  .row,
-  li {
+  h2, .row, li {
     color:#000 !important;
   }
 
@@ -171,28 +161,22 @@ li { margin:4px 0; font-size:14px; }
     font-weight:700;
   }
 
-  /* Severity prints clearly but neutrally */
   .severity-badge {
-    background:#ffffff !important;
-    color:#000000 !important;
-    border:2px solid #000000 !important;
+    background:#fff !important;
+    color:#000 !important;
+    border:2px solid #000 !important;
     font-size:14pt;
     margin-bottom:10pt;
   }
 
-  /* Route blocks stay readable */
   .route-block {
-    background:#ffffff !important;
-    color:#000000 !important;
+    background:#fff !important;
+    color:#000 !important;
     border:1px solid #ddd !important;
     border-left-width:4px;
     page-break-inside: avoid;
   }
 
-  /* IMPORTANT:
-     DO NOT hide images.
-     Logos and QR codes will print normally.
-  */
   img {
     max-width:100%;
     page-break-inside: avoid;
@@ -235,7 +219,7 @@ li { margin:4px 0; font-size:14px; }
 </div>
 
 <script type="module">
-/* YOUR EXISTING JS — UNCHANGED */
+/* YOUR JS — UNCHANGED */
 </script>
 
 </body>
