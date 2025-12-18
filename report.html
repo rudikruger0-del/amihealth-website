@@ -76,6 +76,7 @@ h2 { margin:0 0 10px; font-size:20px; }
 }
 .flag-high { color:var(--high); font-weight:700; }
 .flag-low { color:var(--moderate); font-weight:700; }
+
 .severity-badge {
   display:inline-flex;
   padding:6px 14px;
@@ -87,6 +88,7 @@ h2 { margin:0 0 10px; font-size:20px; }
 .severity-moderate { background:var(--moderate); }
 .severity-high { background:var(--high); }
 .severity-critical { background:var(--critical); }
+
 .section-title {
   margin-top:14px;
   font-size:13px;
@@ -154,18 +156,12 @@ async function loadReport(){
   function cleanSex(v){
     if (!v) return null;
     const s = String(v).toLowerCase();
-    if (s === "unknown" || s === "u") return null;
     if (s.startsWith("m")) return "Male";
     if (s.startsWith("f")) return "Female";
-    return v;
+    return null;
   }
-
   document.getElementById("sex").textContent =
-    cleanSex(patient.sex) ||
-    cleanSex(patient.gender) ||
-    cleanSex(rpt.sex) ||
-    cleanSex(rpt.gender) ||
-    "Unknown";
+    cleanSex(patient.sex) || cleanSex(rpt.sex) || "Unknown";
 
   document.getElementById("date").textContent =
     rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
@@ -179,24 +175,20 @@ async function loadReport(){
   renderCBC(ai);
   renderAI(ai);
 }
+loadReport();
 
 function renderCBC(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
-  const keys = Object.keys(labs).filter(k => !k.startsWith("_"));
-
-  if (!keys.length){
-    box.innerHTML = "<div class='row'>No structured laboratory values available</div>";
-    return;
-  }
+  const keys = Object.keys(labs).filter(k=>!k.startsWith("_"));
 
   box.innerHTML = keys.map(k=>{
     const d=labs[k]||{};
-    const val=Number(d.value),lo=Number(d.reference_low),hi=Number(d.reference_high);
+    const v=Number(d.value),lo=Number(d.reference_low),hi=Number(d.reference_high);
     let cls="",arrow="";
-    if(!isNaN(val)){
-      if(!isNaN(hi)&&val>hi){cls="flag-high";arrow=" ↑";}
-      else if(!isNaN(lo)&&val<lo){cls="flag-low";arrow=" ↓";}
+    if(!isNaN(v)){
+      if(!isNaN(hi)&&v>hi){cls="flag-high";arrow=" ↑";}
+      else if(!isNaN(lo)&&v<lo){cls="flag-low";arrow=" ↓";}
     }
     return `<div class="cbc-row ${cls}">
       <span><b>${k}</b></span>
@@ -227,77 +219,72 @@ function renderAI(ai){
   `;
 }
 
-loadReport();
+/* =========================
+   PRINT — OLD STYLE (FINAL)
+   ========================= */
+window.printAiOnly=function(){
+  const ai=document.getElementById("aiBox").innerHTML;
+  const labs=document.getElementById("cbcBox").innerHTML;
+  const date=document.getElementById("date").textContent;
+  const id=new URLSearchParams(location.search).get("id")||"";
+  const verify=`https://amihealth.co.za/verify?id=${id}`;
+  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
 
-/* ============================
-   PRINT — AI ONLY (FIXED)
-   ============================ */
-window.printAiOnly = function(){
-  const aiBox = document.getElementById("aiBox");
-  if (!aiBox) return alert("AI not loaded");
-
-  const date = document.getElementById("date")?.textContent || "";
-  const id = new URLSearchParams(location.search).get("id") || "";
-  const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(id)}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
-
-  const win = window.open("", "_blank");
-  win.document.write(`
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<title>AMI — AI Clinical Interpretation</title>
+  const w=window.open("","_blank");
+  w.document.write(`
+<!doctype html><html><head><meta charset="utf-8"/>
+<title>AMI — AI Report</title>
 <style>
-body{font-family:Inter,system-ui,sans-serif;margin:40px;color:#111;font-size:13px}
-.header{display:flex;justify-content:space-between;border-bottom:2px solid #0ea5e9;padding-bottom:10px;margin-bottom:16px}
-.header-left{display:flex;gap:12px;align-items:center}
-.header-left img{height:34px}
-.header-title{font-size:18px;font-weight:700}
-.header-sub{font-size:11px;color:#555}
-.footer{margin-top:30px;font-size:10px;color:#555;display:flex;justify-content:space-between}
-.signature-line{width:260px;border-bottom:1px solid #000;margin-top:20px}
-</style>
-</head>
-<body>
+body{font-family:Inter,system-ui;margin:40px;color:#111;font-size:13px}
+.header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
+.logo{height:34px}
+.section{margin-top:16px}
+.table{width:100%;border-collapse:collapse}
+td{padding:6px;border-bottom:1px solid #ddd}
+.high{color:#dc2626;font-weight:700}
+.low{color:#f59e0b;font-weight:700}
+.footer{margin-top:24px;font-size:10px;color:#555;display:flex;justify-content:space-between}
+.sig{margin-top:30px}
+.sigline{width:260px;border-bottom:1px solid #000;margin-top:20px}
+</style></head><body>
 
 <div class="header">
-  <div class="header-left">
-    <img src="/logo.png"/>
-    <div>
-      <div class="header-title">AMI Health — AI Clinical Interpretation</div>
-      <div class="header-sub">Artificial Medical Intelligence (Pty) Ltd</div>
-    </div>
+  <img src="/logo.png" class="logo"/>
+  <div style="text-align:right;font-size:11px">
+    <div>AMI Health — Artificial Medical Intelligence (Pty) Ltd</div>
+    <div>www.amihealth.co.za • info@amihealth.co.za</div>
+    <div>${date}</div>
   </div>
-  <div style="font-size:11px">${date}</div>
 </div>
 
-${aiBox.innerHTML}
+<div class="section">
+  <h3>Laboratory Findings</h3>
+  ${labs}
+</div>
 
-<div style="margin-top:30px">
-  <div class="signature-line"></div>
+<div class="section">
+  <h3>AI Clinical Interpretation</h3>
+  ${ai}
+</div>
+
+<div class="sig">
+  <div class="sigline"></div>
   <div>Doctor signature & stamp</div>
 </div>
 
 <div class="footer">
   <div>
-    This AI-generated interpretation supports clinical judgement and does not replace
-    a medical diagnosis. Final decisions remain the responsibility of a licensed medical professional.
+    This AI-generated interpretation supports clinical judgement and does not replace a medical diagnosis.
   </div>
   <div style="text-align:right">
-    <div>Verify</div>
-    <img src="${qrUrl}"/>
+    <img src="${qr}"/><br/>
+    Verify report
   </div>
 </div>
 
-</body>
-</html>
-  `);
-
-  win.document.close();
-  win.focus();
-  win.print();
-};
+</body></html>`);
+  w.document.close(); w.focus(); w.print();
+}
 </script>
 
 </body>
