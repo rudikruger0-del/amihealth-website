@@ -111,7 +111,7 @@ li { margin:4px 0; font-size:14px; }
 
 <header>
   <button class="secondary" onclick="history.back()">← Back</button>
-  <button class="primary" onclick="window.print()">Print / Save AI Report</button>
+  <button class="primary" onclick="printAiOnly()">Print / Save AI Report</button>
 </header>
 
 <div class="container">
@@ -148,15 +148,9 @@ async function loadReport(){
   const ai = rpt.ai_results || {};
   const patient = ai.patient || {};
 
-  // -------- NAME --------
-  document.getElementById("name").textContent =
-    patient.name || rpt.name || "—";
+  document.getElementById("name").textContent = patient.name || rpt.name || "—";
+  document.getElementById("age").textContent = patient.age ?? rpt.age ?? "—";
 
-  // -------- AGE --------
-  document.getElementById("age").textContent =
-    patient.age ?? rpt.age ?? "—";
-
-  // -------- SEX (FIXED) --------
   function cleanSex(v){
     if (!v) return null;
     const s = String(v).toLowerCase();
@@ -166,19 +160,16 @@ async function loadReport(){
     return v;
   }
 
-  const sex =
+  document.getElementById("sex").textContent =
     cleanSex(patient.sex) ||
     cleanSex(patient.gender) ||
     cleanSex(rpt.sex) ||
-    cleanSex(rpt.gender);
+    cleanSex(rpt.gender) ||
+    "Unknown";
 
-  document.getElementById("sex").textContent = sex || "Unknown";
-
-  // -------- DATE --------
   document.getElementById("date").textContent =
     rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
 
-  // -------- PDF --------
   if (rpt.file_path){
     const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
     const fj = await f.json();
@@ -237,6 +228,76 @@ function renderAI(ai){
 }
 
 loadReport();
+
+/* ============================
+   PRINT — AI ONLY (FIXED)
+   ============================ */
+window.printAiOnly = function(){
+  const aiBox = document.getElementById("aiBox");
+  if (!aiBox) return alert("AI not loaded");
+
+  const date = document.getElementById("date")?.textContent || "";
+  const id = new URLSearchParams(location.search).get("id") || "";
+  const verifyUrl = `https://amihealth.co.za/verify?id=${encodeURIComponent(id)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(verifyUrl)}`;
+
+  const win = window.open("", "_blank");
+  win.document.write(`
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>AMI — AI Clinical Interpretation</title>
+<style>
+body{font-family:Inter,system-ui,sans-serif;margin:40px;color:#111;font-size:13px}
+.header{display:flex;justify-content:space-between;border-bottom:2px solid #0ea5e9;padding-bottom:10px;margin-bottom:16px}
+.header-left{display:flex;gap:12px;align-items:center}
+.header-left img{height:34px}
+.header-title{font-size:18px;font-weight:700}
+.header-sub{font-size:11px;color:#555}
+.footer{margin-top:30px;font-size:10px;color:#555;display:flex;justify-content:space-between}
+.signature-line{width:260px;border-bottom:1px solid #000;margin-top:20px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="/logo.png"/>
+    <div>
+      <div class="header-title">AMI Health — AI Clinical Interpretation</div>
+      <div class="header-sub">Artificial Medical Intelligence (Pty) Ltd</div>
+    </div>
+  </div>
+  <div style="font-size:11px">${date}</div>
+</div>
+
+${aiBox.innerHTML}
+
+<div style="margin-top:30px">
+  <div class="signature-line"></div>
+  <div>Doctor signature & stamp</div>
+</div>
+
+<div class="footer">
+  <div>
+    This AI-generated interpretation supports clinical judgement and does not replace
+    a medical diagnosis. Final decisions remain the responsibility of a licensed medical professional.
+  </div>
+  <div style="text-align:right">
+    <div>Verify</div>
+    <img src="${qrUrl}"/>
+  </div>
+</div>
+
+</body>
+</html>
+  `);
+
+  win.document.close();
+  win.focus();
+  win.print();
+};
 </script>
 
 </body>
