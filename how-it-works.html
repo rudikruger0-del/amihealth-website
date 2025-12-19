@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>How AMI Works | Artificial Medical Intelligence</title>
+  <meta name="description" content="How AMI transforms clinical data into clear, explainable, doctor-first insights — without replacing clinical judgement." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body>
+
+  <!-- HEADER (reuse existing site navigation style) -->
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="logo">AMI Health</a>
+      <nav>
+        <a href="/how-it-works.html" class="active">How AMI Works</a>
+        <a href="/use-cases.html">Use Cases</a>
+        <a href="/safety.html">Safety</a>
+        <a href="/request-access.html" class="cta">Request Pilot</a>
+        <a href="/login.html">Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero small">
+    <div class="container">
+      <h1>How AMI Works</h1>
+      <p class="subtitle">
+        Clinical intelligence designed to support — not replace — medical judgement.
+      </p>
+    </div>
+  </section>
+
+  <!-- CONTENT -->
+  <section class="content">
+    <div class="container narrow">
+
+      <h2>1. Secure clinical data intake</h2>
+      <p>
+        AMI accepts routine clinical inputs such as laboratory reports (CBC, chemistry),
+        radiology findings, and structured clinical data. Documents can be scanned or digital.
+      </p>
+      <p>
+        Each report is processed in isolation — no cross-patient contamination, no model memory.
+      </p>
+
+      <h2>2. Robust extraction, not guesswork</h2>
+      <p>
+        AMI uses deterministic parsing and OCR validation layers to extract values exactly as they
+        appear on the source report. Units, reference ranges, and flags are preserved.
+      </p>
+      <p>
+        If data is missing, ambiguous, or unclear, AMI does not fabricate values.
+      </p>
+
+      <h2>3. Canonical clinical normalization</h2>
+      <p>
+        Extracted values are normalized into a structured clinical schema
+        (e.g. haemoglobin, MCV, platelets, creatinine, CRP).
+      </p>
+      <p>
+        This allows consistent interpretation regardless of lab format or provider.
+      </p>
+
+      <h2>4. Pattern recognition — not diagnosis</h2>
+      <p>
+        AMI evaluates patterns across results:
+      </p>
+      <ul>
+        <li>Inflammatory and infectious signatures</li>
+        <li>Cytopenias and marrow stress patterns</li>
+        <li>Renal and electrolyte derangements</li>
+        <li>High-risk physiological combinations</li>
+      </ul>
+      <p>
+        AMI does <strong>not</strong> make diagnoses. It highlights clinically relevant patterns
+        that warrant attention.
+      </p>
+
+      <h2>5. Explainable clinical reasoning</h2>
+      <p>
+        Every flagged finding is accompanied by plain-language clinical reasoning:
+      </p>
+      <ul>
+        <li>Why this matters physiologically</li>
+        <li>What systems may be involved</li>
+        <li>What clinicians typically verify next</li>
+      </ul>
+
+      <h2>6. Severity & urgency stratification</h2>
+      <p>
+        AMI classifies overall severity using clear textual categories:
+        <em>normal, mild, moderate, severe, critical</em>.
+      </p>
+      <p>
+        Urgency flags help clinicians prioritise attention — especially in busy ER or after-hours settings.
+      </p>
+
+      <h2>7. Clinician remains in control</h2>
+      <p>
+        AMI never replaces clinical judgement.
+        It does not issue treatment orders, diagnoses, or admission decisions.
+      </p>
+      <p>
+        The clinician remains fully responsible — AMI exists to reduce cognitive load,
+        missed patterns, and time to insight.
+      </p>
+
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>Built to support real clinical workflows</h2>
+      <p>
+        Designed with emergency medicine, general practice, and South African healthcare realities in mind.
+      </p>
+      <a href="/request-access.html" class="cta large">Request a Pilot</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container">
+      <p>
+        Artificial Medical Intelligence (Pty) Ltd — Clinical support software.
+        Not a replacement for clinical judgement.
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
