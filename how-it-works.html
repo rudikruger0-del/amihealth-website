@@ -1,42 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>How AMI Works — AMI Health</title>
+  <meta name="description" content="How AMI processes clinical data safely and deterministically to support — not replace — medical judgement." />
+
+  <style>
+    :root {
+      --bg:#030414;
+      --card:#0b1020;
+      --muted:#98a0b3;
+      --accent:#00e0b8;
+      --glass:rgba(255,255,255,0.04);
+      --maxw:1100px;
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:linear-gradient(180deg,#020214 0%, #07102a 100%);
+      color:#e6eef8;
+    }
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:28px}
+    header{display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit}
+    .brand img{height:48px}
+    nav{display:flex;gap:18px;align-items:center}
+    nav a{color:var(--muted);text-decoration:none;font-weight:600}
+    .cta{background:linear-gradient(90deg,var(--accent),#00b3ff);color:#001319;padding:10px 16px;border-radius:10px;font-weight:700;text-decoration:none}
+    section.card{
+      background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:28px;
+      margin:26px 0;
+      box-shadow:0 6px 30px rgba(3,6,24,.45);
+    }
+    h1,h2{color:#fff}
+    .muted{color:var(--muted)}
+    footer{text-align:center;color:var(--muted);padding:28px 0}
+  </style>
+</head>
+
+<body>
 <div class="wrap">
-  <section class="card fade-in">
+  <header>
+    <a class="brand" href="/">
+      <img src="logo.png" alt="AMI Logo">
+      <div>
+        <div style="font-weight:800">AMI Health</div>
+        <div style="font-size:12px;color:var(--muted)">Artificial Medical Intelligence</div>
+      </div>
+    </a>
+    <nav>
+      <a href="/how-it-works.html">How AMI Works</a>
+      <a href="/use-cases.html">Use Cases</a>
+      <a href="/safety.html">Safety</a>
+      <a class="cta" href="#contact">Request Pilot</a>
+      <a href="/login.html" style="background:white;color:#000;padding:10px 18px;border-radius:10px;font-weight:700">Login</a>
+    </nav>
+  </header>
+
+  <section class="card">
     <h1>How AMI Works</h1>
-    <p class="muted">
-      Clinical intelligence designed to support — not replace — medical judgement.
-    </p>
-
-    <div class="stats">
-      <div class="stat">
-        <h3>1. Secure clinical data intake</h3>
-        <p class="muted">
-          AMI ingests laboratory reports, imaging findings, and structured clinical data.
-          Scanned and digital reports are handled identically.
-        </p>
-      </div>
-
-      <div class="stat">
-        <h3>2. Deterministic extraction — not guesswork</h3>
-        <p class="muted">
-          OCR and parsers extract values exactly as reported. Units, ranges, and flags
-          are preserved. Missing data is never fabricated.
-        </p>
-      </div>
-
-      <div class="stat">
-        <h3>3. Canonical clinical normalization</h3>
-        <p class="muted">
-          Values are mapped into a consistent clinical schema so interpretation
-          is independent of lab or report format.
-        </p>
-      </div>
-
-      <div class="stat">
-        <h3>4. Pattern recognition — not diagnosis</h3>
-        <p class="muted">
-          AMI highlights clinically relevant patterns and risks. Final interpretation
-          always remains with the clinician.
-        </p>
-      </div>
-    </div>
+    <p class="muted">Clinical intelligence designed to support — not replace — medical judgement.</p>
   </section>
+
+  <section class="card">
+    <h2>1. Secure clinical data intake</h2>
+    <p class="muted">AMI ingests laboratory reports, imaging findings, and structured clinical data. Scanned and digital reports are handled identically. Each case is processed in isolation.</p>
+  </section>
+
+  <section class="card">
+    <h2>2. Deterministic extraction — not guesswork</h2>
+    <p class="muted">OCR and parsers extract values exactly as reported. Units, reference ranges, and flags are preserved. Missing data is explicitly flagged — never fabricated.</p>
+  </section>
+
+  <section class="card">
+    <h2>3. Canonical clinical normalization</h2>
+    <p class="muted">Values are mapped into a standardized clinical schema to ensure consistency across laboratories and report formats.</p>
+  </section>
+
+  <section class="card">
+    <h2>4. Pattern recognition — not diagnosis</h2>
+    <p class="muted">AMI highlights clinically relevant patterns and risk combinations. Final interpretation and decisions always remain with the clinician.</p>
+  </section>
+
+  <footer>© <script>document.write(new Date().getFullYear())</script> AMI Health</footer>
 </div>
+</body>
+</html>
