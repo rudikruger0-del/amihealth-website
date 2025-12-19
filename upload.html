@@ -202,7 +202,7 @@ uploadBtn.onclick = async () => {
   formData.append("name", name);
   formData.append("age", age);
   formData.append("sex", sex);
-  formData.append("email", session.user.email);
+  formData.append("email", sessionData.session.user.email);
   formData.append("file", file);
 
   const res = await fetch("/api/upload", {
