@@ -4,35 +4,35 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>How AMI Works — AMI Health</title>
-  <meta name="description" content="How AMI transforms clinical data into structured, explainable insights for doctors." />
-
+  <meta name="description" content="How AMI transforms raw clinical data into structured, explainable insights for doctors." />
   <link rel="icon" href="/logo.png" />
 
   <style>
-    :root {
+    :root{
       --bg:#030414;
       --card:#0b1020;
       --muted:#98a0b3;
       --accent:#00e0b8;
       --glass:rgba(255,255,255,0.04);
       --maxw:1100px;
-      --radius:12px;
+      --radius:14px;
     }
 
     *{box-sizing:border-box}
     body{
       margin:0;
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      background:linear-gradient(180deg,#020214 0%, #07102a 100%);
-      color:#e6eef8;
+      background:radial-gradient(circle at top,#071a33,#02030f);
+      color:#eaf6ff;
     }
 
-    .wrap{max-width:var(--maxw);margin:0 auto;padding:28px}
+    .wrap{max-width:var(--maxw);margin:auto;padding:28px}
 
     header{
       display:flex;
       align-items:center;
       justify-content:space-between;
+      margin-bottom:24px;
     }
 
     .brand{
@@ -40,33 +40,54 @@
       align-items:center;
       gap:14px;
       text-decoration:none;
-      color:inherit;
+      color:#fff;
     }
 
     .brand img{height:42px}
 
     nav{display:flex;gap:18px;align-items:center}
-    nav a{color:var(--muted);text-decoration:none;font-weight:600}
+    nav a{
+      color:var(--muted);
+      text-decoration:none;
+      font-weight:600;
+    }
 
     .cta{
       background:linear-gradient(90deg,var(--accent),#00b3ff);
-      color:#001319;
-      padding:10px 16px;
-      border-radius:10px;
-      font-weight:700;
+      color:#001821;
+      padding:10px 18px;
+      border-radius:999px;
+      font-weight:800;
       text-decoration:none;
     }
 
-    section.card{
-      background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
-      border-radius:12px;
-      padding:28px;
+    section{
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+      border-radius:var(--radius);
+      padding:34px;
       margin:28px 0;
-      box-shadow:0 6px 30px rgba(3,6,24,.45);
+      box-shadow:0 18px 50px rgba(0,0,0,.45);
     }
 
-    h1{margin-top:0}
+    h1{margin-top:0;font-size:34px}
+    h2{margin-top:28px}
+    p{line-height:1.6}
     .muted{color:var(--muted)}
+
+    .step{
+      padding:22px;
+      border-left:3px solid var(--accent);
+      margin:22px 0;
+      background:rgba(255,255,255,.02);
+      border-radius:10px;
+    }
+
+    footer{
+      margin-top:40px;
+      text-align:center;
+      color:var(--muted);
+      font-size:13px;
+    }
   </style>
 </head>
 
@@ -91,28 +112,65 @@
   </nav>
 </header>
 
-<section class="card">
+<section>
   <h1>How AMI Works</h1>
-  <p class="muted">Clinical intelligence designed to support — not replace — medical judgement.</p>
+  <p class="muted">
+    AMI is designed to reduce cognitive load in clinical environments —
+    surfacing what matters, when it matters, without replacing clinical judgement.
+  </p>
 
-  <ol>
-    <li><strong>Secure clinical data intake</strong><br>
-      CBCs, chemistry, imaging and reports are ingested securely — scanned or digital.
-    </li><br>
+  <div class="step">
+    <strong>1. Secure clinical data intake</strong>
+    <p>
+      AMI ingests laboratory data including CBCs, chemistry panels, and reports —
+      whether digitally generated or scanned.
+      Data is handled within strict access boundaries and audit controls.
+    </p>
+  </div>
 
-    <li><strong>Deterministic extraction — not guesswork</strong><br>
-      OCR and parsers extract values exactly as reported. No fabrication. No assumptions.
-    </li><br>
+  <div class="step">
+    <strong>2. Deterministic extraction — no guesswork</strong>
+    <p>
+      Values are extracted exactly as reported using controlled OCR and rule-based parsing.
+      When data is missing or ambiguous, uncertainty is flagged instead of inferred.
+    </p>
+    <p class="muted">No hallucinated values. Ever.</p>
+  </div>
 
-    <li><strong>Canonical clinical normalization</strong><br>
-      Results are mapped into a consistent schema for reliable interpretation.
-    </li><br>
+  <div class="step">
+    <strong>3. Canonical clinical normalization</strong>
+    <p>
+      Results are mapped into a unified internal schema, allowing consistent interpretation
+      across different laboratories, formats, and reference ranges.
+    </p>
+    <p class="muted">
+      This removes formatting noise and standardises clinical context.
+    </p>
+  </div>
 
-    <li><strong>Pattern recognition — not diagnosis</strong><br>
-      AMI highlights clinically relevant patterns. Final decisions remain with the doctor.
-    </li>
-  </ol>
+  <div class="step">
+    <strong>4. Pattern-focused clinical reasoning</strong>
+    <p>
+      AMI evaluates combinations of results to highlight clinically relevant patterns —
+      such as inflammatory dominance, cytopenias, renal stress, or discordant markers.
+    </p>
+    <p class="muted">
+      AMI does not diagnose. It highlights what deserves attention.
+    </p>
+  </div>
+
+  <div class="step">
+    <strong>5. Explainable outputs for rapid review</strong>
+    <p>
+      Every alert and summary is traceable to the values and trends that triggered it.
+      Outputs are designed to support verification, not blind trust.
+    </p>
+  </div>
 </section>
+
+<footer>
+  Built for clinicians. Designed for real-world pressure.
+</footer>
 
 </div>
 </body>
