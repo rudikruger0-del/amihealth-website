@@ -1,46 +1,59 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Clinical Use Cases — AMI Health</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Clinical Use Cases — AMI Health</title>
 
-<style>
-:root{--bg:#030414;--card:#0b1020;--muted:#98a0b3;--accent:#00e0b8;--maxw:1100px}
-body{margin:0;font-family:Inter,system-ui;background:linear-gradient(180deg,#020214,#07102a);color:#e6eef8}
-.wrap{max-width:var(--maxw);margin:0 auto;padding:28px}
-section.card{background:rgba(255,255,255,.03);border-radius:12px;padding:28px;margin:26px 0}
-.muted{color:var(--muted)}
-h1,h2{color:#fff}
-</style>
+  <link rel="icon" href="/logo.png">
+
+  <style>
+    body{
+      margin:0;
+      font-family:Inter,system-ui;
+      background:linear-gradient(180deg,#020214,#07102a);
+      color:#e6eef8;
+    }
+    .wrap{max-width:1100px;margin:auto;padding:28px}
+    section{background:rgba(255,255,255,.03);border-radius:12px;padding:28px;margin-top:28px}
+    .muted{color:#98a0b3}
+  </style>
 </head>
 
 <body>
 <div class="wrap">
-<section class="card">
-<h1>Clinical Use Cases</h1>
-<p class="muted">Designed for real workflows, real pressure, and real patients.</p>
+
+<header style="display:flex;justify-content:space-between;align-items:center">
+  <a href="/" style="display:flex;gap:12px;align-items:center;color:white;text-decoration:none">
+    <img src="/logo.png" height="42">
+    <strong>AMI Health</strong>
+  </a>
+
+  <nav>
+    <a href="/how-it-works">How AMI Works</a>
+    <a href="/use-cases">Use Cases</a>
+    <a href="/safety">Safety</a>
+    <a href="/login.html">Login</a>
+  </nav>
+</header>
+
+<section>
+  <h1>Clinical Use Cases</h1>
+  <p class="muted">Designed for real workflows, real pressure, and real patients.</p>
+
+  <h3>Emergency Departments</h3>
+  <p>Rapid triage of abnormal CBCs and chemistry results.</p>
+
+  <h3>After-hours & On-call</h3>
+  <p>Clear summaries when context is limited and fatigue is high.</p>
+
+  <h3>General Practice</h3>
+  <p>Early flagging of inflammatory, renal, or haematological stress.</p>
+
+  <h3>Specialist Review</h3>
+  <p>Structured interpretation for oncology, nephrology, and internal medicine.</p>
 </section>
 
-<section class="card">
-<h2>Emergency Departments</h2>
-<p class="muted">Rapid triage of abnormal CBCs and chemistry results. Early detection of multisystem deterioration.</p>
-</section>
-
-<section class="card">
-<h2>After-hours & On-call</h2>
-<p class="muted">Clear summaries when context is limited and fatigue is high.</p>
-</section>
-
-<section class="card">
-<h2>General Practice</h2>
-<p class="muted">Early flagging of inflammatory, renal, or haematological stress.</p>
-</section>
-
-<section class="card">
-<h2>Specialist Review</h2>
-<p class="muted">Structured interpretation for oncology, nephrology, and internal medicine.</p>
-</section>
 </div>
 </body>
 </html>
