@@ -220,12 +220,17 @@ function renderAI(ai){
 }
 
 /* =========================
-   PRINT — OLD STYLE (FINAL)
+   PRINT — FINAL MEDICAL
    ========================= */
 window.printAiOnly=function(){
   const ai=document.getElementById("aiBox").innerHTML;
   const labs=document.getElementById("cbcBox").innerHTML;
   const date=document.getElementById("date").textContent;
+
+  const name=document.getElementById("name").textContent;
+  const age=document.getElementById("age").textContent;
+  const sex=document.getElementById("sex").textContent;
+
   const id=new URLSearchParams(location.search).get("id")||"";
   const verify=`https://amihealth.co.za/verify?id=${id}`;
   const qr=`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
@@ -238,11 +243,9 @@ window.printAiOnly=function(){
 body{font-family:Inter,system-ui;margin:40px;color:#111;font-size:13px}
 .header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
 .logo{height:120px}
-.section{margin-top:16px}
 .table{width:100%;border-collapse:collapse}
 td{padding:6px;border-bottom:1px solid #ddd}
-.high{color:#dc2626;font-weight:700}
-.low{color:#f59e0b;font-weight:700}
+.section{margin-top:16px}
 .footer{margin-top:24px;font-size:10px;color:#555;display:flex;justify-content:space-between}
 .sig{margin-top:30px}
 .sigline{width:260px;border-bottom:1px solid #000;margin-top:20px}
@@ -251,10 +254,23 @@ td{padding:6px;border-bottom:1px solid #ddd}
 <div class="header">
   <img src="/logo.png" class="logo"/>
   <div style="text-align:right;font-size:11px">
-    <div>AMI Health — Artificial Medical Intelligence (Pty) Ltd</div>
+    <div><b>AMI Health — Artificial Medical Intelligence (Pty) Ltd</b></div>
     <div>www.amihealth.co.za • info@amihealth.co.za</div>
     <div>${date}</div>
   </div>
+</div>
+
+<div class="section">
+  <table class="table">
+    <tr>
+      <td><b>Patient</b></td><td>${name}</td>
+      <td><b>Age</b></td><td>${age}</td>
+    </tr>
+    <tr>
+      <td><b>Sex</b></td><td>${sex}</td>
+      <td><b>Report date</b></td><td>${date}</td>
+    </tr>
+  </table>
 </div>
 
 <div class="section">
