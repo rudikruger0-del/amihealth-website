@@ -186,7 +186,6 @@
 <main>
   <div class="container">
 
-    <!-- LEFT -->
     <section class="panel">
       <h1>AMI Dashboard</h1>
       <p class="muted">Welcome back, <span id="userEmailText">loading…</span>.</p>
@@ -197,7 +196,6 @@
       </div>
     </section>
 
-    <!-- RIGHT -->
     <section class="panel">
       <h2>Your Reports</h2>
       <input class="search-box" id="searchBox" placeholder="Search reports…">
@@ -261,9 +259,16 @@ async function loadUser() {
   }
 }
 
-/* FETCH REPORTS */
+/* FETCH REPORTS — FIXED (JWT BASED) */
 async function loadReports(email) {
-  const res = await fetch(`/api/get-reports?email=${encodeURIComponent(email)}`);
+  const { data:{ session } } = await supabase.auth.getSession();
+
+  const res = await fetch("/api/get-reports", {
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
   const data = await res.json();
   fullList = data.reports || [];
   render(fullList);
