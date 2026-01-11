@@ -41,8 +41,6 @@
       text-align: center;
       border: 1px solid rgba(255,255,255,0.06);
       backdrop-filter: blur(14px);
-      position: relative;
-      overflow: hidden;
     }
 
     .logo-wrap {
@@ -54,15 +52,13 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 8px;
-      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7);
     }
 
     .logo-wrap img {
       width: 64px;
       height: 64px;
-      object-fit: contain;
-      border-radius: 16px;
       background: #020214;
+      border-radius: 16px;
       padding: 6px;
     }
 
@@ -70,7 +66,6 @@
       margin: 10px 0 4px;
       font-size: 24px;
       font-weight: 800;
-      letter-spacing: 0.02em;
     }
 
     .subtitle {
@@ -83,10 +78,8 @@
       display: block;
       text-align: left;
       margin-top: 18px;
-      margin-bottom: 4px;
       font-size: 13px;
       color: var(--muted);
-      font-weight: 600;
     }
 
     input {
@@ -97,12 +90,6 @@
       background: rgba(7,11,30,0.95);
       color: #fff;
       font-size: 15px;
-    }
-
-    input:focus {
-      border-color: rgba(0,224,184,0.7);
-      box-shadow: 0 0 0 1px rgba(0,224,184,0.4);
-      background: #06091c;
     }
 
     button {
@@ -116,12 +103,13 @@
       font-size: 16px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 14px 40px rgba(0,179,255,0.5);
     }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: default;
+    .forgot {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--accent-2);
+      cursor: pointer;
     }
 
     .request-btn {
@@ -136,29 +124,15 @@
       width: 100%;
     }
 
-    .forgot {
-      margin-top: 12px;
-      font-size: 13px;
-      color: var(--accent-2);
-      cursor: pointer;
-      display: inline-block;
-    }
-
     .status {
       margin-top: 12px;
       font-size: 13px;
-      text-align: left;
       min-height: 18px;
     }
-
-    .status.ok { color: #7ef7d3; }
-    .status.err { color: #ff8f9b; }
-    .status.info { color: #98a0b3; }
   </style>
 </head>
 
 <body>
-
   <div class="card">
     <div class="logo-wrap">
       <img src="logo.png" alt="AMI Logo" />
@@ -168,15 +142,13 @@
     <div class="subtitle">Secure AI-assisted blood report analysis for clinicians.</div>
 
     <label>Email</label>
-    <input type="email" id="email" placeholder="you@hospital.co.za" />
+    <input type="email" id="email" />
 
     <label>Password</label>
-    <input type="password" id="password" placeholder="••••••••" />
+    <input type="password" id="password" />
 
     <button id="loginBtn">Login</button>
-
     <div class="forgot" id="forgotPass">Forgot Password?</div>
-
     <div class="status" id="loginStatus"></div>
 
     <button class="request-btn" id="requestAccessBtn">Request Access (Doctors Only)</button>
@@ -185,81 +157,49 @@
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
-    const emailInput = document.getElementById("email");
-    const passInput = document.getElementById("password");
-    const loginBtn = document.getElementById("loginBtn");
-    const forgotBtn = document.getElementById("forgotPass");
     const statusEl = document.getElementById("loginStatus");
-    const requestBtn = document.getElementById("requestAccessBtn");
 
-    function setStatus(msg, type="info") {
+    function setStatus(msg) {
       statusEl.textContent = msg;
-      statusEl.className = "status " + type;
     }
 
-    // Auto-login if already authenticated
+    async function linkReports(session) {
+      if (!session?.access_token) return;
+      await fetch(
+        "https://tbyttsfztuudyqbrkonm.functions.supabase.co/link_reports_on_login",
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+    }
+
+    // ✅ AUTO-LOGIN FIX
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) window.location.href = "/dashboard.html";
+      if (session) {
+        await linkReports(session);
+        window.location.href = "/dashboard.html";
+      }
     })();
 
     async function signIn() {
-      const email = emailInput.value.trim();
-      const password = passInput.value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
 
-      if (!email || !password) {
-        setStatus("Please enter both email and password.", "err");
-        return;
-      }
+      if (!email || !password) return setStatus("Missing email or password");
 
-      loginBtn.disabled = true;
-      setStatus("Signing in…", "info");
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return setStatus(error.message);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setStatus("Login failed: " + error.message, "err");
-        loginBtn.disabled = false;
-        return;
-      }
-
-      // 🔗 LINK EMAILED REPORTS (ROBUST, NO CORS)
-      try {
-        await supabase.rpc("link_reports_for_user");
-      } catch (e) {
-        console.warn("Report linking failed (non-blocking):", e);
-      }
-
-      setStatus("Login successful. Redirecting…", "ok");
+      await linkReports(data.session);
       window.location.href = "/dashboard.html";
     }
 
-    loginBtn.addEventListener("click", signIn);
-    emailInput.addEventListener("keydown", e => e.key === "Enter" && signIn());
-    passInput.addEventListener("keydown", e => e.key === "Enter" && signIn());
-
-    forgotBtn.addEventListener("click", async () => {
-      const email = emailInput.value.trim();
-      if (!email) {
-        setStatus("Enter your email first to reset your password.", "err");
-        return;
-      }
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      if (error) {
-        setStatus("Reset failed: " + error.message, "err");
-      } else {
-        setStatus("Password reset email sent. Check your inbox.", "ok");
-      }
-    });
-
-    requestBtn.addEventListener("click", () => {
+    document.getElementById("loginBtn").addEventListener("click", signIn);
+    document.getElementById("requestAccessBtn").onclick = () =>
       window.location.href = "/doctor-register.html";
-    });
   </script>
-
 </body>
 </html>
