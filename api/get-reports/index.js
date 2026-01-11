@@ -19,19 +19,25 @@ export default async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: {
-        headers: {
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-      },
     }
   );
 
   try {
+    /*
+      ✅ Correct ownership logic:
+      1) Reports already linked to user_id via edge function
+      2) OR legacy email-ingested reports via source_email
+    */
+
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .eq("email", email)
+      .or(
+        `
+        user_id.is.not.null,
+        source_email.ilike.${email}
+        `
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
