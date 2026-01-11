@@ -17,22 +17,30 @@ export default async function handler(req, res) {
   const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: { persistSession: false, autoRefreshToken: false },
-    }
+    { auth: { persistSession: false } }
   );
 
   try {
-    /*
-      ✅ Correct ownership logic:
-      - Prefer linked reports (user_id IS NOT NULL)
-      - Fallback to legacy email-ingested reports (source_email)
-    */
+    // 1️⃣ Resolve the user by email (Auth table)
+    const { data: userData, error: userError } =
+      await supabase.auth.admin.getUserByEmail(email);
 
+    if (userError || !userData?.user) {
+      return res.status(200).json({ reports: [] });
+    }
+
+    const userId = userData.user.id;
+
+    // 2️⃣ STRICT ownership query
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .or(`user_id.not.is.null,source_email.ilike.%${email}%`)
+      .or(
+        [
+          `user_id.eq.${userId}`,
+          `and(user_id.is.null,source_email.eq.${email})`,
+        ].join(",")
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
