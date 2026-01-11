@@ -154,7 +154,6 @@
     .status.ok { color: #7ef7d3; }
     .status.err { color: #ff8f9b; }
     .status.info { color: #98a0b3; }
-
   </style>
 </head>
 
@@ -216,12 +215,32 @@
       loginBtn.disabled = true;
       setStatus("Signing in…", "info");
 
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
       if (error) {
         setStatus("Login failed: " + error.message, "err");
         loginBtn.disabled = false;
         return;
+      }
+
+      // 🔗 AUTO-LINK EMAILED REPORTS (silent)
+      const session = data?.session;
+      if (session?.access_token) {
+        try {
+          await fetch(
+            "https://tbyttsfztuudyqbrkonm.functions.supabase.co/link_reports_on_login",
+            {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            }
+          );
+        } catch (e) {
+          console.warn("Auto-link failed (non-blocking):", e);
+        }
       }
 
       setStatus("Login successful. Redirecting…", "ok");
@@ -232,7 +251,7 @@
     emailInput.addEventListener("keydown", e => e.key === "Enter" && signIn());
     passInput.addEventListener("keydown", e => e.key === "Enter" && signIn());
 
-    // ⭐ Forgot Password
+    // Forgot Password
     forgotBtn.addEventListener("click", async () => {
       const email = emailInput.value.trim();
       if (!email) {
@@ -252,7 +271,6 @@
     requestBtn.addEventListener("click", () => {
       window.location.href = "/doctor-register.html";
     });
-
   </script>
 
 </body>
