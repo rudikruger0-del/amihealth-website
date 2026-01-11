@@ -76,6 +76,12 @@
       cursor: pointer;
     }
 
+    .secondary-btn {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(0,224,184,0.35);
+    }
+
     .status {
       margin-top: 12px;
       font-size: 13px;
@@ -83,6 +89,17 @@
     }
 
     .status.err { color: #ff8f9b; }
+
+    .links {
+      margin-top: 16px;
+      font-size: 13px;
+    }
+
+    .links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
   </style>
 </head>
 
@@ -95,7 +112,20 @@
     <input type="password" id="password" placeholder="••••••••" />
 
     <button id="loginBtn">Login</button>
+
+    <!-- ✅ REQUEST ACCESS BUTTON (RESTORED) -->
+    <button
+      class="secondary-btn"
+      onclick="window.location.href='/doctor-register.html'"
+    >
+      Request Access (Doctors Only)
+    </button>
+
     <div class="status" id="status"></div>
+
+    <div class="links">
+      <a href="/forgot-password.html">Forgot password?</a>
+    </div>
   </div>
 
   <script type="module">
@@ -108,6 +138,7 @@
 
     btn.onclick = async () => {
       status.textContent = "";
+      status.className = "status";
       btn.disabled = true;
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -122,22 +153,25 @@
         return;
       }
 
-      // 🔗 Attempt linking — NEVER block login
-      try {
-        fetch(
-          "https://tbyttsfztuudyqbrkonm.functions.supabase.co/link_reports_on_login",
-          {
+      /* ==================================================
+         🔗 LINK EMAIL-INGESTED REPORTS (FIRE & FORGET)
+         - Never blocks login
+         - Silent failure
+         ================================================== */
+      if (data?.session?.access_token) {
+        supabase.functions
+          .invoke("link_reports_on_login", {
             headers: {
               Authorization: `Bearer ${data.session.access_token}`,
             },
-          }
-        );
-      } catch (e) {
-        console.warn("Linking skipped:", e);
+          })
+          .catch(() => {});
       }
 
+      // ✅ Existing behaviour preserved
       window.location.href = "/dashboard.html";
     };
   </script>
 </body>
 </html>
+
