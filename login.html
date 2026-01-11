@@ -30,9 +30,7 @@
     }
 
     .card {
-      background: radial-gradient(circle at top left, rgba(0, 224, 184, 0.07), transparent 40%),
-                  radial-gradient(circle at bottom right, rgba(0, 179, 255, 0.07), transparent 40%),
-                  rgba(6, 10, 30, 0.96);
+      background: rgba(6, 10, 30, 0.96);
       padding: 40px 36px 30px;
       border-radius: var(--radius);
       box-shadow: 0 18px 70px rgba(0,0,0,0.65);
@@ -40,30 +38,10 @@
       width: 100%;
       text-align: center;
       border: 1px solid rgba(255,255,255,0.06);
-      backdrop-filter: blur(14px);
-    }
-
-    .logo-wrap {
-      width: 90px;
-      height: 90px;
-      border-radius: 24px;
-      background: radial-gradient(circle at 30% 0, #00e0b8, #0070f3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 8px;
-    }
-
-    .logo-wrap img {
-      width: 64px;
-      height: 64px;
-      background: #020214;
-      border-radius: 16px;
-      padding: 6px;
     }
 
     h1 {
-      margin: 10px 0 4px;
+      margin: 10px 0 6px;
       font-size: 24px;
       font-weight: 800;
     }
@@ -74,14 +52,6 @@
       margin-bottom: 20px;
     }
 
-    label {
-      display: block;
-      text-align: left;
-      margin-top: 18px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
     input {
       width: 100%;
       padding: 12px;
@@ -90,11 +60,12 @@
       background: rgba(7,11,30,0.95);
       color: #fff;
       font-size: 15px;
+      margin-bottom: 14px;
     }
 
     button {
       width: 100%;
-      margin-top: 26px;
+      margin-top: 12px;
       padding: 14px;
       border-radius: 999px;
       border: none;
@@ -105,101 +76,68 @@
       cursor: pointer;
     }
 
-    .forgot {
-      margin-top: 12px;
-      font-size: 13px;
-      color: var(--accent-2);
-      cursor: pointer;
-    }
-
-    .request-btn {
-      margin-top: 18px;
-      padding: 10px;
-      font-size: 14px;
-      color: var(--accent);
-      border: 1px solid var(--accent);
-      background: transparent;
-      border-radius: 999px;
-      cursor: pointer;
-      width: 100%;
-    }
-
     .status {
       margin-top: 12px;
       font-size: 13px;
       min-height: 18px;
     }
+
+    .status.err { color: #ff8f9b; }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <div class="logo-wrap">
-      <img src="logo.png" alt="AMI Logo" />
-    </div>
-
     <h1>Clinician Login</h1>
-    <div class="subtitle">Secure AI-assisted blood report analysis for clinicians.</div>
+    <div class="subtitle">Secure AI-assisted blood report analysis</div>
 
-    <label>Email</label>
-    <input type="email" id="email" />
-
-    <label>Password</label>
-    <input type="password" id="password" />
+    <input type="email" id="email" placeholder="you@hospital.co.za" />
+    <input type="password" id="password" placeholder="••••••••" />
 
     <button id="loginBtn">Login</button>
-    <div class="forgot" id="forgotPass">Forgot Password?</div>
-    <div class="status" id="loginStatus"></div>
-
-    <button class="request-btn" id="requestAccessBtn">Request Access (Doctors Only)</button>
+    <div class="status" id="status"></div>
   </div>
 
   <script type="module">
     import { supabase } from "./lib/supabaseClient.js";
 
-    const statusEl = document.getElementById("loginStatus");
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    const status = document.getElementById("status");
+    const btn = document.getElementById("loginBtn");
 
-    function setStatus(msg) {
-      statusEl.textContent = msg;
-    }
+    btn.onclick = async () => {
+      status.textContent = "";
+      btn.disabled = true;
 
-    async function linkReports(session) {
-      if (!session?.access_token) return;
-      await fetch(
-        "https://tbyttsfztuudyqbrkonm.functions.supabase.co/link_reports_on_login",
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-    }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.value.trim(),
+        password: password.value.trim(),
+      });
 
-    // ✅ AUTO-LOGIN FIX
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await linkReports(session);
-        window.location.href = "/dashboard.html";
+      if (error) {
+        status.textContent = error.message;
+        status.className = "status err";
+        btn.disabled = false;
+        return;
       }
-    })();
 
-    async function signIn() {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+      // 🔗 Attempt linking — NEVER block login
+      try {
+        fetch(
+          "https://tbyttsfztuudyqbrkonm.functions.supabase.co/link_reports_on_login",
+          {
+            headers: {
+              Authorization: `Bearer ${data.session.access_token}`,
+            },
+          }
+        );
+      } catch (e) {
+        console.warn("Linking skipped:", e);
+      }
 
-      if (!email || !password) return setStatus("Missing email or password");
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return setStatus(error.message);
-
-      await linkReports(data.session);
       window.location.href = "/dashboard.html";
-    }
-
-    document.getElementById("loginBtn").addEventListener("click", signIn);
-    document.getElementById("requestAccessBtn").onclick = () =>
-      window.location.href = "/doctor-register.html";
+    };
   </script>
 </body>
 </html>
