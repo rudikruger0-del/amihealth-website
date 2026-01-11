@@ -25,19 +25,14 @@ export default async function handler(req, res) {
   try {
     /*
       ✅ Correct ownership logic:
-      1) Reports already linked to user_id via edge function
-      2) OR legacy email-ingested reports via source_email
+      - Prefer linked reports (user_id IS NOT NULL)
+      - Fallback to legacy email-ingested reports (source_email)
     */
 
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .or(
-        `
-        user_id.is.not.null,
-        source_email.ilike.${email}
-        `
-      )
+      .or(`user_id.not.is.null,source_email.ilike.%${email}%`)
       .order("created_at", { ascending: false });
 
     if (error) {
