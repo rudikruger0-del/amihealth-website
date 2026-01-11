@@ -8,10 +8,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const email = new URL(req.url, "http://localhost").searchParams.get("email");
+  const authHeader = req.headers.authorization || "";
+  const jwt = authHeader.replace("Bearer ", "").trim();
 
-  if (!email) {
-    return res.status(400).json({ error: "Missing email" });
+  if (!jwt) {
+    return res.status(401).json({ error: "Missing auth token" });
   }
 
   const supabase = createClient(
@@ -21,51 +22,37 @@ export default async function handler(req, res) {
   );
 
   try {
-    // 1️⃣ Fetch unlinked email-ingested reports (SAFE)
-    const { data: emailReports, error: emailErr } = await supabase
+    // 1️⃣ Resolve authenticated user
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser(jwt);
+
+    if (authErr || !user) {
+      return res.status(401).json({ error: "Invalid user" });
+    }
+
+    const userId = user.id;
+    const email = user.email.toLowerCase();
+
+    // 2️⃣ Strict ownership query
+    const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .eq("source_email", email)
-      .is("user_id", null);
+      .or(
+        [
+          `user_id.eq.${userId}`,
+          `and(user_id.is.null,source_email.eq.${email})`,
+        ].join(",")
+      )
+      .order("created_at", { ascending: false });
 
-    if (emailErr) {
-      console.error("❌ email reports error:", emailErr);
-      return res.status(500).json({ error: emailErr.message });
+    if (error) {
+      console.error("❌ get-reports error:", error);
+      return res.status(500).json({ error: error.message });
     }
 
-    // 2️⃣ If any of those reports are already linked, get the user_id
-    const linkedUserId =
-      emailReports?.find(r => r.user_id)?.user_id ?? null;
-
-    let userReports = [];
-
-    if (linkedUserId) {
-      const { data, error } = await supabase
-        .from("reports")
-        .select("*")
-        .eq("user_id", linkedUserId);
-
-      if (error) {
-        console.error("❌ user reports error:", error);
-        return res.status(500).json({ error: error.message });
-      }
-
-      userReports = data;
-    }
-
-    // 3️⃣ Merge & sort (no duplicates)
-    const seen = new Set();
-    const merged = [...emailReports, ...userReports].filter(r => {
-      if (seen.has(r.id)) return false;
-      seen.add(r.id);
-      return true;
-    });
-
-    merged.sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    );
-
-    return res.status(200).json({ reports: merged });
+    return res.status(200).json({ reports: data });
 
   } catch (err) {
     console.error("❌ get-reports crash:", err);
