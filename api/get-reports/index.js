@@ -52,7 +52,26 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.status(200).json({ reports: data });
+    // ✅ NORMALISE RESULTS (ONLY WHAT IS REQUIRED)
+    const normalised = (data || []).map((r) => {
+      if (typeof r.ai_results === "string") {
+        try {
+          r.ai_results = JSON.parse(r.ai_results);
+        } catch {
+          r.ai_results = {};
+        }
+      }
+
+      const patient = r.ai_results?.patient || {};
+
+      r.name = r.name || patient.name || null;
+      r.age = r.age ?? patient.age ?? null;
+      r.sex = r.sex || patient.sex || null;
+
+      return r;
+    });
+
+    return res.status(200).json({ reports: normalised });
 
   } catch (err) {
     console.error("❌ get-reports crash:", err);
