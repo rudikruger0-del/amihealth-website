@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <title>AMI — Dashboard</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-
   <style>
     :root {
       --bg:#030414;
@@ -12,7 +11,6 @@
       --muted:#98a0b3;
       --accent:#00e0b8;
     }
-
     * { box-sizing:border-box; }
     body {
       margin:0;
@@ -23,7 +21,6 @@
       display:flex;
       flex-direction:column;
     }
-
     header {
       padding:14px 24px;
       display:flex;
@@ -33,7 +30,6 @@
       margin:0 auto;
       width:100%;
     }
-
     .brand {
       display:flex;
       align-items:center;
@@ -41,11 +37,9 @@
       text-decoration:none;
       color:inherit;
     }
-
     .brand img { height:32px; }
     .brand-title { font-weight:800; font-size:18px; }
     .brand-sub { font-size:11px; color:var(--muted); }
-
     nav { display:flex; gap:12px; }
     nav a {
       color:var(--muted);
@@ -54,21 +48,18 @@
       border-radius:999px;
     }
     nav a.active { background:rgba(0,224,184,0.12); color:#fff; }
-
     .login-pill {
       border:1px solid rgba(255,255,255,0.15);
       padding:6px 12px;
       border-radius:999px;
       color:#eaf6ff;
     }
-
     main {
       flex:1;
       display:flex;
       justify-content:center;
       padding:20px;
     }
-
     .container {
       width:100%;
       max-width:1100px;
@@ -76,7 +67,6 @@
       grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
       gap:18px;
     }
-
     .panel {
       background:rgba(11,16,32,0.96);
       border-radius:16px;
@@ -84,11 +74,9 @@
       box-shadow:0 18px 50px rgba(0,0,0,0.6);
       padding:22px;
     }
-
     h1 { margin:0 0 10px; font-size:22px; }
     h2 { margin:0 0 10px; font-size:18px; }
     .muted { color:var(--muted); font-size:14px; }
-
     .btn {
       padding:10px 16px;
       border-radius:999px;
@@ -99,7 +87,6 @@
       cursor:pointer;
       text-decoration:none;
     }
-
     .search-box {
       width:100%;
       padding:10px;
@@ -109,7 +96,6 @@
       border:1px solid rgba(255,255,255,0.1);
       color:#eaf6ff;
     }
-
     table { width:100%; border-collapse:collapse; font-size:14px; }
     th {
       padding:8px;
@@ -121,47 +107,7 @@
       padding:8px;
       border-bottom:1px solid rgba(255,255,255,0.05);
     }
-
     a.tbl { color:#00d4ff; text-decoration:none; }
-
-    #pdfModal {
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.75);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-      padding:20px;
-    }
-
-    #pdfBox {
-      width:90%;
-      height:90%;
-      background:#0b1020;
-      border-radius:12px;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,0.15);
-      display:flex;
-      flex-direction:column;
-    }
-
-    #pdfFrame {
-      width:100%;
-      height:100%;
-      border:none;
-    }
-
-    .modal-header {
-      background:#020614;
-      padding:10px;
-      border-bottom:1px solid rgba(255,255,255,0.1);
-      display:flex;
-      justify-content:space-between;
-    }
-
-    .btn-print { background:#00e0b8; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
-    .btn-close { background:#ff4e6a; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
   </style>
 </head>
 
@@ -175,7 +121,6 @@
       <div class="brand-sub">Artificial Medical Intelligence</div>
     </div>
   </a>
-
   <nav>
     <a href="/dashboard.html" class="active">Dashboard</a>
     <a href="/upload.html">Upload Report</a>
@@ -189,7 +134,6 @@
     <section class="panel">
       <h1>AMI Dashboard</h1>
       <p class="muted">Welcome back, <span id="userEmailText">loading…</span>.</p>
-
       <div style="margin-top:14px;display:flex;gap:10px;">
         <a class="btn" href="/upload.html">Upload new report</a>
         <button class="btn" id="logoutBtn" style="background:#222;color:#fff;">Logout</button>
@@ -199,7 +143,6 @@
     <section class="panel">
       <h2>Your Reports</h2>
       <input class="search-box" id="searchBox" placeholder="Search reports…">
-
       <table>
         <thead>
           <tr>
@@ -219,16 +162,6 @@
   </div>
 </main>
 
-<div id="pdfModal">
-  <div id="pdfBox">
-    <div class="modal-header">
-      <button class="btn-print">Print</button>
-      <button class="btn-close">Close</button>
-    </div>
-    <iframe id="pdfFrame"></iframe>
-  </div>
-</div>
-
 <script type="module">
 import { supabase } from "./lib/supabaseClient.js";
 
@@ -237,111 +170,70 @@ const reportsTable = document.getElementById("reportsTable");
 const searchBox = document.getElementById("searchBox");
 let fullList = [];
 
-/* 🔐 AUTH GUARD */
 async function loadUser() {
-  const { data:{ session }, error } = await supabase.auth.getSession();
-
-  if (error) {
-    console.error("Auth error:", error);
-    return window.location.href = "/login.html";
-  }
-
-  if (!session) {
-    return window.location.href = "/login.html";
-  }
-
+  const { data:{ session } } = await supabase.auth.getSession();
+  if (!session) return location.href="/login.html";
   userEmailText.textContent = session.user.email;
-  await loadReports(session.user.email);
-
-  if (localStorage.getItem("reports_updated")) {
-    await loadReports(session.user.email);
-    localStorage.removeItem("reports_updated");
-  }
+  loadReports();
 }
 
-/* FETCH REPORTS — FIXED (JWT BASED) */
-async function loadReports(email) {
+async function loadReports() {
   const { data:{ session } } = await supabase.auth.getSession();
-
   const res = await fetch("/api/get-reports", {
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers:{ Authorization:`Bearer ${session.access_token}` }
   });
-
   const data = await res.json();
   fullList = data.reports || [];
   render(fullList);
 }
 
-/* RENDER */
 function render(list) {
   if (!list.length) {
     reportsTable.innerHTML=`<tr><td colspan="5">No reports.</td></tr>`;
     return;
   }
 
-  reportsTable.innerHTML = list.map(r => `
-    <tr>
-      <td>${r.title || "-"}</td>
-      <td>${r.name || "-"}</td>
-      <td>${new Date(r.created_at).toLocaleString()}</td>
-      <td><a class="tbl" href="/report.html?id=${r.id}">View AI</a></td>
-      <td><a class="tbl pdfOpen" data-path="${r.file_path}" href="#">Open PDF</a></td>
-    </tr>
-  `).join("");
+  reportsTable.innerHTML = list.map(r => {
+    const title =
+      r.title ||
+      r.ai_results?.metadata?.report_type ||
+      "Untitled report";
 
-  document.querySelectorAll(".pdfOpen").forEach(el => {
-    el.onclick = async (e) => {
-      e.preventDefault();
-      openPDF(el.dataset.path);
-    };
-  });
+    const patient =
+      r.name ||
+      r.ai_results?.patient?.name ||
+      "—";
+
+    return `
+      <tr>
+        <td>${title}</td>
+        <td>${patient}</td>
+        <td>${new Date(r.created_at).toLocaleString()}</td>
+        <td><a class="tbl" href="/report.html?id=${r.id}">View AI</a></td>
+        <td><a class="tbl" href="/api/get-file-url?path=${encodeURIComponent(r.file_path)}" target="_blank">Open PDF</a></td>
+      </tr>`;
+  }).join("");
 }
 
-/* SEARCH */
 searchBox.oninput = () => {
   const q = searchBox.value.toLowerCase();
-  const s = fullList.filter(r =>
+  render(fullList.filter(r =>
     (r.title||"").toLowerCase().includes(q) ||
-    (r.name||"").toLowerCase().includes(q)
-  );
-  render(s);
+    (r.ai_results?.patient?.name||"").toLowerCase().includes(q)
+  ));
 };
 
-/* PDF VIEWER */
-const pdfModal=document.getElementById("pdfModal");
-const pdfFrame=document.getElementById("pdfFrame");
-
-async function openPDF(path) {
-  const res = await fetch(`/api/get-file-url?path=${encodeURIComponent(path)}`);
-  const data = await res.json();
-  if (!data.url) return alert("Failed to load PDF.");
-
-  pdfFrame.src=data.url;
-  pdfModal.style.display="flex";
-}
-
-document.querySelector(".btn-close").onclick=()=>pdfModal.style.display="none";
-document.querySelector(".btn-print").onclick=()=>pdfFrame.contentWindow.print();
-
-/* LOGOUT */
-document.getElementById("logoutBtn").onclick=doLogout;
-document.getElementById("logoutLink").onclick=doLogout;
-
-async function doLogout() {
+document.getElementById("logoutBtn").onclick=logout;
+document.getElementById("logoutLink").onclick=logout;
+async function logout() {
   await supabase.auth.signOut();
-  window.location.href="/login.html";
+  location.href="/login.html";
 }
 
-/* AUTO REFRESH every 6s */
-setInterval(()=>{
-  const email=userEmailText.textContent;
-  if (email.includes("@")) loadReports(email);
-},6000);
-
+setInterval(loadReports,6000);
 loadUser();
 </script>
 
 </body>
 </html>
+
