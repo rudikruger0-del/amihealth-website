@@ -94,6 +94,7 @@ h2 { margin:0 0 10px; font-size:20px; }
   font-size:13px;
   font-weight:700;
   text-transform:uppercase;
+  opacity:0.9;
 }
 .route-block {
   margin-top:10px;
@@ -104,6 +105,18 @@ h2 { margin:0 0 10px; font-size:20px; }
 }
 .route-primary { border-left-color:#dc2626; }
 .route-secondary { border-left-color:#f59e0b; }
+.route-contextual { border-left-color:#64748b; }
+
+.limit-box {
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#040816;
+  border:1px dashed rgba(255,255,255,0.15);
+  font-size:13px;
+  opacity:0.9;
+}
+
 ul { margin:6px 0 0 18px; padding:0; }
 li { margin:4px 0; font-size:14px; }
 </style>
@@ -190,8 +203,9 @@ function renderCBC(ai){
       if(!isNaN(hi)&&v>hi){cls="flag-high";arrow=" ↑";}
       else if(!isNaN(lo)&&v<lo){cls="flag-low";arrow=" ↓";}
     }
+    const src = d._source ? ` <span style="opacity:.5;font-size:11px">(${d._source})</span>` : "";
     return `<div class="cbc-row ${cls}">
-      <span><b>${k}</b></span>
+      <span><b>${k}</b>${src}</span>
       <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
     </div>`;
   }).join("");
@@ -202,19 +216,35 @@ function renderAI(ai){
   const sev=ai._severity?.severity||"low";
   const summary=ai.summary?.impression||"—";
   const routes=ai._routes||[];
+  const driver=ai._dominant_driver?.driver;
+  const limits=ai._interpretation_context||[];
 
   box.innerHTML=`
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
-    <div class="section-title">Summary</div>
+
+    ${driver?`
+      <div class="section-title">Primary Physiological Driver</div>
+      <div class="row"><b>${driver}</b></div>
+    `:""}
+
+    <div class="section-title">Clinical Summary</div>
     <div class="row">${summary}</div>
+
     ${routes.length?`
-      <div class="section-title">Clinical Reasoning & Routes</div>
-      ${routes.map(r=>`
+      <div class="section-title">Clinical Routes</div>
+      ${routes.slice(0,5).map(r=>`
         <div class="route-block route-${r.priority||"secondary"}">
           <b>${r.pattern}</b><br/>
           ${r.route}
           ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
         </div>`).join("")}
+    `:""}
+
+    ${limits.length?`
+      <div class="section-title">Interpretation Notes & Limits</div>
+      <div class="limit-box">
+        <ul>${limits.map(l=>`<li>${l}</li>`).join("")}</ul>
+      </div>
     `:""}
   `;
 }
@@ -242,40 +272,24 @@ window.printAiOnly=function(){
 <style>
 body{font-family:Inter,system-ui;margin:40px;color:#111;font-size:13px}
 .header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
-.logo{height:120px}
 .table{width:100%;border-collapse:collapse}
 td{padding:6px;border-bottom:1px solid #ddd}
 .section{margin-top:16px}
 .footer{margin-top:24px;font-size:10px;color:#555;display:flex;justify-content:space-between}
-.sig{margin-top:30px}
-.sigline{width:260px;border-bottom:1px solid #000;margin-top:20px}
 </style></head><body>
 
 <div class="header">
-  <img src="/logo.png" class="logo"/>
-  <div style="text-align:right;font-size:11px">
-    <div><b>AMI Health — Artificial Medical Intelligence (Pty) Ltd</b></div>
-    <div>www.amihealth.co.za • info@amihealth.co.za</div>
-    <div>${date}</div>
+  <div>
+    <b>AMI Health — Artificial Medical Intelligence</b><br/>
+    ${date}
   </div>
 </div>
 
 <div class="section">
   <table class="table">
-    <tr>
-      <td><b>Patient</b></td><td>${name}</td>
-      <td><b>Age</b></td><td>${age}</td>
-    </tr>
-    <tr>
-      <td><b>Sex</b></td><td>${sex}</td>
-      <td><b>Report date</b></td><td>${date}</td>
-    </tr>
+    <tr><td><b>Patient</b></td><td>${name}</td><td><b>Age</b></td><td>${age}</td></tr>
+    <tr><td><b>Sex</b></td><td>${sex}</td><td><b>Report date</b></td><td>${date}</td></tr>
   </table>
-</div>
-
-<div class="section">
-  <h3>Laboratory Findings</h3>
-  ${labs}
 </div>
 
 <div class="section">
@@ -283,19 +297,14 @@ td{padding:6px;border-bottom:1px solid #ddd}
   ${ai}
 </div>
 
-<div class="sig">
-  <div class="sigline"></div>
-  <div>Doctor signature & stamp</div>
+<div class="section">
+  <h3>Laboratory Findings</h3>
+  ${labs}
 </div>
 
 <div class="footer">
-  <div>
-    This AI-generated interpretation supports clinical judgement and does not replace a medical diagnosis.
-  </div>
-  <div style="text-align:right">
-    <img src="${qr}"/><br/>
-    Verify report
-  </div>
+  <div>This AI interpretation supports clinical judgement and does not replace diagnosis.</div>
+  <div><img src="${qr}"/><br/>Verify report</div>
 </div>
 
 </body></html>`);
@@ -305,3 +314,4 @@ td{padding:6px;border-bottom:1px solid #ddd}
 
 </body>
 </html>
+
