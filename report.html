@@ -213,7 +213,10 @@ function renderCBC(ai){
 
 function renderAI(ai){
   const box=document.getElementById("aiBox");
-  const sev=ai._severity?.severity||"low";
+  const sev =
+  ai._severity?.severity_text ||
+  ai._severity?.severity ||
+  "low";
   const summary=ai.summary?.impression||"—";
   const routes=ai._routes||[];
   const driver=ai._dominant_driver?.driver;
