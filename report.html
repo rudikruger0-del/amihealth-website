@@ -215,8 +215,28 @@ function renderAI(ai){
   const box=document.getElementById("aiBox");
   const sev =
   ai._severity?.severity_text ||
-  ai._severity?.severity ||
-  "low";
+  // -----------------------------
+  // FINAL SEVERITY RESOLUTION (UI)
+  // -----------------------------
+  let sev = ai._severity?.severity || "low";
+  
+  // HARD UI SAFETY: ABG-only must never show LOW
+  const hasABG = !!ai.abg;
+  const hasCBC = !!ai.cbc;
+  const hasChem = !!ai.chemistry;
+  const hasECG = !!ai.ecg;
+  
+  const domains =
+    (hasABG ? 1 : 0) +
+    (hasCBC ? 1 : 0) +
+    (hasChem ? 1 : 0) +
+    (hasECG ? 1 : 0);
+  
+  // If ABG-only → force minimum MODERATE
+  if (domains === 1 && hasABG && sev === "low") {
+    sev = "moderate";
+  }
+
   const summary=ai.summary?.impression||"—";
   const routes=ai._routes||[];
   const driver=ai._dominant_driver?.driver;
