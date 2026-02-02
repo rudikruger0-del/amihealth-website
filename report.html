@@ -11,18 +11,20 @@
   --card:#0b1020;
   --ink:#eaf6ff;
   --muted:#94a3b8;
-  --accent:#00b7ff;
+  --accent:#0ea5e9;
   --low:#10b981;
   --moderate:#f59e0b;
   --high:#f97316;
   --critical:#dc2626;
 }
+
 body{
   margin:0;
-  font-family:Inter,system-ui,sans-serif;
+  font-family:Inter,system-ui,-apple-system,sans-serif;
   background:var(--bg);
   color:var(--ink);
 }
+
 header{
   padding:18px 24px;
   display:flex;
@@ -31,7 +33,12 @@ header{
   background:#050a16;
   border-bottom:1px solid rgba(255,255,255,.08);
 }
-.brand{font-weight:800}
+
+.brand{
+  font-weight:800;
+  letter-spacing:.2px;
+}
+
 button{
   padding:10px 18px;
   border-radius:999px;
@@ -39,31 +46,37 @@ button{
   font-weight:600;
   cursor:pointer;
 }
+
 .primary{
   background:linear-gradient(90deg,#00e0b8,#00b7ff);
   color:#001821;
 }
+
 .secondary{
   background:transparent;
   border:1px solid rgba(255,255,255,.35);
   color:#fff;
 }
+
 .container{
-  max-width:1300px;
-  margin:20px auto;
+  max-width:1350px;
+  margin:22px auto;
   padding:0 20px 40px;
   display:grid;
   grid-template-columns:1.25fr 1fr;
-  gap:22px;
+  gap:24px;
 }
+
 .left-viewer{
   background:#000;
   border-radius:14px;
   overflow:hidden;
-  height:86vh;
+  height:88vh;
   border:1px solid rgba(255,255,255,.08);
 }
+
 iframe{width:100%;height:100%;border:none}
+
 .panel{
   background:var(--card);
   padding:22px;
@@ -71,9 +84,13 @@ iframe{width:100%;height:100%;border:none}
   border:1px solid rgba(255,255,255,.07);
   margin-bottom:18px;
 }
+
 h2{margin:0 0 12px;font-size:20px}
+
 .row{font-size:14px;margin:6px 0}
+
 .muted{color:var(--muted)}
+
 .severity-badge{
   display:inline-flex;
   padding:6px 14px;
@@ -82,10 +99,12 @@ h2{margin:0 0 12px;font-size:20px}
   color:#fff;
   margin-bottom:10px;
 }
+
 .severity-low{background:var(--low)}
 .severity-moderate{background:var(--moderate)}
 .severity-high{background:var(--high)}
 .severity-critical{background:var(--critical)}
+
 .section-title{
   margin-top:14px;
   font-size:12px;
@@ -93,6 +112,7 @@ h2{margin:0 0 12px;font-size:20px}
   text-transform:uppercase;
   letter-spacing:.6px;
 }
+
 .route-block{
   margin-top:10px;
   padding:12px 14px;
@@ -100,9 +120,11 @@ h2{margin:0 0 12px;font-size:20px}
   background:#050a18;
   border-left:4px solid #334155;
 }
+
 .route-primary{border-left-color:#dc2626}
 .route-secondary{border-left-color:#f59e0b}
 .route-contextual{border-left-color:#64748b}
+
 .cbc-row{
   display:flex;
   justify-content:space-between;
@@ -110,8 +132,10 @@ h2{margin:0 0 12px;font-size:20px}
   border-bottom:1px dashed rgba(255,255,255,.06);
   font-size:14px;
 }
+
 .flag-high{color:var(--high);font-weight:700}
 .flag-low{color:var(--moderate);font-weight:700}
+
 textarea{
   width:100%;
   background:#050a18;
@@ -121,6 +145,7 @@ textarea{
   padding:10px 12px;
   font-family:inherit;
 }
+
 ul{margin:6px 0 0 18px;padding:0}
 li{margin:4px 0;font-size:14px}
 </style>
@@ -179,11 +204,9 @@ li{margin:4px 0;font-size:14px}
 </div>
 
 <script type="module">
-let SYSTEM_CLINICIAN_NAME = "";
+let SYSTEM_CLINICIAN_NAME="";
 
-/* =========================
-   LOAD REPORT
-   ========================= */
+/* LOAD REPORT */
 async function loadReport(){
   const id=new URLSearchParams(location.search).get("id");
   const res=await fetch(`/api/get-ai-report?id=${id}`);
@@ -217,9 +240,7 @@ async function loadReport(){
   renderCBC(ai);
 }
 
-/* =========================
-   RENDER AI
-   ========================= */
+/* RENDER AI */
 function renderAI(ai){
   const sev=ai._severity?.severity||"low";
   const summary=ai.primary_physiology_summary||"";
@@ -250,9 +271,7 @@ function renderAI(ai){
   `;
 }
 
-/* =========================
-   RENDER CBC
-   ========================= */
+/* RENDER CBC */
 function renderCBC(ai){
   const box=document.getElementById("cbcBox");
   if(!ai._canonical_cbc){box.innerHTML="";return;}
@@ -273,9 +292,7 @@ function renderCBC(ai){
   }).join("");
 }
 
-/* =========================
-   VOICE DICTATION
-   ========================= */
+/* VOICE DICTATION */
 let recognition;
 if("webkitSpeechRecognition"in window){
   recognition=new webkitSpeechRecognition();
@@ -286,18 +303,16 @@ if("webkitSpeechRecognition"in window){
     for(let i=e.resultIndex;i<e.results.length;i++){
       t+=e.results[i][0].transcript;
     }
-    document.getElementById("clinicianNotes").value+=t+" ";
+    clinicianNotes.value+=t+" ";
   };
 }
-document.getElementById("dictateBtn").onclick=()=>{
+dictateBtn.onclick=()=>{
   if(!recognition){alert("Voice dictation not supported.");return;}
   recognition.start();
 };
 
-/* =========================
-   SAVE NOTES
-   ========================= */
-document.getElementById("saveNotesBtn").onclick=async()=>{
+/* SAVE NOTES */
+saveNotesBtn.onclick=async()=>{
   const id=new URLSearchParams(location.search).get("id");
   await fetch("/api/save-gp-notes",{
     method:"POST",
@@ -307,45 +322,48 @@ document.getElementById("saveNotesBtn").onclick=async()=>{
   alert("Clinician notes saved.");
 };
 
-/* =========================
-   PRINT — REFERRAL GRADE
-   ========================= */
+/* PRINT — REFERRAL GRADE */
 window.printAiOnly=function(){
-  const ai=document.getElementById("aiBox").innerHTML;
-  const labs=document.getElementById("cbcBox").innerHTML;
-  const notes=document.getElementById("clinicianNotes").value;
+  const ai=aiBox.innerHTML;
+  const labs=cbcBox.innerHTML;
+  const notes=clinicianNotes.value;
   const date=document.getElementById("date").textContent;
+  const clinician=SYSTEM_CLINICIAN_NAME||"________________________";
   const id=new URLSearchParams(location.search).get("id")||"";
-  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=https://www.amihealth.co.za/verify?id=${id}`;
+  const verify=`https://www.amihealth.co.za/verify?id=${id}`;
+  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(verify)}`;
 
   const w=window.open("","_blank");
   w.document.write(`
 <!doctype html><html><head><meta charset="utf-8"/>
 <style>
 body{font-family:Inter,system-ui;margin:40px;color:#111}
-.header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
-.section{margin-top:20px}
-.sig{margin-top:40px}
-.sig-line{margin-top:30px;border-top:1px solid #333;width:260px}
-.footer{margin-top:30px;font-size:10px;color:#555;display:flex;justify-content:space-between}
+.header{display:flex;justify-content:space-between;border-bottom:3px solid #0ea5e9;padding-bottom:12px}
+.brand{font-size:18px;font-weight:800}
+.brand small{display:block;font-size:12px;font-weight:500}
+.section{margin-top:22px}
+.signature{margin-top:40px}
+.sig-line{margin-top:28px;border-top:1px solid #000;width:260px}
+.footer{margin-top:30px;font-size:10px;color:#555;display:flex;justify-content:space-between;align-items:flex-end}
 </style></head><body>
 
 <div class="header">
-  <div>
-    <b>AMI Health — Artificial Medical Intelligence</b><br/>
-    Clinical Prioritisation Report<br/>
-    <span style="font-size:11px">www.amihealth.co.za</span>
+  <div class="brand">
+    AMI Health — Artificial Medical Intelligence
+    <small>Clinical Prioritisation Report</small>
+    <small>www.amihealth.co.za</small>
   </div>
-  <div>${date}</div>
+  <div style="font-size:12px;text-align:right">
+    ${date}<br/>Report ID: ${id}
+  </div>
 </div>
 
 <div class="section"><h3>AI Clinical Interpretation</h3>${ai}</div>
 <div class="section"><h3>Laboratory Findings</h3>${labs}</div>
-
 ${notes.trim()?`<div class="section"><h3>Clinician Notes</h3>${notes.replace(/\n/g,"<br/>")}</div>`:""}
 
-<div class="sig">
-  <div><b>Clinician:</b> ${SYSTEM_CLINICIAN_NAME||"________________________"}</div>
+<div class="signature">
+  <div><b>Clinician:</b> ${clinician}</div>
   <div class="sig-line"></div>
   <div style="font-size:12px">Signature</div>
 </div>
@@ -355,7 +373,9 @@ ${notes.trim()?`<div class="section"><h3>Clinician Notes</h3>${notes.replace(/\n
     This report provides AI-assisted clinical prioritisation.<br/>
     It does not constitute a diagnosis and supports clinician judgement.
   </div>
-  <div><img src="${qr}"/><br/>Verify report</div>
+  <div>
+    <img src="${qr}" /><br/>Verify report
+  </div>
 </div>
 
 </body></html>`);
