@@ -143,6 +143,11 @@ textarea{
     </div>
 
     <div class="panel">
+      <h2>Clinician Notes (optional)</h2>
+      <textarea id="clinNotes" placeholder="Additional clinical context..."></textarea>
+    </div>
+
+    <div class="panel">
       <h2>Laboratory Findings</h2>
       <div id="cbcBox"></div>
     </div>
@@ -218,6 +223,11 @@ function renderCBC(ai){
 
 // ================= PRINT =================
 function printReport(){
+  const meta = window.__AMI_META__ || {};
+  const clinician = meta.clinician_name || "";
+  const practice = meta.practice_number || "";
+  const notes = clinNotes.value?.trim();
+
   const id=new URLSearchParams(location.search).get("id")||"—";
   const qr=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent("https://amihealth.co.za/verify?id="+id)}`;
 
@@ -232,6 +242,7 @@ body{font-family:Inter,Arial;margin:40px;color:#111}
 .section{margin-top:22px}
 .section h3{font-size:14px;margin-bottom:8px;text-transform:uppercase}
 .patient-box{background:#f5f7fb;padding:12px;border-radius:6px;font-size:13px}
+.signature{margin-top:28px;font-size:13px}
 .footer{margin-top:40px;font-size:10px;color:#555;display:flex;justify-content:space-between}
 </style></head><body>
 
@@ -240,38 +251,45 @@ body{font-family:Inter,Arial;margin:40px;color:#111}
     <div class="brand">AMI Health — Artificial Medical Intelligence</div>
     <div class="sub">https://amihealth.co.za · info@amihealth.co.za · Tel: +27 81 026 7352</div>
   </div>
-  <div class="sub">Report ID: ${id}</div>
+  <div class="sub">Report ID:<br/><b>${id}</b></div>
 </div>
 
 <div class="section">
-  <h3>Patient Information</h3>
-  <div class="patient-box">
-    <b>Name:</b> ${pName.textContent}<br/>
-    <b>Age:</b> ${pAge.textContent} &nbsp; <b>Sex:</b> ${pSex.textContent}<br/>
-    <b>Date:</b> ${pDate.textContent}
-  </div>
+<h3>Patient Information</h3>
+<div class="patient-box">
+<b>Name:</b> ${pName.textContent}<br/>
+<b>Age:</b> ${pAge.textContent} &nbsp; <b>Sex:</b> ${pSex.textContent}<br/>
+<b>Date:</b> ${pDate.textContent}
+</div>
 </div>
 
 <div class="section">
-  <h3>AI Clinical Interpretation</h3>
-  ${aiBox.innerHTML}
+<h3>AI Clinical Interpretation</h3>
+${aiBox.innerHTML}
 </div>
 
 <div class="section">
-  <h3>Laboratory Findings</h3>
-  ${cbcBox.innerHTML}
+<h3>Laboratory Findings</h3>
+${cbcBox.innerHTML}
+</div>
+
+${notes?`<div class="section"><h3>Clinician Notes</h3><div>${notes}</div></div>`:""}
+
+<div class="signature">
+<b>Clinician:</b> ${clinician||"__________________________"}<br/>
+<b>Practice No:</b> ${practice||"__________________________"}<br/><br/>
+<b>Signature:</b><br/>
+__________________________
 </div>
 
 <div class="footer">
-  <div>
-    <b>Medicolegal Notice:</b><br/>
-    This report provides AI-assisted clinical prioritisation only.
-    It does not constitute a diagnosis or treatment recommendation.
-    Clinical judgement remains the responsibility of the treating clinician.
-  </div>
-  <div>
-    <img src="${qr}"><br/>Verify report
-  </div>
+<div>
+<b>Medicolegal Notice:</b><br/>
+This report provides AI-assisted clinical prioritisation only.
+It does not constitute a diagnosis or treatment recommendation.
+Clinical judgement and responsibility remain with the treating clinician.
+</div>
+<div><img src="${qr}"><br/>Verify report</div>
 </div>
 
 </body></html>
@@ -282,4 +300,3 @@ body{font-family:Inter,Arial;margin:40px;color:#111}
 
 </body>
 </html>
-
