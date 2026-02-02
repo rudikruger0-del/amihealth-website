@@ -1,88 +1,188 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<title>AMI Health — Clinical Referral</title>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8" />
+<title>AMI Health — Clinical Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <style>
-:root{
-  --blue:#0ea5e9;
-  --dark:#0f172a;
-  --muted:#475569;
+/* =========================
+   AMI THEME VARIABLES
+   ========================= */
+:root {
+  --bg:#02040e;
+  --panel:#0b1020;
+  --ink:#eaf6ff;
+  --muted:#9fb3c8;
+  --brand:#00b7ff;
+  --accent:#00e0b8;
+
+  --low:#10b981;
+  --moderate:#f59e0b;
+  --high:#f97316;
+  --critical:#dc2626;
 }
-body{
+
+* { box-sizing:border-box; }
+
+body {
   margin:0;
   font-family:Inter,system-ui,sans-serif;
-  background:#f8fafc;
-  color:#0f172a;
+  background:var(--bg);
+  color:var(--ink);
 }
-header{
-  padding:18px 28px;
+
+/* =========================
+   HEADER
+   ========================= */
+header {
+  padding:16px 24px;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  background:#02040e;
-  color:#eaf6ff;
+  background:#050a16;
+  border-bottom:1px solid rgba(255,255,255,0.08);
 }
-button{
+
+header .brand {
+  font-weight:800;
+  letter-spacing:.3px;
+}
+
+header .brand span {
+  color:var(--brand);
+}
+
+button {
   padding:10px 18px;
   border-radius:999px;
   border:none;
   font-weight:600;
   cursor:pointer;
 }
-.primary{
-  background:linear-gradient(90deg,#00e0b8,#00b7ff);
+
+.primary {
+  background:linear-gradient(90deg,var(--accent),var(--brand));
   color:#001821;
 }
-.container{
-  max-width:1200px;
+
+.secondary {
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.3);
+  color:#fff;
+}
+
+/* =========================
+   LAYOUT
+   ========================= */
+.container {
+  max-width:1300px;
   margin:20px auto;
   padding:0 20px 30px;
   display:grid;
-  grid-template-columns:1.2fr 1fr;
+  grid-template-columns:1.15fr 1fr;
   gap:20px;
 }
-.left-viewer{
-  background:#fff;
-  border-radius:10px;
+
+.left-viewer {
+  background:#000;
+  border-radius:14px;
   overflow:hidden;
-  height:85vh;
-  border:1px solid #e5e7eb;
+  height:86vh;
+  border:1px solid rgba(255,255,255,0.08);
 }
-iframe{width:100%;height:100%;border:none;}
-.panel{
-  background:#fff;
+
+iframe {
+  width:100%;
+  height:100%;
+  border:none;
+}
+
+.panel {
+  background:var(--panel);
   padding:18px 20px;
-  border-radius:10px;
-  border:1px solid #e5e7eb;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,0.07);
   margin-bottom:16px;
 }
-h2{
-  margin:0 0 8px;
-  font-size:17px;
-  color:#02040e;
+
+h2 {
+  margin:0 0 10px;
+  font-size:18px;
 }
-.row{font-size:14px;margin:3px 0;}
-textarea{
+
+.row {
+  margin:6px 0;
+  font-size:14px;
+}
+
+/* =========================
+   CBC LIST
+   ========================= */
+.cbc-row {
+  display:flex;
+  justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px dashed rgba(255,255,255,0.06);
+  font-size:14px;
+}
+
+.flag-low { color:var(--moderate); font-weight:700; }
+.flag-high { color:var(--high); font-weight:700; }
+
+/* =========================
+   SEVERITY
+   ========================= */
+.severity {
+  display:inline-block;
+  padding:6px 14px;
+  border-radius:999px;
+  font-weight:800;
+  font-size:13px;
+  margin-bottom:8px;
+}
+
+.sev-low { background:var(--low); }
+.sev-moderate { background:var(--moderate); }
+.sev-high { background:var(--high); }
+.sev-critical { background:var(--critical); }
+
+/* =========================
+   ROUTES
+   ========================= */
+.route {
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#050a18;
+  border-left:4px solid var(--high);
+}
+
+/* =========================
+   NOTES
+   ========================= */
+textarea {
   width:100%;
-  min-height:90px;
-  border:1px solid #cbd5f5;
-  border-radius:8px;
-  padding:10px;
+  min-height:100px;
+  background:#050a18;
+  color:var(--ink);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:10px;
+  padding:12px;
   font-family:inherit;
   font-size:14px;
 }
-.small{font-size:12px;color:#64748b}
 
-/* ================= PRINT ================= */
-@media print{
-  body{
-    -webkit-print-color-adjust:exact;
-    print-color-adjust:exact;
-    background:#fff;
-  }
+.note-actions {
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+}
+
+.muted {
+  font-size:12px;
+  opacity:.6;
+  margin-top:6px;
 }
 </style>
 </head>
@@ -90,21 +190,19 @@ textarea{
 <body>
 
 <header>
+  <div class="brand">AMI Health — <span>Artificial Medical Intelligence</span></div>
   <div>
-    <b>AMI Health</b><br/>
-    <span class="small">Artificial Medical Intelligence</span>
+    <button class="secondary" onclick="history.back()">← Back</button>
+    <button class="primary" onclick="printReferral()">Print / Referral PDF</button>
   </div>
-  <button class="primary" onclick="printReferral()">Print / Referral PDF</button>
 </header>
 
 <div class="container">
-
   <div class="left-viewer">
     <iframe id="pdfFrame"></iframe>
   </div>
 
   <div>
-
     <div class="panel">
       <h2>Patient Information</h2>
       <div class="row"><b>Name:</b> <span id="pName">—</span></div>
@@ -119,161 +217,190 @@ textarea{
     </div>
 
     <div class="panel">
-      <h2>Clinician Notes (optional)</h2>
-      <textarea id="clinicianNotes"
-        placeholder="Additional clinical context or referral notes…"></textarea>
-      <div style="margin-top:10px;display:flex;gap:10px">
-        <button onclick="startDictation()">🎙 Dictate</button>
-        <button class="primary" onclick="saveNotes()">Save Notes</button>
+      <h2>Clinician Notes <span class="muted">(optional)</span></h2>
+      <textarea id="clinNotes" placeholder="Additional clinical context or referral notes…"></textarea>
+      <div class="note-actions">
+        <button class="secondary" id="dictateBtn">🎙 Dictate</button>
+        <button class="primary" id="saveNotesBtn">Save Notes</button>
       </div>
-      <div class="small" style="margin-top:6px">
-        Notes are clinician-entered and not AI-generated.
-      </div>
+      <div class="muted">Notes are clinician-entered and not AI-generated.</div>
     </div>
 
     <div class="panel">
       <h2>Laboratory Findings</h2>
       <div id="cbcBox"></div>
     </div>
-
   </div>
 </div>
 
-<script>
-let REPORT={}, CLINICIAN={};
-
+<script type="module">
+/* =========================
+   LOAD REPORT
+   ========================= */
 async function loadReport(){
-  const id=new URLSearchParams(location.search).get("id");
-  const res=await fetch(`/api/get-ai-report?id=${id}`);
-  const json=await res.json();
+  const id = new URLSearchParams(location.search).get("id");
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
+  const json = await res.json();
 
-  REPORT=json.report||{};
-  const ai=REPORT.ai_results||{};
-  const patient=ai.patient||{};
-  CLINICIAN=REPORT.clinician||{};
+  const rpt = json.report || {};
+  const ai = rpt.ai_results || {};
+  const patient = ai.patient || {};
 
-  pName.textContent=patient.name||"—";
-  pAge.textContent=patient.age??"—";
-  pSex.textContent=patient.sex||"—";
-  pDate.textContent=REPORT.created_at?new Date(REPORT.created_at).toLocaleString():"—";
+  document.getElementById("pName").textContent = patient.name || rpt.name || "—";
+  document.getElementById("pAge").textContent = patient.age ?? rpt.age ?? "—";
+  document.getElementById("pSex").textContent = patient.sex || rpt.sex || "—";
+  document.getElementById("pDate").textContent =
+    rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
 
-  if(REPORT.file_path){
-    const f=await fetch(`/api/get-file-url?path=${encodeURIComponent(REPORT.file_path)}`);
-    const fj=await f.json();
-    if(fj.url) pdfFrame.src=fj.url;
+  if (rpt.file_path) {
+    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+    const fj = await f.json();
+    if (fj.url) document.getElementById("pdfFrame").src = fj.url;
   }
 
   renderAI(ai);
   renderCBC(ai);
+
+  window.__AMI_META__ = {
+    clinician: rpt.clinician_name || "—",
+    practice: rpt.practice_number || "—",
+    reportId: rpt.id || id,
+    verify: `https://www.amihealth.co.za/verify?id=${id}`
+  };
 }
+
 loadReport();
 
+/* =========================
+   RENDER AI
+   ========================= */
 function renderAI(ai){
-  aiBox.innerHTML=`
-    <div class="row"><b style="color:#0ea5e9">${ai._severity?.severity?.toUpperCase()}</b></div><br/>
-    <div class="row"><b>Primary Physiological Driver</b></div>
-    <div class="row">${ai._dominant_driver?.driver}</div><br/>
-    <div class="row"><b>Clinical Summary</b></div>
-    <div class="row">${ai.summary?.impression}</div>
+  const box = document.getElementById("aiBox");
+  const sev = ai._severity?.severity || "moderate";
+  const summary = ai.summary?.impression || "—";
+  const driver = ai._dominant_driver?.driver || "—";
+  const routes = ai._routes || [];
+
+  box.innerHTML = `
+    <div class="severity sev-${sev}">${sev.toUpperCase()}</div>
+    <div class="row"><b>Primary Physiological Driver:</b> ${driver}</div>
+    <div class="row">${summary}</div>
+    ${routes.map(r=>`
+      <div class="route">
+        <b>${r.pattern}</b><br/>
+        ${r.route}
+        ${r.next_steps?.length ? `<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>` : ""}
+      </div>
+    `).join("")}
   `;
 }
 
+/* =========================
+   RENDER CBC
+   ========================= */
 function renderCBC(ai){
-  const labs=ai._canonical_cbc||{};
-  cbcBox.innerHTML=Object.entries(labs)
-    .filter(([k])=>!k.startsWith("_"))
-    .map(([k,v])=>`<div class="row"><b>${k}</b>: ${v.value} ${v.units||""}</div>`)
-    .join("");
+  const box = document.getElementById("cbcBox");
+  const labs = ai._canonical_cbc || {};
+  const keys = Object.keys(labs).filter(k=>!k.startsWith("_"));
+
+  box.innerHTML = keys.map(k=>{
+    const d=labs[k];
+    let cls="";
+    if (d.flag==="high") cls="flag-high";
+    if (d.flag==="low") cls="flag-low";
+    return `
+      <div class="cbc-row ${cls}">
+        <span><b>${k}</b></span>
+        <span>${d.value} ${d.units || ""}</span>
+      </div>`;
+  }).join("");
 }
 
-/* ===== VOICE ===== */
-let recognition;
-function startDictation(){
-  if(!("webkitSpeechRecognition"in window))return alert("Voice not supported");
-  if(!recognition){
-    recognition=new webkitSpeechRecognition();
-    recognition.continuous=true;
-    recognition.lang="en-ZA";
-    recognition.onresult=e=>{
-      let t="";
-      for(let i=e.resultIndex;i<e.results.length;i++)
-        t+=e.results[i][0].transcript;
-      clinicianNotes.value+=t+" ";
-    };
-  }
-  recognition.start();
+/* =========================
+   VOICE DICTATION
+   ========================= */
+let rec;
+if ("webkitSpeechRecognition" in window) {
+  rec = new webkitSpeechRecognition();
+  rec.continuous = true;
+  rec.lang = "en-ZA";
+  rec.onresult = e => {
+    let t="";
+    for (let i=e.resultIndex;i<e.results.length;i++)
+      t+=e.results[i][0].transcript;
+    document.getElementById("clinNotes").value += t + " ";
+  };
 }
 
-/* ===== SAVE NOTES ===== */
-async function saveNotes(){
-  const id=new URLSearchParams(location.search).get("id");
-  await fetch("/api/save-gp-notes",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({id,notes:clinicianNotes.value})
-  });
-  alert("Clinician notes saved");
-}
+document.getElementById("dictateBtn").onclick = () => {
+  if (!rec) return alert("Voice not supported.");
+  rec.start();
+};
 
-/* ===== PRINT ===== */
-function printReferral(){
-  const id=new URLSearchParams(location.search).get("id");
-  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://amihealth.co.za/verify?id=${id}`;
+/* =========================
+   PRINT REFERRAL
+   ========================= */
+window.printReferral = function(){
+  const ai = document.getElementById("aiBox").innerHTML;
+  const labs = document.getElementById("cbcBox").innerHTML;
+  const notes = document.getElementById("clinNotes").value;
+  const m = window.__AMI_META__;
 
-  const w=window.open("","_blank");
+  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(m.verify)}`;
+
+  const w = window.open("", "_blank");
   w.document.write(`
-<html><head><style>
-body{font-family:Inter;margin:40px;color:#111}
-.header{border-bottom:3px solid #0ea5e9;padding-bottom:10px}
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>AMI Referral</title>
+<style>
+body{font-family:Inter,Arial;margin:40px;color:#111}
+h1{margin:0}
+.badge{display:inline-block;padding:4px 10px;border-radius:12px;background:#f59e0b;color:#000;font-weight:700}
+.header{border-bottom:3px solid #00b7ff;padding-bottom:8px;margin-bottom:20px}
 .small{font-size:11px;color:#555}
-.section{margin-top:16px}
-</style></head><body>
+.section{margin-top:18px}
+</style>
+</head>
+<body>
 
 <div class="header">
-<b>AMI Health — Artificial Medical Intelligence</b><br/>
-<span class="small">Clinical Prioritisation Referral • www.amihealth.co.za</span>
+  <h1>AMI Health — Artificial Medical Intelligence</h1>
+  <div class="small">Clinical Prioritisation Referral · www.amihealth.co.za</div>
 </div>
 
 <div class="section">
-<b>Patient:</b> ${pName.textContent} | ${pAge.textContent} | ${pSex.textContent}<br/>
-<b>Report Date:</b> ${pDate.textContent}
+<b>Referring Clinician:</b> ${m.clinician}<br/>
+<b>Practice No:</b> ${m.practice}
 </div>
 
-<div class="section">
-<b>Referring Clinician:</b> ${CLINICIAN.name||"—"}<br/>
-<b>Practice No:</b> ${CLINICIAN.practice_number||"—"}
-</div>
+<div class="section">${ai}</div>
+<div class="section"><h3>Laboratory Findings</h3>${labs}</div>
 
-<hr/>
-
-${aiBox.innerHTML}
-
-<div class="section"><b>Laboratory Findings</b><br/>${cbcBox.innerHTML}</div>
-
-${clinicianNotes.value.trim()?`
-<div class="section"><b>Clinician Notes</b><br/>${clinicianNotes.value}</div>`:""}
+${notes ? `<div class="section"><h3>Clinician Notes</h3>${notes}</div>` : ""}
 
 <div class="section">
-<br/><br/>
-<b>Signature:</b><br/>
-_____________________________<br/>
-<span class="small">${CLINICIAN.name||""}</span>
-</div>
-
-<div class="section">
-<img src="${qr}"/><br/>
-<span class="small">Verify report</span>
+<b>Signature:</b> ____________________________
 </div>
 
 <div class="section small">
-This report provides AI-assisted clinical prioritisation.  
-It does not constitute a diagnosis and supports clinician judgement.
+This report provides AI-assisted clinical prioritisation. It does not constitute a diagnosis and supports clinician judgement.
 </div>
 
-</body></html>`);
+<div class="section small">
+<img src="${qr}"/><br/>Verify report
+</div>
+
+</body>
+</html>`);
+  w.document.close();
+  w.focus();
   w.print();
-}
+};
 </script>
 
 </body>
 </html>
+
