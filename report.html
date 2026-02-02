@@ -130,9 +130,14 @@ li { margin:4px 0; font-size:14px; }
 </header>
 
 <div class="container">
-  <div class="left-viewer"><iframe id="pdfFrame"></iframe></div>
+
+  <div class="left-viewer">
+    <iframe id="pdfFrame"></iframe>
+  </div>
 
   <div>
+
+    <!-- Patient Info -->
     <div class="panel">
       <h2>Patient Info</h2>
       <div class="row"><b>Name:</b> <span id="name">—</span></div>
@@ -141,42 +146,47 @@ li { margin:4px 0; font-size:14px; }
       <div class="row"><b>Date:</b> <span id="date">—</span></div>
     </div>
 
-  <div class="panel">
-    <h2>AI Clinical Interpretation</h2>
-    <div id="aiBox"></div>
-  </div>
-
+    <!-- AI Interpretation -->
     <div class="panel">
-  <h2>GP Notes <span style="font-size:12px;opacity:.6">(optional)</span></h2>
+      <h2>AI Clinical Interpretation</h2>
+      <div id="aiBox"></div>
+    </div>
 
-  <textarea id="gpNotes"
-    placeholder="Enter or dictate clinical notes..."
-    style="width:100%;min-height:100px;
-           background:#050a18;color:#eaf6ff;
-           border:1px solid rgba(255,255,255,0.15);
-           border-radius:10px;padding:12px;
-           font-family:inherit;font-size:14px;"></textarea>
+    <!-- Clinician Notes -->
+    <div class="panel">
+      <h2>Clinician Notes <span style="font-size:12px;opacity:.6">(optional)</span></h2>
 
-  <div style="margin-top:10px;display:flex;gap:10px">
-    <button class="secondary" id="dictateBtn">🎙 Dictate</button>
-    <button class="primary" id="saveNotesBtn">Save Notes</button>
-  </div>
+      <textarea id="gpNotes"
+        placeholder="Enter or dictate clinician notes..."
+        style="width:100%;min-height:100px;
+               background:#050a18;color:#eaf6ff;
+               border:1px solid rgba(255,255,255,0.15);
+               border-radius:10px;padding:12px;
+               font-family:inherit;font-size:14px;"></textarea>
 
-  <div style="font-size:12px;opacity:.6;margin-top:6px">
-    Notes are entered by the clinician and are not AI-generated.
-  </div>
-</div>
+      <div style="margin-top:10px;display:flex;gap:10px">
+        <button class="secondary" id="dictateBtn">🎙 Dictate</button>
+        <button class="primary" id="saveNotesBtn">Save Notes</button>
+      </div>
 
-  
-  <div class="panel">
-    <h2>Laboratory Findings</h2>
-    <div id="cbcBox"></div>
-</div>
+      <div style="font-size:12px;opacity:.6;margin-top:6px">
+        Notes are entered by the clinician and are not AI-generated.
+      </div>
+    </div>
+
+    <!-- Labs -->
+    <div class="panel">
+      <h2>Laboratory Findings</h2>
+      <div id="cbcBox"></div>
+    </div>
 
   </div>
 </div>
 
 <script type="module">
+/* =========================
+   LOAD REPORT
+   ========================= */
 async function loadReport(){
   const id = new URLSearchParams(location.search).get("id");
   const res = await fetch(`/api/get-ai-report?id=${id}`);
@@ -213,6 +223,9 @@ async function loadReport(){
 }
 loadReport();
 
+/* =========================
+   RENDER LABS
+   ========================= */
 function renderCBC(ai){
   const box = document.getElementById("cbcBox");
   const labs = ai._canonical_cbc || {};
@@ -226,21 +239,22 @@ function renderCBC(ai){
       if(!isNaN(hi)&&v>hi){cls="flag-high";arrow=" ↑";}
       else if(!isNaN(lo)&&v<lo){cls="flag-low";arrow=" ↓";}
     }
-    const src = d._source ? ` <span style="opacity:.5;font-size:11px">(${d._source})</span>` : "";
     return `<div class="cbc-row ${cls}">
-      <span><b>${k}</b>${src}</span>
+      <span><b>${k}</b></span>
       <span>${d.value ?? "—"} ${d.units ?? ""}${arrow}</span>
     </div>`;
   }).join("");
 }
 
+/* =========================
+   RENDER AI
+   ========================= */
 function renderAI(ai){
   const box=document.getElementById("aiBox");
   const sev=ai._severity?.severity||"low";
   const summary=ai.summary?.impression||"—";
   const routes=ai._routes||[];
   const driver=ai._dominant_driver?.driver;
- 
 
   box.innerHTML=`
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
@@ -255,127 +269,72 @@ function renderAI(ai){
 
     ${routes.length?`
       <div class="section-title">Clinical Routes</div>
-      ${routes.slice(0,5).map(r=>`
+      ${routes.map(r=>`
         <div class="route-block route-${r.priority||"secondary"}">
           <b>${r.pattern}</b><br/>
           ${r.route}
           ${r.next_steps?.length?`<ul>${r.next_steps.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}
         </div>`).join("")}
     `:""}
+  `;
+}
 
-// =========================
-// GP NOTES — VOICE DICTATION
-// =========================
+/* =========================
+   VOICE DICTATION
+   ========================= */
 let recognition;
-
 if ("webkitSpeechRecognition" in window) {
   recognition = new webkitSpeechRecognition();
   recognition.continuous = true;
-  recognition.interimResults = false;
   recognition.lang = "en-ZA";
-
-  recognition.onresult = (event) => {
-    let text = "";
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      text += event.results[i][0].transcript;
+  recognition.onresult = (e) => {
+    let t="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      t+=e.results[i][0].transcript;
     }
-    document.getElementById("gpNotes").value += text.trim() + " ";
+    document.getElementById("gpNotes").value += t + " ";
   };
 }
-
-document.getElementById("dictateBtn")?.addEventListener("click", () => {
-  if (!recognition) {
-    alert("Voice dictation not supported in this browser.");
-    return;
-  }
+document.getElementById("dictateBtn").onclick=()=>{
+  if(!recognition){alert("Voice dictation not supported.");return;}
   recognition.start();
-});
-
-
-document.getElementById("saveNotesBtn")?.addEventListener("click", async () => {
-  const id = new URLSearchParams(location.search).get("id");
-  const notes = document.getElementById("gpNotes").value;
-
-  await fetch("/api/save-gp-notes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, gp_notes: notes })
-  });
-
-  alert("GP notes saved.");
-});
+};
 
 /* =========================
-   PRINT — FINAL MEDICAL
+   SAVE NOTES
+   ========================= */
+document.getElementById("saveNotesBtn").onclick=async()=>{
+  const id=new URLSearchParams(location.search).get("id");
+  const notes=document.getElementById("gpNotes").value;
+  await fetch("/api/save-gp-notes",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id,gp_notes:notes})
+  });
+  alert("Clinician notes saved.");
+};
+
+/* =========================
+   PRINT
    ========================= */
 window.printAiOnly=function(){
   const ai=document.getElementById("aiBox").innerHTML;
-  const gpNotes = document.getElementById("gpNotes")?.value || "";
   const labs=document.getElementById("cbcBox").innerHTML;
-  const date=document.getElementById("date").textContent;
-
+  const notes=document.getElementById("gpNotes").value;
   const name=document.getElementById("name").textContent;
   const age=document.getElementById("age").textContent;
   const sex=document.getElementById("sex").textContent;
-
-  const id=new URLSearchParams(location.search).get("id")||"";
-  const verify=`https://amihealth.co.za/verify?id=${id}`;
-  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verify)}`;
+  const date=document.getElementById("date").textContent;
 
   const w=window.open("","_blank");
   w.document.write(`
-<!doctype html><html><head><meta charset="utf-8"/>
-<title>AMI — AI Report</title>
-<style>
-body{font-family:Inter,system-ui;margin:40px;color:#111;font-size:13px}
-.header{display:flex;justify-content:space-between;border-bottom:2px solid #00a2ff;padding-bottom:10px}
-.table{width:100%;border-collapse:collapse}
-td{padding:6px;border-bottom:1px solid #ddd}
-.section{margin-top:16px}
-.footer{margin-top:24px;font-size:10px;color:#555;display:flex;justify-content:space-between}
-</style></head><body>
-
-<div class="header">
-  <div>
-    <b>AMI Health — Artificial Medical Intelligence</b><br/>
-    ${date}
-  </div>
-</div>
-
-<div class="section">
-  <table class="table">
-    <tr><td><b>Patient</b></td><td>${name}</td><td><b>Age</b></td><td>${age}</td></tr>
-    <tr><td><b>Sex</b></td><td>${sex}</td><td><b>Report date</b></td><td>${date}</td></tr>
-  </table>
-</div>
-
-<div class="section">
-  <h3>AI Clinical Interpretation</h3>
-  ${ai}
-</div>
-
-<div class="section">
-  <h3>Laboratory Findings</h3>
-  ${labs}
-</div>
-
-${gpNotes.trim() ? `
-<div class="section">
-  <h3>Clinician Notes</h3>
-  <div style="border:1px solid #ddd;padding:10px;border-radius:6px">
-    ${gpNotes.replace(/\n/g,"<br/>")}
-  </div>
-</div>
-` : ""}
-
-
-<div class="footer">
-  <div>This AI interpretation supports clinical judgement and does not replace diagnosis.</div>
-  <div><img src="${qr}"/><br/>Verify report</div>
-</div>
-
+<!doctype html><html><body style="font-family:Inter;margin:40px">
+<h2>AI Clinical Interpretation</h2>${ai}
+<h2>Laboratory Findings</h2>${labs}
+${notes?`<h2>Clinician Notes</h2><p>${notes.replace(/\n/g,"<br/>")}</p>`:""}
+<p style="font-size:11px;color:#555">AI supports clinical judgement and does not replace diagnosis.</p>
 </body></html>`);
-  w.document.close(); w.focus(); w.print();
+  w.document.close();w.print();
 }
 </script>
 
