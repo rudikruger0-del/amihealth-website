@@ -146,6 +146,12 @@ textarea{
       <div class="row"><b>Report Date:</b> <span id="pDate">—</span></div>
     </div>
 
+    <!-- 🔼 MOVED HERE -->
+    <div class="panel">
+      <h2>Laboratory Findings</h2>
+      <div id="cbcBox"></div>
+    </div>
+
     <div class="panel">
       <h2>AI Clinical Interpretation</h2>
       <div id="aiBox"></div>
@@ -171,21 +177,18 @@ textarea{
       </div>
     </div>
 
-    <div class="panel">
-      <h2>Laboratory Findings</h2>
-      <div id="cbcBox"></div>
-    </div>
-
   </div>
 </div>
 
 <script>
-/* =========================================================
-   🔑 ADDITION — AUTHENTICATED CLINICIAN AUTO-FILL
-   ========================================================= */
+/* ================= CLINICIAN META (FIXED) ================= */
 async function loadClinicianMeta(){
   try{
-    const token = localStorage.getItem("sb-access-token");
+    const authKey = Object.keys(localStorage)
+      .find(k => k.startsWith("sb-") && k.endsWith("-auth-token"));
+    if(!authKey) return;
+
+    const token = JSON.parse(localStorage.getItem(authKey))?.access_token;
     if(!token) return;
 
     const res = await fetch("/api/me",{
@@ -201,48 +204,48 @@ async function loadClinicianMeta(){
   }
 }
 loadClinicianMeta();
-/* ========================================================= */
-
-const META = window.__AMI_META__ || {};
+/* ========================================================== */
 
 // ================= LOAD REPORT =================
 async function loadReport(){
-  const id = new URLSearchParams(location.search).get("id");
-  const res = await fetch(`/api/get-ai-report?id=${id}`);
-  const json = await res.json();
-  const rpt = json.report || {};
-  const ai = rpt.ai_results || {};
-  const p  = ai.patient || {};
+  const id=new URLSearchParams(location.search).get("id");
+  const res=await fetch(`/api/get-ai-report?id=${id}`);
+  const json=await res.json();
+  const rpt=json.report||{};
+  const ai=rpt.ai_results||{};
+  const p=ai.patient||{};
 
-  pName.textContent = p.name || rpt.name || "—";
-  pAge.textContent  = p.age ?? rpt.age ?? "—";
-  pSex.textContent  = p.sex || rpt.sex || "—";
-  pDate.textContent = rpt.created_at ? new Date(rpt.created_at).toLocaleString() : "—";
+  pName.textContent=p.name||rpt.name||"—";
+  pAge.textContent=p.age??rpt.age??"—";
+  pSex.textContent=p.sex||rpt.sex||"—";
+  pDate.textContent=rpt.created_at
+    ? new Date(rpt.created_at).toLocaleString()
+    : "—";
 
-  if (rpt.file_path){
-    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
-    const fj = await f.json();
-    if (fj.url) pdfFrame.src = fj.url;
+  if(rpt.file_path){
+    const f=await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+    const fj=await f.json();
+    if(fj.url) pdfFrame.src=fj.url;
   }
 
-  renderAI(ai);
   renderCBC(ai);
+  renderAI(ai);
 }
 loadReport();
 
 // ================= AI =================
 function renderAI(ai){
-  const sev = ai._severity?.severity || "MODERATE";
-  const routes = Array.isArray(ai._routes) ? ai._routes : [];
+  const sev=ai._severity?.severity||"MODERATE";
+  const routes=Array.isArray(ai._routes)?ai._routes:[];
 
-  let html = `
+  let html=`
     <div class="severity">${sev}</div>
-    <div class="row"><b>${ai._dominant_driver?.driver || ""}</b></div>
-    <div class="row">${ai.summary?.impression || ""}</div>
+    <div class="row"><b>${ai._dominant_driver?.driver||""}</b></div>
+    <div class="row">${ai.summary?.impression||""}</div>
   `;
 
   routes.forEach(r=>{
-    html += `
+    html+=`
       <div class="ai-route">
         <div class="ai-route-title">${r.route}</div>
         <ul class="ai-route-steps">
@@ -252,20 +255,20 @@ function renderAI(ai){
     `;
   });
 
-  aiBox.innerHTML = html;
+  aiBox.innerHTML=html;
 }
 
 // ================= CBC =================
 function renderCBC(ai){
-  const labs = ai._canonical_cbc || {};
-  cbcBox.innerHTML = Object.keys(labs)
+  const labs=ai._canonical_cbc||{};
+  cbcBox.innerHTML=Object.keys(labs)
     .filter(k=>!k.startsWith("_"))
     .map(k=>{
-      const d = labs[k];
+      const d=labs[k];
       let cls="";
       if(d.value>d.reference_high)cls="flag-high";
       if(d.value<d.reference_low)cls="flag-low";
-      return `
+      return`
         <div class="cbc-row ${cls}">
           <span><b>${k}</b></span>
           <span>${d.value} ${d.units||""}</span>
@@ -282,7 +285,8 @@ if("webkitSpeechRecognition"in window){
   recogniser.lang="en-ZA";
   recogniser.onresult=e=>{
     let t="";
-    for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;
+    for(let i=e.resultIndex;i<e.results.length;i++)
+      t+=e.results[i][0].transcript;
     clinNotes.value+=t+" ";
   };
 }
@@ -308,77 +312,6 @@ canvas.onpointerleave=()=>drawing=false;
 
 function clearSignature(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-}
-
-// ================= PRINT =================
-function printReport(){
-  const notes=clinNotes.value?.trim();
-  const sigImg=canvas.toDataURL("image/png");
-  const id=new URLSearchParams(location.search).get("id")||"—";
-  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent("https://amihealth.co.za/verify?id="+id)}`;
-
-  const w=window.open("","_blank");
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/>
-<style>
-body{font-family:Inter,Arial;margin:40px;color:#111}
-.header{display:flex;justify-content:space-between;border-bottom:3px solid #00b7ff;padding-bottom:12px}
-.brand{font-size:20px;font-weight:800}
-.sub{font-size:11px;color:#444}
-.section{margin-top:22px}
-.section h3{font-size:14px;text-transform:uppercase}
-.patient{background:#f5f7fb;padding:12px;border-radius:6px;font-size:13px}
-.footer{margin-top:40px;font-size:10px;color:#555;display:flex;justify-content:space-between}
-</style></head><body>
-
-<div class="header">
-<div>
-<div class="brand">AMI Health — Artificial Medical Intelligence</div>
-<div class="sub">https://amihealth.co.za · info@amihealth.co.za · Tel: +27 81 026 7352</div>
-</div>
-<div class="sub">Report ID:<br/><b>${id}</b></div>
-</div>
-
-<div class="section">
-<h3>Patient Information</h3>
-<div class="patient">
-<b>Name:</b> ${pName.textContent}<br/>
-<b>Age:</b> ${pAge.textContent} &nbsp; <b>Sex:</b> ${pSex.textContent}<br/>
-<b>Date:</b> ${pDate.textContent}
-</div>
-</div>
-
-<div class="section">
-<h3>AI Clinical Interpretation</h3>
-${aiBox.innerHTML}
-</div>
-
-<div class="section">
-<h3>Laboratory Findings</h3>
-${cbcBox.innerHTML}
-</div>
-
-${notes?`<div class="section"><h3>Clinician Notes</h3><div>${notes}</div></div>`:""}
-
-<div class="section">
-<h3>Clinician Authentication</h3>
-<b>Clinician:</b> ${META.clinician_name||""}<br/>
-<b>Practice No:</b> ${META.practice_number||""}<br/><br/>
-<img src="${sigImg}" height="80"/><br/>Signature
-</div>
-
-<div class="footer">
-<div>
-<b>Medicolegal Notice:</b><br/>
-This report provides AI-assisted clinical prioritisation only.
-It does not constitute a diagnosis or treatment recommendation.
-Clinical responsibility remains with the treating clinician.
-</div>
-<div><img src="${qr}"><br/>Verify report</div>
-</div>
-
-</body></html>`);
-  w.document.close();
-  w.print();
 }
 </script>
 
