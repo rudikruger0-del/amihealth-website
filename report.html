@@ -141,15 +141,38 @@ li { margin:4px 0; font-size:14px; }
       <div class="row"><b>Date:</b> <span id="date">—</span></div>
     </div>
 
-    <div class="panel">
-      <h2>Laboratory Findings</h2>
-      <div id="cbcBox"></div>
-    </div>
+  <div class="panel">
+    <h2>AI Clinical Interpretation</h2>
+    <div id="aiBox"></div>
+  </div>
 
     <div class="panel">
-      <h2>AI Clinical Interpretation</h2>
-      <div id="aiBox"></div>
-    </div>
+  <h2>GP Notes <span style="font-size:12px;opacity:.6">(optional)</span></h2>
+
+  <textarea id="gpNotes"
+    placeholder="Enter or dictate clinical notes..."
+    style="width:100%;min-height:100px;
+           background:#050a18;color:#eaf6ff;
+           border:1px solid rgba(255,255,255,0.15);
+           border-radius:10px;padding:12px;
+           font-family:inherit;font-size:14px;"></textarea>
+
+  <div style="margin-top:10px;display:flex;gap:10px">
+    <button class="secondary" id="dictateBtn">🎙 Dictate</button>
+    <button class="primary" id="saveNotesBtn">Save Notes</button>
+  </div>
+
+  <div style="font-size:12px;opacity:.6;margin-top:6px">
+    Notes are entered by the clinician and are not AI-generated.
+  </div>
+</div>
+
+  
+  <div class="panel">
+    <h2>Laboratory Findings</h2>
+    <div id="cbcBox"></div>
+</div>
+
   </div>
 </div>
 
@@ -217,7 +240,7 @@ function renderAI(ai){
   const summary=ai.summary?.impression||"—";
   const routes=ai._routes||[];
   const driver=ai._dominant_driver?.driver;
-  const limits=ai._interpretation_context||[];
+ 
 
   box.innerHTML=`
     <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
@@ -240,20 +263,54 @@ function renderAI(ai){
         </div>`).join("")}
     `:""}
 
-    ${limits.length?`
-      <div class="section-title">Interpretation Notes & Limits</div>
-      <div class="limit-box">
-        <ul>${limits.map(l=>`<li>${l}</li>`).join("")}</ul>
-      </div>
-    `:""}
-  `;
+// =========================
+// GP NOTES — VOICE DICTATION
+// =========================
+let recognition;
+
+if ("webkitSpeechRecognition" in window) {
+  recognition = new webkitSpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.lang = "en-ZA";
+
+  recognition.onresult = (event) => {
+    let text = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      text += event.results[i][0].transcript;
+    }
+    document.getElementById("gpNotes").value += text.trim() + " ";
+  };
 }
+
+document.getElementById("dictateBtn")?.addEventListener("click", () => {
+  if (!recognition) {
+    alert("Voice dictation not supported in this browser.");
+    return;
+  }
+  recognition.start();
+});
+
+
+document.getElementById("saveNotesBtn")?.addEventListener("click", async () => {
+  const id = new URLSearchParams(location.search).get("id");
+  const notes = document.getElementById("gpNotes").value;
+
+  await fetch("/api/save-gp-notes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, gp_notes: notes })
+  });
+
+  alert("GP notes saved.");
+});
 
 /* =========================
    PRINT — FINAL MEDICAL
    ========================= */
 window.printAiOnly=function(){
   const ai=document.getElementById("aiBox").innerHTML;
+  const gpNotes = document.getElementById("gpNotes")?.value || "";
   const labs=document.getElementById("cbcBox").innerHTML;
   const date=document.getElementById("date").textContent;
 
