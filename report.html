@@ -146,7 +146,6 @@ textarea{
       <div class="row"><b>Report Date:</b> <span id="pDate">—</span></div>
     </div>
 
-    <!-- 🔼 MOVED HERE -->
     <div class="panel">
       <h2>Laboratory Findings</h2>
       <div id="cbcBox"></div>
@@ -181,7 +180,7 @@ textarea{
 </div>
 
 <script>
-/* ================= CLINICIAN META (FIXED) ================= */
+// ================= CLINICIAN META =================
 async function loadClinicianMeta(){
   try{
     const authKey = Object.keys(localStorage)
@@ -196,15 +195,12 @@ async function loadClinicianMeta(){
     });
     if(!res.ok) return;
 
-    window.__AMI_META__ = await res.json();
-    clinicianName.textContent = window.__AMI_META__.clinician_name || "";
-    practiceNo.textContent   = window.__AMI_META__.practice_number || "";
-  }catch(e){
-    console.warn("Clinician meta unavailable");
-  }
+    const meta = await res.json();
+    clinicianName.textContent = meta.clinician_name || "";
+    practiceNo.textContent   = meta.practice_number || "";
+  }catch(e){}
 }
 loadClinicianMeta();
-/* ========================================================== */
 
 // ================= LOAD REPORT =================
 async function loadReport(){
@@ -218,9 +214,7 @@ async function loadReport(){
   pName.textContent=p.name||rpt.name||"—";
   pAge.textContent=p.age??rpt.age??"—";
   pSex.textContent=p.sex||rpt.sex||"—";
-  pDate.textContent=rpt.created_at
-    ? new Date(rpt.created_at).toLocaleString()
-    : "—";
+  pDate.textContent=rpt.created_at?new Date(rpt.created_at).toLocaleString():"—";
 
   if(rpt.file_path){
     const f=await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
@@ -312,6 +306,77 @@ canvas.onpointerleave=()=>drawing=false;
 
 function clearSignature(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+// ================= PRINT =================
+function printReport(){
+  const notes=clinNotes.value?.trim();
+  const sigImg=canvas.toDataURL("image/png");
+  const id=new URLSearchParams(location.search).get("id")||"—";
+  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent("https://amihealth.co.za/verify?id="+id)}`;
+
+  const w=window.open("","_blank");
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/>
+<style>
+body{font-family:Inter,Arial;margin:40px;color:#111}
+.header{display:flex;justify-content:space-between;border-bottom:3px solid #00b7ff;padding-bottom:12px}
+.brand{font-size:20px;font-weight:800}
+.sub{font-size:11px;color:#444}
+.section{margin-top:22px}
+.section h3{font-size:14px;text-transform:uppercase}
+.patient{background:#f5f7fb;padding:12px;border-radius:6px;font-size:13px}
+.footer{margin-top:40px;font-size:10px;color:#555;display:flex;justify-content:space-between}
+</style></head><body>
+
+<div class="header">
+<div>
+<div class="brand">AMI Health — Artificial Medical Intelligence</div>
+<div class="sub">https://amihealth.co.za · info@amihealth.co.za · Tel: +27 81 026 7352</div>
+</div>
+<div class="sub">Report ID:<br/><b>${id}</b></div>
+</div>
+
+<div class="section">
+<h3>Patient Information</h3>
+<div class="patient">
+<b>Name:</b> ${pName.textContent}<br/>
+<b>Age:</b> ${pAge.textContent} &nbsp; <b>Sex:</b> ${pSex.textContent}<br/>
+<b>Date:</b> ${pDate.textContent}
+</div>
+</div>
+
+<div class="section">
+<h3>Laboratory Findings</h3>
+${cbcBox.innerHTML}
+</div>
+
+<div class="section">
+<h3>AI Clinical Interpretation</h3>
+${aiBox.innerHTML}
+</div>
+
+${notes?`<div class="section"><h3>Clinician Notes</h3><div>${notes}</div></div>`:""}
+
+<div class="section">
+<h3>Clinician Authentication</h3>
+<b>Clinician:</b> ${clinicianName.textContent}<br/>
+<b>Practice No:</b> ${practiceNo.textContent}<br/><br/>
+<img src="${sigImg}" height="80"/><br/>Signature
+</div>
+
+<div class="footer">
+<div>
+<b>Medicolegal Notice:</b><br/>
+This report provides AI-assisted clinical prioritisation only.
+It does not constitute a diagnosis or treatment recommendation.
+Clinical responsibility remains with the treating clinician.
+</div>
+<div><img src="${qr}"><br/>Verify report</div>
+</div>
+
+</body></html>`);
+  w.document.close();
+  w.print();
 }
 </script>
 
