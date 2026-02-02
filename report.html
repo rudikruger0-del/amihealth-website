@@ -359,6 +359,16 @@ td{padding:6px;border-bottom:1px solid #ddd}
   ${labs}
 </div>
 
+${gpNotes.trim() ? `
+<div class="section">
+  <h3>Clinician Notes</h3>
+  <div style="border:1px solid #ddd;padding:10px;border-radius:6px">
+    ${gpNotes.replace(/\n/g,"<br/>")}
+  </div>
+</div>
+` : ""}
+
+
 <div class="footer">
   <div>This AI interpretation supports clinical judgement and does not replace diagnosis.</div>
   <div><img src="${qr}"/><br/>Verify report</div>
