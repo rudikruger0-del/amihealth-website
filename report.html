@@ -6,59 +6,45 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 
 <style>
-:root {
+:root{
   --bg:#02040e;
   --card:#0b1020;
   --white:#eaf6ff;
   --muted:#94a3b8;
-  --low:#10b981;
-  --moderate:#f59e0b;
-  --high:#f97316;
-  --critical:#dc2626;
   --accent:#00b7ff;
+  --moderate:#f59e0b;
 }
-
-body {
+body{
   margin:0;
   font-family:Inter,system-ui,sans-serif;
   background:var(--bg);
   color:var(--white);
 }
-
-header {
-  padding:18px 24px;
+header{
+  padding:16px 24px;
   display:flex;
   justify-content:space-between;
   align-items:center;
   background:#050a16;
   border-bottom:1px solid rgba(255,255,255,.08);
 }
-
-.brand {
-  font-weight:800;
-  letter-spacing:.3px;
-}
-
-button {
+button{
   padding:10px 18px;
   border-radius:999px;
   border:none;
   font-weight:600;
   cursor:pointer;
 }
-
-.primary {
+.primary{
   background:linear-gradient(90deg,#00e0b8,#00b7ff);
   color:#001821;
 }
-
-.secondary {
+.secondary{
   background:transparent;
   border:1px solid rgba(255,255,255,.3);
   color:#fff;
 }
-
-.container {
+.container{
   max-width:1200px;
   margin:20px auto;
   padding:0 20px 30px;
@@ -66,78 +52,48 @@ button {
   grid-template-columns:1.2fr 1fr;
   gap:20px;
 }
-
-.left-viewer {
+.left-viewer{
   background:#000;
   border-radius:12px;
   overflow:hidden;
   height:85vh;
   border:1px solid rgba(255,255,255,.08);
 }
-
-iframe { width:100%; height:100%; border:none; }
-
-.panel {
+iframe{width:100%;height:100%;border:none}
+.panel{
   background:var(--card);
   padding:20px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.07);
   margin-bottom:18px;
 }
-
-h2 { margin:0 0 10px; font-size:18px; }
-
-.row { margin:6px 0; font-size:14px; }
-
-.severity-badge {
+h2{margin:0 0 10px;font-size:18px}
+.row{margin:6px 0;font-size:14px}
+.severity{
   display:inline-block;
   padding:6px 14px;
   border-radius:999px;
   font-weight:800;
+  background:var(--moderate);
   margin-bottom:10px;
 }
-
-.severity-low{background:var(--low)}
-.severity-moderate{background:var(--moderate)}
-.severity-high{background:var(--high)}
-.severity-critical{background:var(--critical)}
-
-.section-title {
-  margin-top:12px;
-  font-size:12px;
-  font-weight:700;
-  text-transform:uppercase;
-  color:var(--muted);
-}
-
-.route {
-  margin-top:10px;
-  padding:10px 12px;
-  border-left:4px solid var(--critical);
-  background:#050a18;
-  border-radius:8px;
-}
-
-.cbc-row {
+.cbc-row{
   display:flex;
   justify-content:space-between;
   padding:6px 0;
   border-bottom:1px dashed rgba(255,255,255,.06);
 }
-
-.flag-high{color:var(--high);font-weight:700}
-.flag-low{color:var(--moderate);font-weight:700}
-
-textarea {
+.flag-high{color:#fb923c;font-weight:700}
+.flag-low{color:#fbbf24;font-weight:700}
+textarea{
   width:100%;
   min-height:90px;
   background:#050a18;
-  color:#eaf6ff;
+  color:var(--white);
   border:1px solid rgba(255,255,255,.15);
   border-radius:10px;
   padding:12px;
   font-family:inherit;
-  font-size:14px;
 }
 </style>
 </head>
@@ -145,7 +101,7 @@ textarea {
 <body>
 
 <header>
-  <div class="brand">AMI Health — Artificial Medical Intelligence</div>
+  <div><b>AMI Health</b> — Artificial Medical Intelligence</div>
   <div>
     <button class="secondary" onclick="history.back()">← Back</button>
     <button class="primary" onclick="printReport()">Print / Save Report</button>
@@ -175,7 +131,7 @@ textarea {
 
     <div class="panel">
       <h2>Clinician Notes (optional)</h2>
-      <textarea id="clinNotes" placeholder="Additional clinical context or notes..."></textarea>
+      <textarea id="clinNotes" placeholder="Additional clinical context..."></textarea>
       <div style="margin-top:10px;display:flex;gap:10px">
         <button class="secondary" id="dictateBtn">🎙 Dictate</button>
         <button class="primary" onclick="saveNotes()">Save Notes</button>
@@ -194,7 +150,7 @@ textarea {
 </div>
 
 <script>
-// ------------------ LOAD REPORT ------------------
+// ================= LOAD REPORT =================
 async function loadReport(){
   const id=new URLSearchParams(location.search).get("id");
   const res=await fetch(`/api/get-ai-report?id=${id}`);
@@ -219,31 +175,17 @@ async function loadReport(){
 }
 loadReport();
 
-// ------------------ AI ------------------
+// ================= AI =================
 function renderAI(ai){
-  const sev=ai._severity?.severity||"low";
-  const summary=ai.summary?.impression||"—";
-  const driver=ai._dominant_driver?.driver;
-  const routes=ai._routes||[];
-
+  const sev=ai._severity?.severity||"MODERATE";
   aiBox.innerHTML=`
-    <div class="severity-badge severity-${sev}">${sev.toUpperCase()}</div>
-
-    ${driver?`<div class="section-title">Primary Physiological Driver</div>
-    <div class="row"><b>${driver}</b></div>`:""}
-
-    <div class="section-title">Clinical Summary</div>
-    <div class="row">${summary}</div>
-
-    ${routes.map(r=>`
-      <div class="route">
-        <b>${r.pattern}</b><br/>
-        ${r.route}
-      </div>`).join("")}
+    <div class="severity">${sev}</div>
+    <div class="row"><b>${ai._dominant_driver?.driver||""}</b></div>
+    <div class="row">${ai.summary?.impression||""}</div>
   `;
 }
 
-// ------------------ CBC ------------------
+// ================= CBC =================
 function renderCBC(ai){
   const labs=ai._canonical_cbc||{};
   cbcBox.innerHTML=Object.keys(labs).filter(k=>!k.startsWith("_")).map(k=>{
@@ -258,7 +200,7 @@ function renderCBC(ai){
   }).join("");
 }
 
-// ------------------ VOICE ------------------
+// ================= VOICE =================
 let rec;
 if("webkitSpeechRecognition"in window){
   rec=new webkitSpeechRecognition();
@@ -272,49 +214,59 @@ if("webkitSpeechRecognition"in window){
 }
 dictateBtn.onclick=()=>rec?rec.start():alert("Voice not supported");
 
-// ------------------ PRINT ------------------
+// ================= PRINT =================
 function printReport(){
   const meta=window.__AMI_META__||{};
-  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(meta.verify||"https://amihealth.co.za")}`;
+  const id=new URLSearchParams(location.search).get("id")||"—";
+  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent("https://amihealth.co.za/verify?id="+id)}`;
 
   const w=window.open("","_blank");
   w.document.write(`
 <!doctype html><html><head><meta charset="utf-8"/>
-<title>AMI Clinical Report</title>
 <style>
 body{font-family:Inter,Arial;margin:40px;color:#111}
-.header{border-bottom:3px solid #00b7ff;padding-bottom:10px}
-.footer{margin-top:40px;font-size:11px;color:#555;display:flex;justify-content:space-between}
-.sev{color:#f59e0b;font-weight:800}
+.header{display:flex;justify-content:space-between;border-bottom:3px solid #00b7ff;padding-bottom:10px}
+.brand{font-size:18px;font-weight:800}
+.small{font-size:10px;color:#666}
+.section{margin-top:18px}
+.signature{margin-top:30px}
+.footer{margin-top:40px;font-size:10px;color:#555;display:flex;justify-content:space-between}
 </style></head><body>
 
 <div class="header">
-<b>AMI Health — Artificial Medical Intelligence</b><br/>
-Clinical AI Report · www.amihealth.co.za · Tel: +27 (0)10 XXX XXXX
+  <div>
+    <div class="brand">AMI Health — Artificial Medical Intelligence</div>
+    <div class="small">${meta.website||""} · Tel: ${meta.phone||""}</div>
+  </div>
+  <div class="small">Report ID: ${id}</div>
 </div>
 
-<p>
+<div class="section">
 <b>Patient:</b> ${pName.textContent} · ${pAge.textContent} · ${pSex.textContent}<br/>
-<b>Report Date:</b> ${pDate.textContent}<br/>
-<b>Clinician:</b> ${meta.clinician||"—"} · Practice No: ${meta.practice||"—"}<br/>
-<b>Report ID:</b> ${meta.reportId||"—"}
-</p>
+<b>Date:</b> ${pDate.textContent}<br/>
+<b>Clinician:</b> ${meta.clinician_name||"—"}<br/>
+<b>Practice No:</b> ${meta.practice_number||"—"}
+</div>
 
 ${aiBox.innerHTML}
 <h3>Laboratory Findings</h3>${cbcBox.innerHTML}
 
-<p><b>Signature:</b><br/>__________________________</p>
+${clinNotes.value?`<h3>Clinician Notes</h3><div>${clinNotes.value}</div>`:""}
+
+<div class="signature">
+<b>Signature:</b><br/>__________________________
+</div>
 
 <div class="footer">
 <div>This report provides AI-assisted clinical prioritisation. It does not constitute a diagnosis.</div>
 <div><img src="${qr}"><br/>Verify report</div>
 </div>
 
-</body></html>`);
+</body></html>
+`);
   w.document.close();w.print();
 }
 </script>
 
 </body>
 </html>
-
