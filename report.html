@@ -106,7 +106,16 @@ textarea{
   border:1px solid rgba(255,255,255,.15);
   border-radius:10px;
   padding:12px;
-  font-family:inherit;
+}
+.sig-pad{
+  background:#fff;
+  border-radius:6px;
+  cursor:crosshair;
+}
+.sig-actions{
+  margin-top:8px;
+  display:flex;
+  gap:10px;
 }
 </style>
 </head>
@@ -145,6 +154,21 @@ textarea{
     <div class="panel">
       <h2>Clinician Notes (optional)</h2>
       <textarea id="clinNotes" placeholder="Additional clinical context..."></textarea>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="secondary" id="dictateBtn">🎙 Dictate</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Clinician Signature</h2>
+      <canvas id="sigCanvas" class="sig-pad" width="420" height="140"></canvas>
+      <div class="sig-actions">
+        <button class="secondary" onclick="clearSignature()">Clear</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <b>Clinician:</b> <span id="clinicianName"></span><br/>
+        <b>Practice No:</b> <span id="practiceNo"></span>
+      </div>
     </div>
 
     <div class="panel">
@@ -156,24 +180,32 @@ textarea{
 </div>
 
 <script>
+// ================= META =================
+const META = window.__AMI_META__ || {};
+clinicianName.textContent = META.clinician_name || "";
+practiceNo.textContent = META.practice_number || "";
+
 // ================= LOAD REPORT =================
 async function loadReport(){
-  const id=new URLSearchParams(location.search).get("id");
-  const res=await fetch(`/api/get-ai-report?id=${id}`);
-  const json=await res.json();
-  const rpt=json.report||{};
-  const ai=rpt.ai_results||{};
-  const p=ai.patient||{};
+  const id = new URLSearchParams(location.search).get("id");
+  const res = await fetch(`/api/get-ai-report?id=${id}`);
+  const json = await res.json();
 
-  pName.textContent=p.name||rpt.name||"—";
-  pAge.textContent=p.age??rpt.age??"—";
-  pSex.textContent=p.sex||rpt.sex||"—";
-  pDate.textContent=rpt.created_at?new Date(rpt.created_at).toLocaleString():"—";
+  const rpt = json.report || {};
+  const ai = rpt.ai_results || {};
+  const p  = ai.patient || {};
 
-  if(rpt.file_path){
-    const f=await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
-    const fj=await f.json();
-    if(fj.url) pdfFrame.src=fj.url;
+  pName.textContent = p.name || rpt.name || "—";
+  pAge.textContent  = p.age ?? rpt.age ?? "—";
+  pSex.textContent  = p.sex || rpt.sex || "—";
+  pDate.textContent = rpt.created_at
+    ? new Date(rpt.created_at).toLocaleString()
+    : "—";
+
+  if (rpt.file_path){
+    const f = await fetch(`/api/get-file-url?path=${encodeURIComponent(rpt.file_path)}`);
+    const fj = await f.json();
+    if (fj.url) pdfFrame.src = fj.url;
   }
 
   renderAI(ai);
@@ -181,19 +213,19 @@ async function loadReport(){
 }
 loadReport();
 
-// ================= AI =================
+// ================= AI RENDER =================
 function renderAI(ai){
-  const sev=ai._severity?.severity||"MODERATE";
-  const routes=Array.isArray(ai._routes)?ai._routes:[];
+  const sev = ai._severity?.severity || "MODERATE";
+  const routes = Array.isArray(ai._routes) ? ai._routes : [];
 
-  let html=`
+  let html = `
     <div class="severity">${sev}</div>
-    <div class="row"><b>${ai._dominant_driver?.driver||""}</b></div>
-    <div class="row">${ai.summary?.impression||""}</div>
+    <div class="row"><b>${ai._dominant_driver?.driver || ""}</b></div>
+    <div class="row">${ai.summary?.impression || ""}</div>
   `;
 
   routes.forEach(r=>{
-    html+=`
+    html += `
       <div class="ai-route">
         <div class="ai-route-title">${r.route}</div>
         <ul class="ai-route-steps">
@@ -203,35 +235,75 @@ function renderAI(ai){
     `;
   });
 
-  aiBox.innerHTML=html;
+  aiBox.innerHTML = html;
 }
 
-// ================= CBC =================
+// ================= CBC RENDER =================
 function renderCBC(ai){
-  const labs=ai._canonical_cbc||{};
-  cbcBox.innerHTML=Object.keys(labs).filter(k=>!k.startsWith("_")).map(k=>{
-    const d=labs[k];
-    let cls="";
-    if(d.value>d.reference_high)cls="flag-high";
-    if(d.value<d.reference_low)cls="flag-low";
-    return `<div class="cbc-row ${cls}">
-      <span><b>${k}</b></span>
-      <span>${d.value} ${d.units||""}</span>
-    </div>`;
-  }).join("");
+  const labs = ai._canonical_cbc || {};
+  cbcBox.innerHTML = Object.keys(labs)
+    .filter(k=>!k.startsWith("_"))
+    .map(k=>{
+      const d = labs[k];
+      let cls = "";
+      if (d.value > d.reference_high) cls = "flag-high";
+      if (d.value < d.reference_low)  cls = "flag-low";
+      return `
+        <div class="cbc-row ${cls}">
+          <span><b>${k}</b></span>
+          <span>${d.value} ${d.units || ""}</span>
+        </div>
+      `;
+    }).join("");
+}
+
+// ================= VOICE DICTATION =================
+let recogniser;
+if ("webkitSpeechRecognition" in window){
+  recogniser = new webkitSpeechRecognition();
+  recogniser.continuous = true;
+  recogniser.lang = "en-ZA";
+  recogniser.onresult = e=>{
+    let t = "";
+    for(let i=e.resultIndex;i<e.results.length;i++)
+      t += e.results[i][0].transcript;
+    clinNotes.value += t + " ";
+  };
+}
+dictateBtn.onclick = ()=>recogniser
+  ? recogniser.start()
+  : alert("Voice recognition not supported");
+
+// ================= SIGNATURE =================
+const canvas = sigCanvas;
+const ctx = canvas.getContext("2d");
+let drawing = false;
+
+canvas.onpointerdown = e=>{
+  drawing = true;
+  ctx.beginPath();
+  ctx.moveTo(e.offsetX, e.offsetY);
+};
+canvas.onpointermove = e=>{
+  if(!drawing) return;
+  ctx.lineTo(e.offsetX, e.offsetY);
+  ctx.stroke();
+};
+canvas.onpointerup = ()=>drawing=false;
+canvas.onpointerleave = ()=>drawing=false;
+
+function clearSignature(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 }
 
 // ================= PRINT =================
 function printReport(){
-  const meta = window.__AMI_META__ || {};
-  const clinician = meta.clinician_name || "";
-  const practice = meta.practice_number || "";
   const notes = clinNotes.value?.trim();
+  const sigImg = canvas.toDataURL("image/png");
+  const id = new URLSearchParams(location.search).get("id") || "—";
+  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent("https://amihealth.co.za/verify?id="+id)}`;
 
-  const id=new URLSearchParams(location.search).get("id")||"—";
-  const qr=`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent("https://amihealth.co.za/verify?id="+id)}`;
-
-  const w=window.open("","_blank");
+  const w = window.open("","_blank");
   w.document.write(`
 <!doctype html><html><head><meta charset="utf-8"/>
 <style>
@@ -240,9 +312,8 @@ body{font-family:Inter,Arial;margin:40px;color:#111}
 .brand{font-size:20px;font-weight:800}
 .sub{font-size:11px;color:#444}
 .section{margin-top:22px}
-.section h3{font-size:14px;margin-bottom:8px;text-transform:uppercase}
-.patient-box{background:#f5f7fb;padding:12px;border-radius:6px;font-size:13px}
-.signature{margin-top:28px;font-size:13px}
+.section h3{font-size:14px;text-transform:uppercase}
+.patient{background:#f5f7fb;padding:12px;border-radius:6px;font-size:13px}
 .footer{margin-top:40px;font-size:10px;color:#555;display:flex;justify-content:space-between}
 </style></head><body>
 
@@ -256,7 +327,7 @@ body{font-family:Inter,Arial;margin:40px;color:#111}
 
 <div class="section">
 <h3>Patient Information</h3>
-<div class="patient-box">
+<div class="patient">
 <b>Name:</b> ${pName.textContent}<br/>
 <b>Age:</b> ${pAge.textContent} &nbsp; <b>Sex:</b> ${pSex.textContent}<br/>
 <b>Date:</b> ${pDate.textContent}
@@ -275,11 +346,12 @@ ${cbcBox.innerHTML}
 
 ${notes?`<div class="section"><h3>Clinician Notes</h3><div>${notes}</div></div>`:""}
 
-<div class="signature">
-<b>Clinician:</b> ${clinician||"__________________________"}<br/>
-<b>Practice No:</b> ${practice||"__________________________"}<br/><br/>
-<b>Signature:</b><br/>
-__________________________
+<div class="section">
+<h3>Clinician Authentication</h3>
+<b>Clinician:</b> ${META.clinician_name || ""}<br/>
+<b>Practice No:</b> ${META.practice_number || ""}<br/><br/>
+<img src="${sigImg}" height="80"/><br/>
+Signature
 </div>
 
 <div class="footer">
@@ -287,14 +359,15 @@ __________________________
 <b>Medicolegal Notice:</b><br/>
 This report provides AI-assisted clinical prioritisation only.
 It does not constitute a diagnosis or treatment recommendation.
-Clinical judgement and responsibility remain with the treating clinician.
+Clinical responsibility remains with the treating clinician.
 </div>
 <div><img src="${qr}"><br/>Verify report</div>
 </div>
 
 </body></html>
 `);
-  w.document.close();w.print();
+  w.document.close();
+  w.print();
 }
 </script>
 
