@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>AMI Health — Prepare Prescription</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    body{
+      margin:0;
+      font-family:Inter,system-ui,sans-serif;
+      background:#02040e;
+      color:#eaf6ff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:100vh;
+    }
+    .card{
+      background:#0b1020;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:14px;
+      padding:28px;
+      max-width:520px;
+      text-align:center;
+    }
+    h1{font-size:20px;margin-bottom:10px}
+    p{font-size:14px;color:#94a3b8}
+    .muted{font-size:12px;margin-top:12px}
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1>Prepare Prescription</h1>
+  <p>
+    Prescription preparation is ready.<br/>
+    Patient details and template will load here.
+  </p>
+  <div class="muted">
+    Report ID:
+    <script>
+      document.write(
+        new URLSearchParams(location.search).get("report_id") || "—"
+      );
+    </script>
+  </div>
+</div>
+
+</body>
+</html>
