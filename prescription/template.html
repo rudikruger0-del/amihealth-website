@@ -4,25 +4,47 @@
   <title>Upload Prescription Template</title>
   <link rel="stylesheet" href="../styles.css">
 </head>
+
 <body style="background:#0b0f1a; color:white; font-family:Arial;">
 
   <div style="max-width:400px; margin:100px auto; background:#111827; padding:30px; border-radius:12px;">
-    <h2>Upload Prescription Template</h2>
+    
+    <h2 style="margin-bottom:20px;">Upload Prescription Template</h2>
 
     <input type="file" id="fileInput" accept="application/pdf" />
     <br/><br/>
 
-    <button onclick="uploadTemplate()" style="padding:10px 20px; background:#2563eb; color:white; border:none; border-radius:8px;">
+    <button 
+      onclick="uploadTemplate()" 
+      style="padding:10px 20px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer;">
       Upload Template
     </button>
 
-    <p id="message" style="margin-top:20px; color:#f87171;"></p>
+    <p id="message" style="margin-top:20px; font-size:14px;"></p>
+
   </div>
 
 <script>
+
+function getSupabaseToken() {
+  const key = Object.keys(localStorage).find(k => k.includes("auth-token"));
+  if (!key) return null;
+
+  try {
+    const session = JSON.parse(localStorage.getItem(key));
+    return session?.access_token || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function uploadTemplate() {
+
   const fileInput = document.getElementById("fileInput");
   const message = document.getElementById("message");
+
+  message.style.color = "#f87171";
+  message.innerText = "";
 
   if (!fileInput.files.length) {
     message.innerText = "Please select a PDF file.";
@@ -31,19 +53,23 @@ async function uploadTemplate() {
 
   const file = fileInput.files[0];
 
-  const session = JSON.parse(localStorage.getItem("supabase.auth.token"));
-
-  if (!session || !session.currentSession) {
-    message.innerText = "Not authenticated.";
+  if (file.type !== "application/pdf") {
+    message.innerText = "Only PDF files allowed.";
     return;
   }
 
-  const token = session.currentSession.access_token;
+  const token = getSupabaseToken();
+
+  if (!token) {
+    message.innerText = "Not authenticated. Please log in again.";
+    return;
+  }
 
   const formData = new FormData();
   formData.append("file", file);
 
   try {
+
     const res = await fetch("/api/upload-prescription-template", {
       method: "POST",
       headers: {
@@ -56,15 +82,17 @@ async function uploadTemplate() {
 
     if (!res.ok) {
       message.innerText = data.error || "Upload failed.";
-    } else {
-      message.style.color = "#4ade80";
-      message.innerText = "Template uploaded successfully.";
+      return;
     }
+
+    message.style.color = "#4ade80";
+    message.innerText = "Template uploaded successfully.";
 
   } catch (err) {
     message.innerText = "Upload error.";
   }
 }
+
 </script>
 
 </body>
