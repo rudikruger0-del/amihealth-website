@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AMI — Upload Prescription Template</title>
+    <style>
+      :root {
+        --bg-1: #020314;
+        --bg-2: #081224;
+        --bg-3: #050a18;
+        --card: rgba(255, 255, 255, 0.06);
+        --card-border: rgba(255, 255, 255, 0.12);
+        --text: #e9f2fb;
+        --muted: #96a4b9;
+        --accent: #00e0b8;
+        --accent2: #00b3ff;
+        --radius-2xl: 24px;
+        --radius-lg: 14px;
+        --shadow: 0 16px 45px rgba(0, 0, 0, 0.58);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top, #071a33, #02030f 40%),
+          linear-gradient(180deg, var(--bg-1), var(--bg-2) 62%, var(--bg-3));
+        display: grid;
+        place-items: center;
+        padding: 28px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 560px;
+        border-radius: var(--radius-2xl);
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+        padding: 32px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.7rem;
+      }
+
+      .subtitle {
+        margin: 0 0 24px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      form {
+        display: grid;
+        gap: 14px;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      input[type='file'] {
+        width: 100%;
+        padding: 14px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--card-border);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+      }
+
+      input[type='file']:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(0, 224, 184, 0.2);
+      }
+
+      button {
+        margin-top: 6px;
+        border: none;
+        border-radius: 999px;
+        padding: 13px 18px;
+        font-size: 0.98rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: #012029;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 0 22px rgba(0, 224, 184, 0.42);
+      }
+
+      button:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      .message {
+        margin-top: 16px;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        padding: 12px 14px;
+        font-size: 0.92rem;
+        display: none;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .message.show {
+        display: flex;
+      }
+
+      .success-checkmark {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        position: relative;
+        flex: 0 0 18px;
+        opacity: 0;
+        transform: scale(0.7);
+      }
+
+      .message.success .success-checkmark {
+        animation: check-pop 0.28s ease forwards;
+      }
+
+      .success-checkmark::after {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 1px;
+        width: 5px;
+        height: 10px;
+        border-right: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+        transform: rotate(45deg) scale(0.3);
+        transform-origin: center;
+        opacity: 0;
+      }
+
+      .message.success .success-checkmark::after {
+        animation: check-draw 0.22s 0.18s ease forwards;
+      }
+
+      .message-text {
+        line-height: 1.3;
+      }
+
+      .message.success {
+        background: rgba(0, 224, 184, 0.12);
+        border-color: rgba(0, 224, 184, 0.5);
+        color: #8ff7e3;
+      }
+
+      .message.error {
+        background: rgba(255, 96, 126, 0.12);
+        border-color: rgba(255, 96, 126, 0.45);
+        color: #ff9bb0;
+      }
+
+      @keyframes check-pop {
+        from {
+          opacity: 0;
+          transform: scale(0.7);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes check-draw {
+        from {
+          opacity: 0;
+          transform: rotate(45deg) scale(0.3);
+        }
+        to {
+          opacity: 1;
+          transform: rotate(45deg) scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <h1>Upload Prescription Template</h1>
+      <p class="subtitle">Upload a PDF template for prescriptions.</p>
+
+      <form id="uploadForm">
+        <label for="templateFile">PDF file</label>
+        <input id="templateFile" name="file" type="file" accept="application/pdf,.pdf" required />
+        <button id="uploadButton" type="submit">Upload</button>
+      </form>
+
+      <div id="messageBox" class="message" role="status" aria-live="polite"></div>
+    </section>
+
+    <script>
+      const form = document.getElementById('uploadForm');
+      const fileInput = document.getElementById('templateFile');
+      const uploadButton = document.getElementById('uploadButton');
+      const messageBox = document.getElementById('messageBox');
+
+      const setMessage = (type, text) => {
+        messageBox.className = `message show ${type}`;
+        messageBox.innerHTML = '';
+
+        if (type === 'success') {
+          const checkmark = document.createElement('span');
+          checkmark.className = 'success-checkmark';
+          checkmark.setAttribute('aria-hidden', 'true');
+          messageBox.appendChild(checkmark);
+        }
+
+        const textNode = document.createElement('span');
+        textNode.className = 'message-text';
+        textNode.textContent = text;
+        messageBox.appendChild(textNode);
+      };
+
+      const clearMessage = () => {
+        messageBox.className = 'message';
+        messageBox.textContent = '';
+      };
+
+      const setUploadingState = (isUploading) => {
+        uploadButton.disabled = isUploading;
+        uploadButton.textContent = isUploading ? 'Uploading...' : 'Upload';
+      };
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        clearMessage();
+
+        const getSupabaseAccessToken = () => {
+          const directToken = localStorage.getItem('sb-access-token');
+          if (directToken) return directToken;
+
+          for (let i = 0; i < localStorage.length; i += 1) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith('sb-') || !key.endsWith('-auth-token')) continue;
+
+            try {
+              const rawValue = localStorage.getItem(key);
+              if (!rawValue) continue;
+              const parsed = JSON.parse(rawValue);
+
+              if (parsed?.access_token) return parsed.access_token;
+              if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
+            } catch (parseError) {
+              console.warn(`Could not parse token from localStorage key: ${key}`, parseError);
+            }
+          }
+
+          return null;
+        };
+
+        const token = getSupabaseAccessToken();
+        if (!token) {
+          setMessage('error', 'Missing auth token. Please log in again.');
+          console.error('No Supabase access token found in localStorage.');
+          return;
+        }
+
+        const selectedFile = fileInput.files[0];
+        if (!selectedFile) {
+          setMessage('error', 'Please select a PDF file before uploading.');
+          return;
+        }
+
+        const isPdfMime = selectedFile.type === 'application/pdf';
+        const isPdfExt = selectedFile.name.toLowerCase().endsWith('.pdf');
+        if (!isPdfMime && !isPdfExt) {
+          setMessage('error', 'Only PDF files are allowed.');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        setUploadingState(true);
+
+        try {
+          const response = await fetch('/action/upload_prescription_template_file', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          });
+
+          const contentType = response.headers.get('content-type') || '';
+          const responseData = contentType.includes('application/json')
+            ? await response.json()
+            : await response.text();
+
+          console.log('Upload response status:', response.status);
+          console.log('Upload response body:', responseData);
+
+          if (!response.ok) {
+            setMessage('error', `Upload failed (${response.status}). Check console for details.`);
+            return;
+          }
+
+          setMessage('success', 'Prescription template uploaded successfully.');
+          form.reset();
+        } catch (error) {
+          console.error('Upload request error:', error);
+          setMessage('error', 'An error occurred during upload. Check console for details.');
+        } finally {
+          setUploadingState(false);
+        }
+      });
+    </script>
+  </body>
+</html>
