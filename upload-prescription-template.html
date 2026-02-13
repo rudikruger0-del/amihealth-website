@@ -207,7 +207,9 @@
       <div id="messageBox" class="message" role="status" aria-live="polite"></div>
     </section>
 
-    <script>
+    <script type="module">
+      import { supabase } from './lib/supabaseClient.js';
+
       const form = document.getElementById('uploadForm');
       const fileInput = document.getElementById('templateFile');
       const uploadButton = document.getElementById('uploadButton');
@@ -244,33 +246,11 @@
         event.preventDefault();
         clearMessage();
 
-        const getSupabaseAccessToken = () => {
-          const directToken = localStorage.getItem('sb-access-token');
-          if (directToken) return directToken;
+        const { data } = await supabase.auth.getSession();
+        const token = data?.session?.access_token;
 
-          for (let i = 0; i < localStorage.length; i += 1) {
-            const key = localStorage.key(i);
-            if (!key || !key.startsWith('sb-') || !key.endsWith('-auth-token')) continue;
-
-            try {
-              const rawValue = localStorage.getItem(key);
-              if (!rawValue) continue;
-              const parsed = JSON.parse(rawValue);
-
-              if (parsed?.access_token) return parsed.access_token;
-              if (parsed?.currentSession?.access_token) return parsed.currentSession.access_token;
-            } catch (parseError) {
-              console.warn(`Could not parse token from localStorage key: ${key}`, parseError);
-            }
-          }
-
-          return null;
-        };
-
-        const token = getSupabaseAccessToken();
         if (!token) {
-          setMessage('error', 'Missing auth token. Please log in again.');
-          console.error('No Supabase access token found in localStorage.');
+          setMessage('error', 'You are not logged in. Please log in again.');
           return;
         }
 
@@ -293,7 +273,7 @@
         setUploadingState(true);
 
         try {
-          const response = await fetch('/action/upload_prescription_template_file', {
+          const response = await fetch('https://<WORKER_DOMAIN>/action/upload_prescription_template_file', {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
