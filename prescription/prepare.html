@@ -138,10 +138,10 @@
     }
 
     const data = await res.json();
-    const draftPath = data?.prescription_draft_path;
+    const draftUrl = data?.prescription_draft_url;
 
-    if (!draftPath) {
-      throw new Error("Prescription draft path missing in response.");
+    if (!draftUrl) {
+      throw new Error("Prescription draft URL missing in response.");
     }
 
     clearError();
@@ -151,7 +151,7 @@
     // -----------------------
     document.getElementById("loadingCard").style.display = "none";
     document.getElementById("viewer").style.display = "block";
-    document.getElementById("pdfFrame").src = draftPath;
+    document.getElementById("pdfFrame").src = draftUrl;
 
   } catch (e) {
     showError(e.message || "Unexpected error");
