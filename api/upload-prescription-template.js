@@ -46,6 +46,7 @@ export default async function handler(req, res) {
   }
 
   const workerUrl = process.env.AMI_WORKER_URL;
+  console.log("Forwarding to:", workerUrl);
 
   const workerResponse = await fetch(
     `${workerUrl}/action/upload_prescription_template`,
