@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
         Authorization: authHeader,
       },
-      body: JSON.stringify({ file_base64 }),
+      body: JSON.stringify({ pdf_base64: file_base64 }),
     }
   );
 
