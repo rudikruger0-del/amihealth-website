@@ -138,17 +138,20 @@
     }
 
     const data = await res.json();
+    const draftPath = data?.prescription_draft_path;
 
-    if (!data.draft_pdf_url) {
-      throw new Error("No prescription template uploaded for this clinician.");
+    if (!draftPath) {
+      throw new Error("Prescription draft path missing in response.");
     }
+
+    clearError();
 
     // -----------------------
     // Show prescription PDF
     // -----------------------
     document.getElementById("loadingCard").style.display = "none";
     document.getElementById("viewer").style.display = "block";
-    document.getElementById("pdfFrame").src = data.draft_pdf_url;
+    document.getElementById("pdfFrame").src = draftPath;
 
   } catch (e) {
     showError(e.message || "Unexpected error");
@@ -159,9 +162,14 @@
     box.textContent = msg;
     box.style.display = "block";
   }
+
+  function clearError(){
+    const box = document.getElementById("errorBox");
+    box.textContent = "";
+    box.style.display = "none";
+  }
 })();
 </script>
 
 </body>
 </html>
-
