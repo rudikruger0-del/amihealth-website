@@ -309,11 +309,12 @@
           }
         }
 
-        if (!result.prescription_draft_url) {
-          throw new Error("Prescription PDF URL missing from response.");
+        if (!result.signed_pdf_url) {
+          showError("Prescription PDF URL missing from response.");
+          return;
         }
 
-        pdfFrame.src = result.prescription_draft_url;
+        pdfFrame.src = result.signed_pdf_url;
         viewer.style.display = "block";
       } catch (error) {
         showError(error.message || "Unexpected error. Please try again.");
@@ -332,7 +333,7 @@
 
     function buildPreviewMockResponse() {
       return {
-        prescription_draft_url:
+        signed_pdf_url:
           "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNTk1IDg0Ml0KL0NvbnRlbnRzIDQgMCBSCi9SZXNvdXJjZXMgPDwKPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA3Mgo+PgpzdHJlYW0KQlQKL0YxIDI0IFRmCjcyIDc2MCBUZAooUHJldmlldyBNb2NrIFByZXNjcmlwdGlvbiBQREYpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAwNjAgMDAwMDAgbiAKMDAwMDAwMDExNyAwMDAwMCBuIAowMDAwMDAwMjExIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1Jvb3QgMSAwIFIKL1NpemUgNQo+PgpzdGFydHhyZWYKMzAzCiUlRU9G"
       };
     }
