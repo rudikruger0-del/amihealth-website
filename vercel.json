@@ -5,6 +5,7 @@
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/upload", "destination": "/upload.html" },
     { "source": "/login", "destination": "/login.html" },
+    { "source": "/prescription/write", "destination": "/prescription/write.html" },
     { "source": "/api/:match*", "destination": "/api/:match*" }
   ]
 }
